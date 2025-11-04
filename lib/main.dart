@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:ninexmano_matrix/constants/app_colors.dart';
 import 'package:ninexmano_matrix/routes/routes.dart';
+import 'package:ninexmano_matrix/services/firebase_data_service.dart';
 
 import 'firebase_options.dart';
 
@@ -11,6 +12,8 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+    FirebaseDataService().initialize(); // ADD THIS
+
   runApp(const MainApp());
 }
 

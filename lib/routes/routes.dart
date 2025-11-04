@@ -1,6 +1,8 @@
+// routes/routes.dart
 import 'package:flutter/material.dart';
 import 'package:ninexmano_matrix/pages/cloud_file_page.dart';
 import 'package:ninexmano_matrix/pages/dashboard_page.dart';
+import 'package:ninexmano_matrix/pages/database_viewer_page.dart'; // ADD THIS
 import 'package:ninexmano_matrix/pages/landing_page.dart';
 import 'package:ninexmano_matrix/pages/mapping_page.dart';
 import 'package:ninexmano_matrix/pages/my_file_page.dart';
@@ -17,6 +19,7 @@ class AppRoutes {
   static const String myFile = '/my-file';
   static const String cloudFile = '/cloud-file';
   static const String settings = '/settings';
+  static const String databaseViewer = '/database-viewer'; // ADD THIS
 
   static final Map<String, WidgetBuilder> routes = {
     landing: (context) => const LandingPage(),
@@ -27,5 +30,6 @@ class AppRoutes {
     myFile: (context) => const MyFilePage(),
     cloudFile: (context) => const CloudFilePage(),
     settings: (context) => const SettingsPage(),
+    databaseViewer: (context) => const DatabaseViewerPage(), // ADD THIS
   };
 }

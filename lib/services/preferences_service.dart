@@ -1,4 +1,9 @@
+// services/preferences_service.dart
 import 'dart:convert';
+
+import 'package:ninexmano_matrix/models/animation_model.dart';
+import 'package:ninexmano_matrix/models/list_animation_model.dart';
+import 'package:ninexmano_matrix/models/system_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PreferencesService {
@@ -6,277 +11,358 @@ class PreferencesService {
   factory PreferencesService() => _instance;
   PreferencesService._internal();
 
-  static SharedPreferences? _preferences;
+  // Key templates
+  static const String _systemDataKey = 'system_data';
+  static const String _userAnimationsKey = 'user_animations';
+  static const String _lastSyncKey = 'last_sync';
+  static const String _selectedAnimationsKey = 'selected_animations';
+  static const String _userSettingsKey = 'user_settings';
 
-  // Initialize preferences
+  // Duration cache (1 jam)
+  static const Duration cacheDuration = Duration(hours: 1);
+
+  late SharedPreferences _prefs;
+  bool _isInitialized = false;
+
   Future<void> initialize() async {
-    _preferences = await SharedPreferences.getInstance();
+    _prefs = await SharedPreferences.getInstance();
+    _isInitialized = true;
+    print('✅ PreferencesService initialized');
   }
 
-  // Check if preferences is initialized
-  bool get isInitialized => _preferences != null;
+  // ============ DYNAMIC KEY GENERATORS ============
 
-  // ============ CRUD OPERATIONS ============
+  // Key untuk data API
+  String _apiKey(String dataType) => 'api_$dataType';
+  
+  // Key untuk data pilihan user
+  String _userKey(String dataType) => 'user_$dataType';
+  
+  // Key untuk settings user
+  String _settingsKey(String settingName) => 'settings_$settingName';
 
-  // CREATE/UPDATE - Save data dengan key
-  Future<bool> saveData(String key, dynamic value) async {
-    if (!isInitialized) await initialize();
+  // ============ API DATA METHODS (System & Animations dari Firebase) ============
 
+  // Save system data dari API
+  Future<bool> saveApiSystemData(SystemModel systemData) async {
+    if (!_isInitialized) await initialize();
+    
     try {
-      if (value is String) {
-        return await _preferences!.setString(key, value);
-      } else if (value is int) {
-        return await _preferences!.setInt(key, value);
-      } else if (value is double) {
-        return await _preferences!.setDouble(key, value);
-      } else if (value is bool) {
-        return await _preferences!.setBool(key, value);
-      } else if (value is List<String>) {
-        return await _preferences!.setStringList(key, value);
-      } else if (value is Map || value is List) {
-        // Untuk object dan list, convert ke JSON string
-        return await _preferences!.setString(key, jsonEncode(value));
-      } else {
-        throw Exception('Unsupported data type for key: $key');
+      final jsonString = jsonEncode(systemData.toJson());
+      final success = await _prefs.setString(_apiKey(_systemDataKey), jsonString);
+      
+      if (success) {
+        await _updateLastSync();
+        print('💾 API System data saved to preferences');
       }
+      return success;
     } catch (e) {
-      print('Error saving data for key $key: $e');
+      print('❌ Error saving API system data to preferences: $e');
       return false;
     }
   }
 
-  // READ - Get data berdasarkan type
-  dynamic getData(String key) {
-    if (!isInitialized) {
-      throw Exception('Preferences not initialized. Call initialize() first.');
-    }
-
-    return _preferences!.get(key);
-  }
-
-  String getString(String key, {String defaultValue = ''}) {
-    if (!isInitialized) return defaultValue;
-    return _preferences!.getString(key) ?? defaultValue;
-  }
-
-  int getInt(String key, {int defaultValue = 0}) {
-    if (!isInitialized) return defaultValue;
-    return _preferences!.getInt(key) ?? defaultValue;
-  }
-
-  double getDouble(String key, {double defaultValue = 0.0}) {
-    if (!isInitialized) return defaultValue;
-    return _preferences!.getDouble(key) ?? defaultValue;
-  }
-
-  bool getBool(String key, {bool defaultValue = false}) {
-    if (!isInitialized) return defaultValue;
-    return _preferences!.getBool(key) ?? defaultValue;
-  }
-
-  List<String> getStringList(String key, {List<String>? defaultValue}) {
-    if (!isInitialized) return defaultValue ?? [];
-    return _preferences!.getStringList(key) ?? defaultValue ?? [];
-  }
-
-  // Get JSON object (Map)
-  Map<String, dynamic>? getJsonObject(String key) {
-    if (!isInitialized) return null;
-    
-    final jsonString = _preferences!.getString(key);
-    if (jsonString != null && jsonString.isNotEmpty) {
-      try {
-        return jsonDecode(jsonString) as Map<String, dynamic>;
-      } catch (e) {
-        print('Error decoding JSON for key $key: $e');
-        return null;
-      }
-    }
-    return null;
-  }
-
-  // Get JSON array (List)
-  List<dynamic>? getJsonArray(String key) {
-    if (!isInitialized) return null;
-    
-    final jsonString = _preferences!.getString(key);
-    if (jsonString != null && jsonString.isNotEmpty) {
-      try {
-        return jsonDecode(jsonString) as List<dynamic>;
-      } catch (e) {
-        print('Error decoding JSON array for key $key: $e');
-        return null;
-      }
-    }
-    return null;
-  }
-
-  // DELETE - Remove data by key
-  Future<bool> removeData(String key) async {
-    if (!isInitialized) await initialize();
+  // Get system data dari API
+  Future<SystemModel?> getApiSystemData() async {
+    if (!_isInitialized) await initialize();
     
     try {
-      return await _preferences!.remove(key);
+      final jsonString = _prefs.getString(_apiKey(_systemDataKey));
+      if (jsonString == null) return null;
+      
+      final jsonMap = jsonDecode(jsonString) as Map<String, dynamic>;
+      return SystemModel.fromJson(jsonMap);
     } catch (e) {
-      print('Error removing data for key $key: $e');
+      print('❌ Error reading API system data from preferences: $e');
+      return null;
+    }
+  }
+
+  // Save user animations dari API
+  Future<bool> saveApiUserAnimations(ListAnimationModel animations) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      final animationsData = {
+        'source': animations.source,
+        'lastSync': animations.lastSync.toIso8601String(),
+        'animations': animations.animations.map((anim) => anim.toMap()).toList(),
+      };
+      
+      final jsonString = jsonEncode(animationsData);
+      final success = await _prefs.setString(_apiKey(_userAnimationsKey), jsonString);
+      
+      if (success) {
+        await _updateLastSync();
+        print('💾 API User animations saved to preferences (${animations.length} animations)');
+      }
+      return success;
+    } catch (e) {
+      print('❌ Error saving API user animations to preferences: $e');
       return false;
     }
   }
 
-  // CHECK - Check if key exists
-  bool containsKey(String key) {
-    if (!isInitialized) return false;
-    return _preferences!.containsKey(key);
+  // Get user animations dari API
+  Future<ListAnimationModel?> getApiUserAnimations() async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      final jsonString = _prefs.getString(_apiKey(_userAnimationsKey));
+      if (jsonString == null) return null;
+      
+      final data = jsonDecode(jsonString) as Map<String, dynamic>;
+      final source = data['source'] as String? ?? 'USER (Cached)';
+      final lastSync = DateTime.parse(data['lastSync'] as String);
+      final animationsList = data['animations'] as List<dynamic>;
+      
+      final animations = animationsList.map((animMap) {
+        try {
+          final map = animMap as Map<String, dynamic>;
+          return AnimationModel.fromList(
+            map['name'] as String,
+            [
+              map['channelCount'],
+              map['animationLength'],
+              map['description'],
+              map['delayData'],
+              ...(map['frameData'] as List<dynamic>).cast<String>(),
+            ],
+          );
+        } catch (e) {
+          print('❌ Error parsing animation from API cache: $e');
+          return null;
+        }
+      }).where((animation) => animation != null).cast<AnimationModel>().toList();
+      
+      return ListAnimationModel(
+        animations: animations,
+        source: source,
+        lastSync: lastSync,
+      );
+    } catch (e) {
+      print('❌ Error reading API user animations from preferences: $e');
+      return null;
+    }
   }
 
-  // ============ BATCH OPERATIONS ============
+  // ============ USER SELECTED DATA METHODS (Pilihan User) ============
 
-  // Save multiple data sekaligus
-  Future<bool> saveMultiple(Map<String, dynamic> data) async {
-    if (!isInitialized) await initialize();
-
+  // Save animasi yang dipilih user
+  Future<bool> saveUserSelectedAnimations(List<AnimationModel> selectedAnimations) async {
+    if (!_isInitialized) await initialize();
+    
     try {
-      bool allSuccess = true;
-      for (final entry in data.entries) {
-        final success = await saveData(entry.key, entry.value);
-        if (!success) allSuccess = false;
+      final animationsData = selectedAnimations.map((anim) => anim.toMap()).toList();
+      final jsonString = jsonEncode(animationsData);
+      final success = await _prefs.setString(_userKey(_selectedAnimationsKey), jsonString);
+      
+      if (success) {
+        print('💾 User selected animations saved (${selectedAnimations.length} animations)');
       }
-      return allSuccess;
+      return success;
     } catch (e) {
-      print('Error saving multiple data: $e');
+      print('❌ Error saving user selected animations: $e');
       return false;
     }
   }
 
-  // Get multiple data
-  Map<String, dynamic> getMultiple(List<String> keys) {
-    if (!isInitialized) return {};
+  // Get animasi yang dipilih user
+  Future<List<AnimationModel>> getUserSelectedAnimations() async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      final jsonString = _prefs.getString(_userKey(_selectedAnimationsKey));
+      if (jsonString == null) return [];
+      
+      final animationsList = jsonDecode(jsonString) as List<dynamic>;
+      
+      return animationsList.map((animMap) {
+        try {
+          final map = animMap as Map<String, dynamic>;
+          return AnimationModel.fromList(
+            map['name'] as String,
+            [
+              map['channelCount'],
+              map['animationLength'],
+              map['description'],
+              map['delayData'],
+              ...(map['frameData'] as List<dynamic>).cast<String>(),
+            ],
+          );
+        } catch (e) {
+          print('❌ Error parsing user selected animation: $e');
+          return null;
+        }
+      }).where((animation) => animation != null).cast<AnimationModel>().toList();
+    } catch (e) {
+      print('❌ Error reading user selected animations: $e');
+      return [];
+    }
+  }
 
-    final result = <String, dynamic>{};
+  // Add single animation to user selections
+  Future<bool> addUserSelectedAnimation(AnimationModel animation) async {
+    final currentSelections = await getUserSelectedAnimations();
+    
+    // Cek jika sudah ada
+    if (currentSelections.any((anim) => anim.name == animation.name)) {
+      print('⚠️ Animation ${animation.name} already in selections');
+      return true;
+    }
+    
+    final newSelections = [...currentSelections, animation];
+    return await saveUserSelectedAnimations(newSelections);
+  }
+
+  // Remove animation from user selections
+  Future<bool> removeUserSelectedAnimation(String animationName) async {
+    final currentSelections = await getUserSelectedAnimations();
+    final newSelections = currentSelections.where((anim) => anim.name != animationName).toList();
+    return await saveUserSelectedAnimations(newSelections);
+  }
+
+  // Clear all user selections
+  Future<bool> clearUserSelectedAnimations() async {
+    if (!_isInitialized) await initialize();
+    return await _prefs.remove(_userKey(_selectedAnimationsKey));
+  }
+
+  // ============ USER SETTINGS METHODS ============
+
+  // Save user setting
+  Future<bool> saveUserSetting(String settingName, dynamic value) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      final jsonString = jsonEncode(value);
+      return await _prefs.setString(_settingsKey(settingName), jsonString);
+    } catch (e) {
+      print('❌ Error saving user setting $settingName: $e');
+      return false;
+    }
+  }
+
+  // Get user setting
+  Future<dynamic> getUserSetting(String settingName) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      final jsonString = _prefs.getString(_settingsKey(settingName));
+      if (jsonString == null) return null;
+      
+      return jsonDecode(jsonString);
+    } catch (e) {
+      print('❌ Error reading user setting $settingName: $e');
+      return null;
+    }
+  }
+
+  // Contoh settings yang umum
+  Future<bool> saveLastSelectedChannel(int channel) async {
+    return await saveUserSetting('last_selected_channel', channel);
+  }
+
+  Future<int> getLastSelectedChannel() async {
+    final channel = await getUserSetting('last_selected_channel');
+    return channel is int ? channel : 4; // default channel 4
+  }
+
+  Future<bool> saveAutoSyncEnabled(bool enabled) async {
+    return await saveUserSetting('auto_sync_enabled', enabled);
+  }
+
+  Future<bool> getAutoSyncEnabled() async {
+    final enabled = await getUserSetting('auto_sync_enabled');
+    return enabled is bool ? enabled : true; // default enabled
+  }
+
+  // ============ CACHE MANAGEMENT ============
+
+  // Check if API cache is valid
+  Future<bool> isApiCacheValid() async {
+    if (!_isInitialized) await initialize();
+    
+    final lastSync = await getLastSync();
+    if (lastSync == null) return false;
+    
+    final now = DateTime.now();
+    return now.difference(lastSync) < cacheDuration;
+  }
+
+  // Get last sync time
+  Future<DateTime?> getLastSync() async {
+    if (!_isInitialized) await initialize();
+    
+    final lastSyncString = _prefs.getString(_lastSyncKey);
+    return lastSyncString != null ? DateTime.parse(lastSyncString) : null;
+  }
+
+  // Update last sync time
+  Future<void> _updateLastSync() async {
+    if (!_isInitialized) await initialize();
+    await _prefs.setString(_lastSyncKey, DateTime.now().toIso8601String());
+  }
+
+  // ============ CLEAR METHODS ============
+
+  // Clear all API cache
+  Future<void> clearApiCache() async {
+    if (!_isInitialized) await initialize();
+    
+    await _prefs.remove(_apiKey(_systemDataKey));
+    await _prefs.remove(_apiKey(_userAnimationsKey));
+    await _prefs.remove(_lastSyncKey);
+    
+    print('🗑️ API cache cleared');
+  }
+
+  // Clear user data
+  Future<void> clearUserData() async {
+    if (!_isInitialized) await initialize();
+    
+    await _prefs.remove(_userKey(_selectedAnimationsKey));
+    
+    // Clear semua settings yang dimulai dengan 'settings_'
+    final keys = _prefs.getKeys().where((key) => key.startsWith('settings_')).toList();
     for (final key in keys) {
-      if (_preferences!.containsKey(key)) {
-        result[key] = _preferences!.get(key);
-      }
+      await _prefs.remove(key);
     }
-    return result;
+    
+    print('🗑️ User data cleared');
   }
 
-  // Remove multiple data
-  Future<bool> removeMultiple(List<String> keys) async {
-    if (!isInitialized) await initialize();
-
-    try {
-      bool allSuccess = true;
-      for (final key in keys) {
-        final success = await removeData(key);
-        if (!success) allSuccess = false;
-      }
-      return allSuccess;
-    } catch (e) {
-      print('Error removing multiple data: $e');
-      return false;
-    }
+  // Clear everything
+  Future<void> clearAll() async {
+    if (!_isInitialized) await initialize();
+    await _prefs.clear();
+    print('🗑️ All preferences cleared');
   }
 
-  // ============ SPECIFIC DATA TYPES ============
+  // ============ STATISTICS ============
 
-  // Save object dengan model conversion
-  Future<bool> saveObject<T>(String key, T object, Map<String, dynamic> Function(T) toJson) async {
-    try {
-      final json = toJson(object);
-      return await saveData(key, json);
-    } catch (e) {
-      print('Error saving object for key $key: $e');
-      return false;
-    }
+  // Get cache statistics
+  Future<Map<String, dynamic>> getCacheStats() async {
+    if (!_isInitialized) await initialize();
+    
+    final apiSystemData = await getApiSystemData();
+    final apiUserAnimations = await getApiUserAnimations();
+    final userSelectedAnimations = await getUserSelectedAnimations();
+    final lastSync = await getLastSync();
+    final cacheValid = await isApiCacheValid();
+    
+    return {
+      'api_system_data': apiSystemData != null,
+      'api_user_animations_count': apiUserAnimations?.length ?? 0,
+      'user_selected_animations_count': userSelectedAnimations.length,
+      'last_sync': lastSync?.toLocal().toString() ?? 'Never',
+      'api_cache_valid': cacheValid,
+      'total_storage_keys': _prefs.getKeys().length,
+    };
   }
 
-  // Get object dengan model conversion
-  T? getObject<T>(String key, T Function(Map<String, dynamic>) fromJson) {
-    try {
-      final json = getJsonObject(key);
-      if (json != null) {
-        return fromJson(json);
-      }
-      return null;
-    } catch (e) {
-      print('Error getting object for key $key: $e');
-      return null;
-    }
-  }
-
-  // Save list of objects
-  Future<bool> saveObjectList<T>(String key, List<T> objects, Map<String, dynamic> Function(T) toJson) async {
-    try {
-      final jsonList = objects.map((obj) => toJson(obj)).toList();
-      return await saveData(key, jsonList);
-    } catch (e) {
-      print('Error saving object list for key $key: $e');
-      return false;
-    }
-  }
-
-  // Get list of objects
-  List<T> getObjectList<T>(String key, T Function(Map<String, dynamic>) fromJson, {List<T> defaultValue = const []}) {
-    try {
-      final jsonArray = getJsonArray(key);
-      if (jsonArray != null) {
-        return jsonArray.map((json) => fromJson(json as Map<String, dynamic>)).toList();
-      }
-      return defaultValue;
-    } catch (e) {
-      print('Error getting object list for key $key: $e');
-      return defaultValue;
-    }
-  }
-
-  // ============ UTILITY METHODS ============
-
-  // Get all keys
+  // Get all stored keys (untuk debug)
   Set<String> getAllKeys() {
-    if (!isInitialized) return {};
-    return _preferences!.getKeys();
-  }
-
-  // Clear all data
-  Future<bool> clearAll() async {
-    if (!isInitialized) await initialize();
-    
-    try {
-      return await _preferences!.clear();
-    } catch (e) {
-      print('Error clearing all data: $e');
-      return false;
-    }
-  }
-
-  // Get data size (estimated)
-  int getDataSize() {
-    if (!isInitialized) return 0;
-    return _preferences!.getKeys().length;
-  }
-
-  // Backup all data to Map
-  Map<String, dynamic> backupAllData() {
-    if (!isInitialized) return {};
-    
-    final backup = <String, dynamic>{};
-    for (final key in _preferences!.getKeys()) {
-      backup[key] = _preferences!.get(key);
-    }
-    return backup;
-  }
-
-  // Restore from backup
-  Future<bool> restoreFromBackup(Map<String, dynamic> backup) async {
-    if (!isInitialized) await initialize();
-
-    try {
-      await clearAll();
-      return await saveMultiple(backup);
-    } catch (e) {
-      print('Error restoring from backup: $e');
-      return false;
-    }
+    return _prefs.getKeys();
   }
 }

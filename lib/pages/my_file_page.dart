@@ -1,6 +1,8 @@
 // Halaman My File
 import 'package:flutter/material.dart';
 import 'package:ninexmano_matrix/constants/app_colors.dart';
+import 'package:ninexmano_matrix/models/animation_model.dart';
+import 'package:ninexmano_matrix/services/firebase_data_service.dart';
 
 class MyFilePage extends StatefulWidget {
   const MyFilePage({super.key});
@@ -10,74 +12,121 @@ class MyFilePage extends StatefulWidget {
 }
 
 class _MyFilePageState extends State<MyFilePage> {
-  // Dummy data untuk file animasi
-  final List<AnimationFile> _animationFiles = [
-    AnimationFile(
-      name: 'Carl Animasi',
-      description: 'DENNY AVAIL PROVIDERBY CAR',
-      dateCreated: '2024-01-15',
-      fileSize: '2.3 MB',
-    ),
-    AnimationFile(
-      name: 'Wave Effect',
-      description: 'Smooth wave animation for LED matrix',
-      dateCreated: '2024-01-14',
-      fileSize: '1.8 MB',
-    ),
-    AnimationFile(
-      name: 'Spiral Rotate',
-      description: 'Rotating spiral pattern',
-      dateCreated: '2024-01-13',
-      fileSize: '3.1 MB',
-    ),
-    AnimationFile(
-      name: 'Text Scroll',
-      description: 'Scrolling text display',
-      dateCreated: '2024-01-12',
-      fileSize: '1.2 MB',
-    ),
-    AnimationFile(
-      name: 'Fire Simulation',
-      description: 'Realistic fire animation',
-      dateCreated: '2024-01-11',
-      fileSize: '4.5 MB',
-    ),
-    AnimationFile(
-      name: 'Rainbow Flow',
-      description: 'Flowing rainbow colors',
-      dateCreated: '2024-01-10',
-      fileSize: '2.7 MB',
-    ),
-  ];
-
-  // File yang dipilih
+  final FirebaseDataService _firebaseService = FirebaseDataService();
+  
+  // Data dari user selections di preferences
+  List<AnimationModel> _userSelectedFiles = [];
   final Set<int> _selectedFiles = {};
+  bool _isLoading = true;
+  String _errorMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserSelectedFiles();
+  }
+
+  // Load data dari user selections di preferences
+  Future<void> _loadUserSelectedFiles() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = '';
+      });
+
+      final selectedFiles = await _firebaseService.getUserSelectedAnimations();
+      
+      setState(() {
+        _userSelectedFiles = selectedFiles;
+        _isLoading = false;
+      });
+
+      print('✅ Loaded ${_userSelectedFiles.length} user selected files from preferences');
+
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Error loading files: $e';
+        _isLoading = false;
+      });
+      print('❌ Error loading user selected files: $e');
+    }
+  }
+
+  // Refresh data
+  Future<void> _refreshData() async {
+    await _loadUserSelectedFiles();
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: AppColors.neonGreen,
+        content: const Text(
+          'Files refreshed!',
+          style: TextStyle(
+            color: AppColors.primaryBlack,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.primaryBlack,
-      // appBar: AppBar(
-      //   title: const Text('MY FILE'),
-      //   backgroundColor: AppColors.darkGrey,
-      //   foregroundColor: AppColors.neonGreen,
-      //   actions: [
-      //     if (_selectedFiles.isNotEmpty)
-      //       IconButton(
-      //         icon: const Icon(Icons.delete),
-      //         onPressed: _deleteSelectedFiles,
-      //         tooltip: 'Delete Selected',
-      //       ),
-      //     if (_selectedFiles.isNotEmpty)
-      //       IconButton(
-      //         icon: const Icon(Icons.cloud_upload),
-      //         onPressed: _saveToCloud,
-      //         tooltip: 'Save to Cloud',
-      //       ),
-      //   ],
-      // ),
       body: Column(
         children: [
+          // App Bar Custom dengan refresh button
+          Container(
+            padding: const EdgeInsets.all(16),
+            color: AppColors.darkGrey,
+            child: Row(
+              children: [
+                // Title
+                Text(
+                  'MY FILES',
+                  style: TextStyle(
+                    color: AppColors.neonGreen,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                
+                // Refresh Button
+                IconButton(
+                  onPressed: _isLoading ? null : _refreshData,
+                  icon: Icon(
+                    Icons.refresh,
+                    color: _isLoading ? AppColors.pureWhite.withOpacity(0.5) : AppColors.neonGreen,
+                  ),
+                  tooltip: 'Refresh files',
+                ),
+                
+                // Statistics
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryBlack,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: AppColors.neonGreen.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Text(
+                    '${_userSelectedFiles.length} files',
+                    style: TextStyle(
+                      color: AppColors.pureWhite,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           // Options Bar (muncul ketika ada file yang dipilih)
           if (_selectedFiles.isNotEmpty)
             Container(
@@ -139,91 +188,268 @@ class _MyFilePageState extends State<MyFilePage> {
                 ],
               ),
             ),
-          
-          // List File Animasi
-          Expanded(
-            child: ListView.builder(
-              itemCount: _animationFiles.length,
-              itemBuilder: (context, index) {
-                final file = _animationFiles[index];
-                final isSelected = _selectedFiles.contains(index);
-                
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.darkGrey,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isSelected ? AppColors.neonGreen : AppColors.darkGrey,
-                      width: 2,
+
+          // Separator Line
+          Container(
+            height: 1,
+            color: AppColors.neonGreen.withOpacity(0.3),
+          ),
+
+          // Loading Indicator
+          if (_isLoading)
+            const Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(color: AppColors.neonGreen),
+                    SizedBox(height: 16),
+                    Text(
+                      'Loading your files...',
+                      style: TextStyle(color: AppColors.pureWhite),
                     ),
-                  ),
-                  child: ListTile(
-                    leading: Checkbox(
-                      value: isSelected,
-                      onChanged: (value) {
-                        setState(() {
-                          if (value == true) {
-                            _selectedFiles.add(index);
-                          } else {
-                            _selectedFiles.remove(index);
-                          }
-                        });
-                      },
-                      checkColor: AppColors.primaryBlack,
-                      fillColor: MaterialStateProperty.all(AppColors.neonGreen),
+                  ],
+                ),
+              ),
+            )
+
+          // Error Message
+          else if (_errorMessage.isNotEmpty)
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 48,
                     ),
-                    title: Text(
-                      file.name,
+                    const SizedBox(height: 16),
+                    Text(
+                      _errorMessage,
+                      style: const TextStyle(color: Colors.red),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: _refreshData,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.neonGreen,
+                        foregroundColor: AppColors.primaryBlack,
+                      ),
+                      child: const Text('RETRY'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+
+          // Empty State
+          else if (_userSelectedFiles.isEmpty)
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.folder_open,
+                      color: AppColors.pureWhite.withOpacity(0.5),
+                      size: 64,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No files found',
                       style: TextStyle(
-                        color: AppColors.pureWhite,
+                        color: AppColors.pureWhite.withOpacity(0.7),
                         fontSize: 16,
-                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          file.description,
-                          style: TextStyle(
-                            color: AppColors.pureWhite.withOpacity(0.8),
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${file.dateCreated} • ${file.fileSize}',
-                          style: TextStyle(
-                            color: AppColors.pureWhite.withOpacity(0.6),
-                            fontSize: 10,
-                          ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Download animations from Cloud Files to get started',
+                      style: TextStyle(
+                        color: AppColors.pureWhite.withOpacity(0.5),
+                        fontSize: 12,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () {
+                        // Navigate to Cloud Files page
+                        // Navigator.push(context, MaterialPageRoute(builder: (context) => CloudFilePage()));
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.neonGreen,
+                        foregroundColor: AppColors.primaryBlack,
+                      ),
+                      child: const Text('GO TO CLOUD FILES'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+
+          // List File Animasi dari User Selections
+          else
+            Expanded(
+              child: ListView.builder(
+                itemCount: _userSelectedFiles.length,
+                itemBuilder: (context, index) {
+                  final file = _userSelectedFiles[index];
+                  final isSelected = _selectedFiles.contains(index);
+                  
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.darkGrey,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected ? AppColors.neonGreen : Colors.transparent,
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
-                    trailing: Icon(
-                      Icons.animation,
-                      color: AppColors.neonGreen,
+                    child: ListTile(
+                      leading: Checkbox(
+                        value: isSelected,
+                        onChanged: (value) {
+                          setState(() {
+                            if (value == true) {
+                              _selectedFiles.add(index);
+                            } else {
+                              _selectedFiles.remove(index);
+                            }
+                          });
+                        },
+                        checkColor: AppColors.primaryBlack,
+                        fillColor: MaterialStateProperty.all(AppColors.neonGreen),
+                      ),
+                      title: Text(
+                        file.name,
+                        style: TextStyle(
+                          color: AppColors.pureWhite,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            file.description.isEmpty ? 'No description' : file.description,
+                            style: TextStyle(
+                              color: AppColors.pureWhite.withOpacity(0.8),
+                              fontSize: 12,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              // Channel Count
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.neonGreen.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  '${file.channelCount}C',
+                                  style: TextStyle(
+                                    color: AppColors.neonGreen,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              
+                              // Animation Length
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  '${file.animationLength}L',
+                                  style: TextStyle(
+                                    color: Colors.blue,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              
+                              // Frame Count
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  '${file.totalFrames}F',
+                                  style: TextStyle(
+                                    color: Colors.orange,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const Spacer(),
+                              
+                              // Validation Status
+                              Icon(
+                                file.isValid ? Icons.check_circle : Icons.error,
+                                color: file.isValid ? AppColors.neonGreen : Colors.red,
+                                size: 16,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      trailing: Icon(
+                        Icons.animation,
+                        color: AppColors.neonGreen,
+                      ),
+                      onTap: () {
+                        setState(() {
+                          if (_selectedFiles.contains(index)) {
+                            _selectedFiles.remove(index);
+                          } else {
+                            _selectedFiles.add(index);
+                          }
+                        });
+                      },
+                      onLongPress: () {
+                        _previewFile(file);
+                      },
                     ),
-                    onTap: () {
-                      setState(() {
-                        if (_selectedFiles.contains(index)) {
-                          _selectedFiles.remove(index);
-                        } else {
-                          _selectedFiles.add(index);
-                        }
-                      });
-                    },
-                    onLongPress: () {
-                      // Preview atau action lain ketika long press
-                      _previewFile(file);
-                    },
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
         ],
+      ),
+
+      // Refresh indicator
+      floatingActionButton: _isLoading ? null : FloatingActionButton(
+        onPressed: _refreshData,
+        backgroundColor: AppColors.neonGreen,
+        foregroundColor: AppColors.primaryBlack,
+        mini: true,
+        child: const Icon(Icons.refresh),
       ),
     );
   }
@@ -252,22 +478,28 @@ class _MyFilePageState extends State<MyFilePage> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
+              // Hapus file dari user selections
+              final filesToRemove = _selectedFiles.map((index) => _userSelectedFiles[index]).toList();
+              
+              for (final file in filesToRemove) {
+                await _firebaseService.removeUserSelectedAnimation(file.name);
+              }
+              
               setState(() {
-                // Hapus file dari list (dalam urutan descending untuk menghindari index error)
-                final sortedIndexes = _selectedFiles.toList()..sort((a, b) => b.compareTo(a));
-                for (final index in sortedIndexes) {
-                  _animationFiles.removeAt(index);
-                }
+                // Update local list
+                _userSelectedFiles.removeWhere((file) => 
+                  filesToRemove.any((removedFile) => removedFile.name == file.name));
                 _selectedFiles.clear();
               });
+              
               Navigator.pop(context);
               
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   backgroundColor: AppColors.neonGreen,
                   content: Text(
-                    'Files deleted successfully!',
+                    '${filesToRemove.length} file(s) deleted successfully!',
                     style: TextStyle(
                       color: AppColors.primaryBlack,
                       fontWeight: FontWeight.bold,
@@ -290,8 +522,10 @@ class _MyFilePageState extends State<MyFilePage> {
     if (_selectedFiles.isEmpty) return;
     
     // Simulasi save to cloud
-    final selectedFileNames = _selectedFiles.map((index) => _animationFiles[index].name).toList();
+    final selectedFiles = _selectedFiles.map((index) => _userSelectedFiles[index]).toList();
+    final selectedFileNames = selectedFiles.map((file) => file.name).toList();
     
+    // TODO: Implement actual cloud save functionality
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: AppColors.neonGreen,
@@ -310,39 +544,83 @@ class _MyFilePageState extends State<MyFilePage> {
     });
   }
 
-  void _previewFile(AnimationFile file) {
+  void _previewFile(AnimationModel file) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.darkGrey,
         title: Text(
           file.name,
-          style: TextStyle(color: AppColors.pureWhite),
+          style: TextStyle(
+            color: AppColors.neonGreen,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Description: ${file.description}',
-              style: TextStyle(color: AppColors.pureWhite),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Created: ${file.dateCreated}',
-              style: TextStyle(color: AppColors.pureWhite),
-            ),
-            Text(
-              'Size: ${file.fileSize}',
-              style: TextStyle(color: AppColors.pureWhite),
-            ),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Description
+              Text(
+                'Description: ${file.description.isEmpty ? "No description" : file.description}',
+                style: TextStyle(color: AppColors.pureWhite),
+              ),
+              const SizedBox(height: 12),
+              
+              // Technical Details
+              _buildDetailRow('Channel Count', '${file.channelCount}'),
+              _buildDetailRow('Animation Length', '${file.animationLength}'),
+              _buildDetailRow('Total Frames', '${file.totalFrames}'),
+              _buildDetailRow('Delay Data', file.delayData),
+              _buildDetailRow('Validation', file.isValid ? 'Valid' : 'Invalid'),
+              
+              const SizedBox(height: 12),
+              
+              // Frame Data Preview
+              if (file.frameData.isNotEmpty) ...[
+                Text(
+                  'Frame Data Preview:',
+                  style: TextStyle(
+                    color: AppColors.neonGreen,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryBlack,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    file.frameData.take(3).join('\n'),
+                    style: TextStyle(
+                      color: AppColors.pureWhite,
+                      fontSize: 10,
+                      fontFamily: 'Monospace',
+                    ),
+                    maxLines: 6,
+                  ),
+                ),
+                if (file.frameData.length > 3)
+                  Text(
+                    '... and ${file.frameData.length - 3} more frames',
+                    style: TextStyle(
+                      color: AppColors.pureWhite.withOpacity(0.7),
+                      fontSize: 10,
+                    ),
+                  ),
+              ],
+            ],
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
-              'Close',
+              'CLOSE',
               style: TextStyle(color: AppColors.neonGreen),
             ),
           ),
@@ -350,19 +628,30 @@ class _MyFilePageState extends State<MyFilePage> {
       ),
     );
   }
-}
 
-// Model untuk file animasi
-class AnimationFile {
-  final String name;
-  final String description;
-  final String dateCreated;
-  final String fileSize;
-
-  AnimationFile({
-    required this.name,
-    required this.description,
-    required this.dateCreated,
-    required this.fileSize,
-  });
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              '$label:',
+              style: TextStyle(
+                color: AppColors.pureWhite.withOpacity(0.7),
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              color: AppColors.pureWhite,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
