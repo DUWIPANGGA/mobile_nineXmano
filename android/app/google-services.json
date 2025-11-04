@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "396744896249",
+    "firebase_url": "https://mano-54cf7-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "mano-54cf7",
+    "storage_bucket": "mano-54cf7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:396744896249:android:1c8567f9761befa6683c28",
+        "android_client_info": {
+          "package_name": "com.example.ninexmano_matrix"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAhv_JNbDII5PZYrqLGEM_AH1EbNHwgwSU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
