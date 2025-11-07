@@ -204,58 +204,64 @@ class SocketService {
   }
 
   // Di SocketService - Perbaikan _handleConfigResponse
-void _handleConfigResponse(String message) {
-  print('🔧 Processing config data from device...');
-  
-  try {
-    // Validasi message
-    if (message.isEmpty || !message.startsWith('config,')) {
-      print('❌ Invalid config message format');
-      return;
+  void _handleConfigResponse(String message) {
+    print('🔧 Processing config data from device...');
+
+    try {
+      // Validasi message
+      if (message.isEmpty || !message.startsWith('config,')) {
+        print('❌ Invalid config message format');
+        return;
+      }
+      if (message.startsWith('config,')) {
+        _processConfigData(message);
+      }
+      if (message.startsWith('info,')) {
+        _processConfigData(message);
+        print(message.substring(6, message.length));
+      }
+      print('📨 Raw config data received: ${message.length} characters');
+      print(
+        '   First 100 chars: ${message.substring(0, message.length < 100 ? message.length : 100)}...',
+      );
+
+      // Process config data
+    } catch (e) {
+      print('❌ Error in _handleConfigResponse: $e');
+      print('   Stack trace: ${e.toString()}');
     }
-
-    print('📨 Raw config data received: ${message.length} characters');
-    print('   First 100 chars: ${message.substring(0, message.length < 100 ? message.length : 100)}...');
-
-    // Process config data
-    _processConfigData(message);
-    
-  } catch (e) {
-    print('❌ Error in _handleConfigResponse: $e');
-    print('   Stack trace: ${e.toString()}');
   }
-}
 
-// Pisahkan logic processing ke method terpisah
-void _processConfigData(String message) async {
-  try {
-    final configService = ConfigService();
-    final config = await configService.parseAndSaveConfig(message);
-    
-    if (config != null) {
-      print('✅ Config processed and saved to preferences successfully');
-      
-      // Print config details
-      print('📋 Saved Config Details:');
-      print('   - Firmware: ${config.firmware}');
-      print('   - MAC: ${config.mac}');
-      print('   - Channels: ${config.jumlahChannel}');
-      print('   - Email: ${config.email}');
-      print('   - Device ID: ${config.devID}');
-      print('   - Valid: ${config.isValid}');
-      
-      // Kirim event bahwa config telah diperbarui
-      _messageController.add('CONFIG_UPDATED:${config.devID}');
-      
-    } else {
-      print('⚠️ Failed to process and save config data');
-      _messageController.add('CONFIG_ERROR:Failed to save config');
+  // Pisahkan logic processing ke method terpisah
+  void _processConfigData(String message) async {
+    try {
+      final configService = ConfigService();
+      final config = await configService.parseAndSaveConfig(message);
+
+      if (config != null) {
+        print('✅ Config processed and saved to preferences successfully');
+
+        // Print config details
+        print('📋 Saved Config Details:');
+        print('   - Firmware: ${config.firmware}');
+        print('   - MAC: ${config.mac}');
+        print('   - Channels: ${config.jumlahChannel}');
+        print('   - Email: ${config.email}');
+        print('   - Device ID: ${config.devID}');
+        print('   - Valid: ${config.isValid}');
+
+        // Kirim event bahwa config telah diperbarui
+        _messageController.add('CONFIG_UPDATED:${config.devID}');
+      } else {
+        print('⚠️ Failed to process and save config data');
+        _messageController.add('CONFIG_ERROR:Failed to save config');
+      }
+    } catch (e) {
+      print('❌ Error processing config data: $e');
+      _messageController.add('CONFIG_ERROR:$e');
     }
-  } catch (e) {
-    print('❌ Error processing config data: $e');
-    _messageController.add('CONFIG_ERROR:$e');
   }
-}
+
   void _handleConfigShowResponse(String message) {
     final parts = message.split(',');
     print('║ 📊 Config2 Analysis:');
