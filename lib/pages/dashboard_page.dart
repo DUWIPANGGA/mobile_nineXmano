@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ninexmano_matrix/constants/app_colors.dart';
 import 'package:ninexmano_matrix/pages/cloud_file_page.dart';
+import 'package:ninexmano_matrix/pages/config_monitor.dart';
 import 'package:ninexmano_matrix/pages/editor_page.dart';
 import 'package:ninexmano_matrix/pages/mapping_page.dart';
 import 'package:ninexmano_matrix/pages/my_file_page.dart';
@@ -33,6 +34,7 @@ class _DashboardPageState extends State<DashboardPage> {
     {'title': 'My File', 'icon': Icons.folder, 'color': AppColors.neonGreen},
     {'title': 'Cloud File', 'icon': Icons.cloud, 'color': AppColors.neonGreen},
     {'title': 'Setting', 'icon': Icons.settings, 'color': AppColors.neonGreen},
+    {'title': 'Monitor', 'icon': Icons.monitor, 'color': AppColors.neonGreen},
   ];
 
   @override
@@ -49,8 +51,48 @@ class _DashboardPageState extends State<DashboardPage> {
       EditorPage(),
       TriggerPage(socketService: _socketService),
       MyFilePage(),
-      CloudFilePage(), // Jika CloudFilePage perlu socketetService: _socketService),
+      CloudFilePage(),
+      SettingsPage(socketService: _socketService),
+      ConfigMonitorWidget(socketService: _socketService)
+      // Tambahkan page untuk Setting atau gunakan placeholder
+      // _buildPlaceholderPage('Settings Page'), // Placeholder untuk Setting
     ];
+  }
+
+  // Placeholder untuk page yang belum ada
+  Widget _buildPlaceholderPage(String title) {
+    return Scaffold(
+      backgroundColor: AppColors.primaryBlack,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.settings,
+              size: 64,
+              color: AppColors.neonGreen,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: TextStyle(
+                color: AppColors.pureWhite,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'This page is under development',
+              style: TextStyle(
+                color: AppColors.pureWhite.withOpacity(0.7),
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _setupSocketListeners() {
@@ -382,9 +424,9 @@ class _DashboardPageState extends State<DashboardPage> {
                   ],
                 ),
 
-                // Current Page Title
+                // Current Page Title dengan validasi index
                 Text(
-                  _menuItems[_currentIndex]['title'],
+                  _getCurrentPageTitle(),
                   style: const TextStyle(
                     color: AppColors.pureWhite,
                     fontSize: 18,
@@ -428,7 +470,7 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           ),
 
-          // Content Area
+          // Content Area dengan validasi index
           Expanded(
             child: Container(
               decoration: BoxDecoration(
@@ -441,12 +483,31 @@ class _DashboardPageState extends State<DashboardPage> {
                   ],
                 ),
               ),
-              child: _pages[_currentIndex],
+              child: _getCurrentPage(),
             ),
           ),
         ],
       ),
     );
+  }
+
+  // Method untuk mendapatkan current page dengan validasi
+  Widget _getCurrentPage() {
+    if (_currentIndex >= 0 && _currentIndex < _pages.length) {
+      return _pages[_currentIndex];
+    } else {
+      // Fallback ke page pertama jika index invalid
+      return _pages[0];
+    }
+  }
+
+  // Method untuk mendapatkan current page title dengan validasi
+  String _getCurrentPageTitle() {
+    if (_currentIndex >= 0 && _currentIndex < _menuItems.length) {
+      return _menuItems[_currentIndex]['title'];
+    } else {
+      return _menuItems[0]['title']; // Fallback ke title pertama
+    }
   }
 
   Widget _buildShortcut(String title, IconData icon, int index) {

@@ -2,6 +2,7 @@
 import 'dart:convert';
 
 import 'package:ninexmano_matrix/models/animation_model.dart';
+import 'package:ninexmano_matrix/models/config_model.dart';
 import 'package:ninexmano_matrix/models/list_animation_model.dart';
 import 'package:ninexmano_matrix/models/system_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,6 +11,7 @@ class PreferencesService {
   static final PreferencesService _instance = PreferencesService._internal();
   factory PreferencesService() => _instance;
   PreferencesService._internal();
+static const String _deviceConfigKey = 'device_config';
 
   // Key templates
   static const String _systemDataKey = 'system_data';
@@ -418,7 +420,56 @@ Future<bool> isDefaultAnimation(String animationName) async {
       'total_storage_keys': _prefs.getKeys().length,
     };
   }
+Future<bool> saveDeviceConfig(ConfigModel config) async {
+  if (!_isInitialized) await initialize();
+  
+  try {
+    final configMap = config.toMap();
+    final jsonString = jsonEncode(configMap);
+    final success = await _prefs.setString(_deviceConfigKey, jsonString);
+    
+    if (success) {
+      print('💾 Device config saved to preferences');
+      print('📊 Config summary: ${config.summary}');
+    }
+    return success;
+  } catch (e) {
+    print('❌ Error saving device config to preferences: $e');
+    return false;
+  }
+}
 
+// Get device config
+Future<ConfigModel?> getDeviceConfig() async {
+  if (!_isInitialized) await initialize();
+  
+  try {
+    final jsonString = _prefs.getString(_deviceConfigKey);
+    if (jsonString == null) return null;
+    
+    final configMap = jsonDecode(jsonString) as Map<String, dynamic>;
+    return ConfigModel.fromMap(configMap);
+  } catch (e) {
+    print('❌ Error reading device config from preferences: $e');
+    return null;
+  }
+}
+
+// Check if device config exists
+Future<bool> hasDeviceConfig() async {
+  if (!_isInitialized) await initialize();
+  return _prefs.containsKey(_deviceConfigKey);
+}
+
+// Clear device config
+Future<bool> clearDeviceConfig() async {
+  if (!_isInitialized) await initialize();
+  final success = await _prefs.remove(_deviceConfigKey);
+  if (success) {
+    print('🗑️ Device config cleared from preferences');
+  }
+  return success;
+}
   // Get all stored keys (untuk debug)
   Set<String> getAllKeys() {
     return _prefs.getKeys();

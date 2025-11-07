@@ -1,6 +1,7 @@
 // routes/routes.dart
 import 'package:flutter/material.dart';
 import 'package:ninexmano_matrix/pages/cloud_file_page.dart';
+import 'package:ninexmano_matrix/pages/config_monitor.dart';
 import 'package:ninexmano_matrix/pages/dashboard_page.dart';
 import 'package:ninexmano_matrix/pages/database_viewer_page.dart';
 import 'package:ninexmano_matrix/pages/editor_page.dart';
@@ -23,6 +24,7 @@ class AppRoutes {
   static const String settings = '/settings';
   static const String editor = '/editor';
   static const String databaseViewer = '/database-viewer';
+  static const String monitor = '/config-monitor';
 
   static final Map<String, WidgetBuilder> routes = {
     landing: (context) => const LandingPage(),
@@ -35,5 +37,6 @@ class AppRoutes {
     cloudFile: (context) => const CloudFilePage(),
     settings: (context) => SettingsPage(socketService: SocketService()),
     databaseViewer: (context) => const DatabaseViewerPage(),
+    monitor: (context) => ConfigMonitorWidget(socketService: SocketService()),
   };
 }

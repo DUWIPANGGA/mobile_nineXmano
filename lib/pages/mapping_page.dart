@@ -78,25 +78,69 @@ class _MappingPageState extends State<MappingPage> {
     return [..._defaultAnimations, ..._userAnimations];
   }
 
-  // Load saved mappings dari preferences
   Future<void> _loadSavedMappings() async {
-    try {
-      final mappings = await _firebaseService.getUserSetting('button_mappings') as Map<String, dynamic>?;
+  try {
+    final mappings = await _firebaseService.getUserSetting('button_mappings') as Map<String, dynamic>?;
+    
+    if (mappings != null) {
+      // Validasi setiap value
+      final validMappings = {
+        'button_a': _validateMapping(mappings['button_a']),
+        'button_b': _validateMapping(mappings['button_b']),
+        'button_c': _validateMapping(mappings['button_c']),
+        'button_d': _validateMapping(mappings['button_d']),
+      };
       
-      if (mappings != null) {
-        setState(() {
-          _selectedAnimationA = mappings['button_a'];
-          _selectedAnimationB = mappings['button_b'];
-          _selectedAnimationC = mappings['button_c'];
-          _selectedAnimationD = mappings['button_d'];
-        });
-        
-        print('✅ Loaded saved mappings from preferences');
-      }
-    } catch (e) {
-      print('❌ Error loading saved mappings: $e');
+      setState(() {
+        _selectedAnimationA = validMappings['button_a'];
+        _selectedAnimationB = validMappings['button_b'];
+        _selectedAnimationC = validMappings['button_c'];
+        _selectedAnimationD = validMappings['button_d'];
+      });
+    } else {
+      // JIKA TIDAK ADA MAPPING, SET DEFAULT DARI INDEX 1
+      _setDefaultFromIndex1();
     }
+    
+    print('✅ Loaded saved mappings');
+  } catch (e) {
+    print('❌ Error loading saved mappings: $e');
+    // JIKA ERROR, SET DEFAULT DARI INDEX 1
+    _setDefaultFromIndex1();
   }
+}
+
+// Set default dari index 1
+void _setDefaultFromIndex1() {
+  if (_defaultAnimations.length > 1) { // Pastikan ada minimal 2 animasi default
+    final defaultAnimation = _defaultAnimations[1]; // Index 1 = animasi kedua
+    
+    setState(() {
+      _selectedAnimationA = defaultAnimation.name;
+      _selectedAnimationB = null;
+      _selectedAnimationC = null;
+      _selectedAnimationD = null;
+    });
+    
+    print('🎯 Set default mapping from index 1: ${defaultAnimation.name}');
+    
+    // Simpan default mapping
+    _saveMappings();
+  }
+}
+
+// Validasi mapping
+String? _validateMapping(String? mappingValue) {
+  if (mappingValue == null) return null;
+  
+  final exists = _allAnimations.any((anim) => anim.name == mappingValue);
+  if (!exists) {
+    print('⚠️ Removing invalid mapping: $mappingValue');
+    return null;
+  }
+  
+  return mappingValue;
+}
 
   // Save mappings ke preferences
   Future<void> _saveMappings() async {
@@ -119,88 +163,175 @@ class _MappingPageState extends State<MappingPage> {
   // ========== SOCKET ACTIONS ==========
 
   // Kirim animasi ke device berdasarkan mapping
-  Future<void> _sendAllAnimations() async {
-    if (_allAnimations.isEmpty || !widget.socketService.isConnected) return;
+Future<void> _sendAllAnimations() async {
+  if (_allAnimations.isEmpty || !widget.socketService.isConnected) return;
 
-    // Validasi minimal satu animasi dipilih
-    final selectedAnimations = [
-      _selectedAnimationA,
-      _selectedAnimationB,
-      _selectedAnimationC,
-      _selectedAnimationD,
-    ].where((anim) => anim != null).toList();
+  // Validasi minimal satu animasi dipilih
+  final selectedAnimations = [
+    _selectedAnimationA,
+    _selectedAnimationB,
+    _selectedAnimationC,
+    _selectedAnimationD,
+  ].where((anim) => anim != null).toList();
 
-    if (selectedAnimations.isEmpty) {
-      _showSnackbar('Pilih minimal satu animasi terlebih dahulu!', isError: true);
-      return;
+  if (selectedAnimations.isEmpty) {
+    _showSnackbar('Pilih minimal satu animasi terlebih dahulu!', isError: true);
+    return;
+  }
+
+  setState(() {
+    _isSending = true;
+  });
+
+  try {
+    print('🔄 Mengirim animasi mapping ke device...');
+    
+    // Group by type untuk optimasi pengiriman
+    final defaultAnimations = <Map<String, dynamic>>[];
+    final customAnimations = <Map<String, dynamic>>[];
+    
+    // Kategorikan animasi berdasarkan type
+    if (_selectedAnimationA != null) {
+      final isDefault = _defaultAnimations.any((anim) => anim.name == _selectedAnimationA);
+      if (isDefault) {
+        defaultAnimations.add({'button': 1, 'name': _selectedAnimationA!});
+      } else {
+        customAnimations.add({'button': 1, 'name': _selectedAnimationA!});
+      }
+    }
+    
+    if (_selectedAnimationB != null) {
+      final isDefault = _defaultAnimations.any((anim) => anim.name == _selectedAnimationB);
+      if (isDefault) {
+        defaultAnimations.add({'button': 2, 'name': _selectedAnimationB!});
+      } else {
+        customAnimations.add({'button': 2, 'name': _selectedAnimationB!});
+      }
+    }
+    
+    if (_selectedAnimationC != null) {
+      final isDefault = _defaultAnimations.any((anim) => anim.name == _selectedAnimationC);
+      if (isDefault) {
+        defaultAnimations.add({'button': 3, 'name': _selectedAnimationC!});
+      } else {
+        customAnimations.add({'button': 3, 'name': _selectedAnimationC!});
+      }
+    }
+    
+    if (_selectedAnimationD != null) {
+      final isDefault = _defaultAnimations.any((anim) => anim.name == _selectedAnimationD);
+      if (isDefault) {
+        defaultAnimations.add({'button': 4, 'name': _selectedAnimationD!});
+      } else {
+        customAnimations.add({'button': 4, 'name': _selectedAnimationD!});
+      }
+    }
+    
+    print('📊 Sending ${defaultAnimations.length} default + ${customAnimations.length} custom animations');
+    
+    // Kirim default animations dulu (lebih cepat)
+    for (final item in defaultAnimations) {
+      await _sendAnimationForButton(item['button'] as int, item['name'] as String);
+    }
+    
+    // Kirim custom animations
+    for (final item in customAnimations) {
+      await _sendAnimationForButton(item['button'] as int, item['name'] as String);
     }
 
-    setState(() {
-      _isSending = true;
+    // Simpan mapping terakhir yang dikirim
+    await _firebaseService.saveUserSetting('last_sent_mappings', {
+      'button_a': _selectedAnimationA,
+      'button_b': _selectedAnimationB,
+      'button_c': _selectedAnimationC,
+      'button_d': _selectedAnimationD,
+      'sent_at': DateTime.now().toIso8601String(),
     });
 
-    try {
-      print('🔄 Mengirim animasi mapping ke device...');
-      
-      // Kirim animasi untuk setiap tombol yang dipilih
-      await _sendAnimationForButton(1, _selectedAnimationA);
-      await _sendAnimationForButton(2, _selectedAnimationB);
-      await _sendAnimationForButton(3, _selectedAnimationC);
-      await _sendAnimationForButton(4, _selectedAnimationD);
+    _showSnackbar('${selectedAnimations.length} animasi berhasil dikirim ke device!');
 
-      // Simpan mapping terakhir yang dikirim
-      await _firebaseService.saveUserSetting('last_sent_mappings', {
-        'button_a': _selectedAnimationA,
-        'button_b': _selectedAnimationB,
-        'button_c': _selectedAnimationC,
-        'button_d': _selectedAnimationD,
-        'sent_at': DateTime.now().toIso8601String(),
-      });
-
-      _showSnackbar('${selectedAnimations.length} animasi berhasil dikirim ke device!');
-
-    } catch (e) {
-      _showSnackbar('Error mengirim animasi: $e', isError: true);
-      print('❌ Error sending animations: $e');
-    } finally {
-      setState(() {
-        _isSending = false;
-      });
-    }
+  } catch (e) {
+    _showSnackbar('Error mengirim animasi: $e', isError: true);
+    print('❌ Error sending animations: $e');
+  } finally {
+    setState(() {
+      _isSending = false;
+    });
   }
+}
 
   // Kirim animasi untuk tombol tertentu
-  Future<void> _sendAnimationForButton(int buttonIndex, String? animationName) async {
-    if (animationName == null) return;
+Future<void> _sendAnimationForButton(int buttonIndex, String? animationName) async {
+  if (animationName == null) return;
 
-    // Cari animasi di semua sumber (default + user)
-    final animation = _allAnimations.firstWhere(
-      (anim) => anim.name == animationName,
-      orElse: () => AnimationModel(
-        name: '',
-        channelCount: 0,
-        animationLength: 0,
-        description: '',
-        delayData: '',
-        frameData: [],
-      ),
-    );
+  // Cari animasi di semua sumber (default + user)
+  final animation = _allAnimations.firstWhere(
+    (anim) => anim.name == animationName,
+    orElse: () => AnimationModel(
+      name: '',
+      channelCount: 0,
+      animationLength: 0,
+      description: '',
+      delayData: '',
+      frameData: [],
+    ),
+  );
 
-    if (animation.name.isEmpty) {
-      print('❌ Animation not found: $animationName');
+  if (animation.name.isEmpty) {
+    print('❌ Animation not found: $animationName');
+    return;
+  }
+
+  // Cek apakah ini animasi default
+  final isDefault = _defaultAnimations.any((anim) => anim.name == animationName);
+  
+  if (isDefault) {
+    // Kirim menggunakan format B[kode remot][index animasi 2 digit]
+    await _sendDefaultAnimation(buttonIndex, animation);
+  } else {
+    // Kirim menggunakan format biasa (frame data)
+    await _sendCustomAnimation(buttonIndex, animation);
+  }
+}
+
+// Kirim animasi default dengan format B[kode remot][index animasi]
+// Kirim animasi default dengan format B[kode remot][index animasi]
+Future<void> _sendDefaultAnimation(int buttonIndex, AnimationModel animation) async {
+  try {
+    // Cari index animasi default (1-31)
+    final defaultIndex = _defaultAnimations.indexWhere((anim) => anim.name == animation.name);
+    
+    if (defaultIndex == -1) {
+      print('❌ Default animation index not found: ${animation.name}');
       return;
     }
 
-    print('📤 Sending animation for Button ${_getButtonLabel(buttonIndex)}: ${animation.name}');
+    final animationIndex = defaultIndex + 1; // Convert to 1-based index
     
-    // Kirim frame data untuk setiap channel (A-J)
-    await _sendAnimationFrames(buttonIndex, animation);
+    print('🎯 Sending default animation: B$buttonIndex${animationIndex.toString().padLeft(2, '0')} - ${animation.name}');
     
-    // Kirim delay data
-    await _sendAnimationDelay(buttonIndex, animation);
+    widget.socketService.setBuiltinAnimation(buttonIndex, animationIndex);
     
-    print('✅ Successfully sent animation for Button ${_getButtonLabel(buttonIndex)}');
+    await Future.delayed(const Duration(milliseconds: 50));
+    
+  } catch (e) {
+    print('❌ Error sending default animation: $e');
+    throw e;
   }
+}
+
+// Kirim animasi custom (user animations) dengan frame data
+Future<void> _sendCustomAnimation(int buttonIndex, AnimationModel animation) async {
+  print('📤 Sending custom animation for Button ${_getButtonLabel(buttonIndex)}: ${animation.name}');
+  
+  // Kirim frame data untuk setiap channel (A-J)
+  await _sendAnimationFrames(buttonIndex, animation);
+  
+  // Kirim delay data
+  await _sendAnimationDelay(buttonIndex, animation);
+  
+  print('✅ Successfully sent custom animation for Button ${_getButtonLabel(buttonIndex)}');
+}
 
   // Method _sendAnimationFrames, _getDeviceChannelCount, _calculateFramesPerChannel, 
   // _extractChannelDataForDevice, _getFrameDataForChannelFrame, _extractChannelData
@@ -828,66 +959,68 @@ class _MappingPageState extends State<MappingPage> {
   }
 
   Widget _buildMappingInfo(String buttonName, String? animationName) {
-    // Cari animasi di semua sumber
-    final animation = _allAnimations.firstWhere(
-      (anim) => anim.name == animationName,
-      orElse: () => AnimationModel(
-        name: '',
-        channelCount: 0,
-        animationLength: 0,
-        description: '',
-        delayData: '',
-        frameData: [],
-      ),
-    );
+  // Cari animasi di semua sumber
+  final animation = _allAnimations.firstWhere(
+    (anim) => anim.name == animationName,
+    orElse: () => AnimationModel(
+      name: '',
+      channelCount: 0,
+      animationLength: 0,
+      description: '',
+      delayData: '',
+      frameData: [],
+    ),
+  );
 
-    final isDefault = _defaultAnimations.any((anim) => anim.name == animationName);
+  final isDefault = _defaultAnimations.any((anim) => anim.name == animationName);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2.0),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 70,
-            child: Text(
-              '$buttonName:',
-              style: TextStyle(
-                color: AppColors.pureWhite.withOpacity(0.7),
-                fontSize: 12,
-              ),
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 2.0),
+    child: Row(
+      children: [
+        SizedBox(
+          width: 70,
+          child: Text(
+            '$buttonName:',
+            style: TextStyle(
+              color: AppColors.pureWhite.withOpacity(0.7),
+              fontSize: 12,
             ),
           ),
-          if (animationName != null && animation.name.isNotEmpty)
-            Expanded(
-              child: Row(
-                children: [
-                  Text(
-                    animationName,
+        ),
+        if (animationName != null && animation.name.isNotEmpty)
+          Expanded(
+            child: Row(
+              children: [
+                Text(
+                  animationName,
+                  style: TextStyle(
+                    color: isDefault ? Colors.blue : AppColors.neonGreen,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isDefault ? Colors.blue.withOpacity(0.2) : AppColors.neonGreen.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: isDefault ? Colors.blue : AppColors.neonGreen,
+                    ),
+                  ),
+                  child: Text(
+                    isDefault ? 'DEFAULT' : 'CUSTOM',
                     style: TextStyle(
                       color: isDefault ? Colors.blue : AppColors.neonGreen,
-                      fontSize: 12,
+                      fontSize: 8,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  if (isDefault) ...[
-                    const SizedBox(width: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                      child: Text(
-                        'D',
-                        style: TextStyle(
-                          color: Colors.blue,
-                          fontSize: 8,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(width: 8),
+                ),
+                const SizedBox(width: 8),
+                if (!isDefault) ...[
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                     decoration: BoxDecoration(
@@ -932,20 +1065,44 @@ class _MappingPageState extends State<MappingPage> {
                       ),
                     ),
                   ),
+                ] else ...[
+                  // Tampilkan index untuk default animations
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'ID: ${_getDefaultAnimationIndex(animationName).toString().padLeft(2, '0')}',
+                      style: TextStyle(
+                        color: Colors.purple,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ],
-              ),
-            )
-          else
-            Text(
-              'Not assigned',
-              style: TextStyle(
-                color: AppColors.pureWhite.withOpacity(0.5),
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
-              ),
+              ],
             ),
-        ],
-      ),
-    );
-  }
+          )
+        else
+          Text(
+            'Not assigned',
+            style: TextStyle(
+              color: AppColors.pureWhite.withOpacity(0.5),
+              fontSize: 12,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+      ],
+    ),
+  );
+}
+
+// Helper method untuk mendapatkan index animasi default
+int _getDefaultAnimationIndex(String animationName) {
+  final index = _defaultAnimations.indexWhere((anim) => anim.name == animationName);
+  return index + 1; // Convert to 1-based index
+}
 }

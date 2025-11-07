@@ -1,839 +1,1032 @@
-import 'package:flutter/material.dart';
+  import 'package:flutter/material.dart';
 import 'package:ninexmano_matrix/constants/app_colors.dart';
 import 'package:ninexmano_matrix/services/socket_service.dart';
 
-class SettingsPage extends StatefulWidget {
-  final SocketService socketService;
-  
-  const SettingsPage({
-    super.key,
-    required this.socketService,
-  });
-
-  @override
-  State<SettingsPage> createState() => _SettingsPageState();
-}
-
-class _SettingsPageState extends State<SettingsPage> {
-  bool _welcomeModeEnabled = true;
-  String _selectedSpeed = 'SEDANG';
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _ssidController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _serialController = TextEditingController();
-  final TextEditingController _activationController = TextEditingController();
-  final TextEditingController _mitraIdController = TextEditingController();
-
-  // Data dari device (akan diupdate via socket)
-  String _firmwareVersion = '-';
-  String _deviceId = '';
-  String _licenseLevel = '';
-  String _deviceChannel = '';
-  String _currentEmail = '';
-  String _currentSSID = '';
-  String _currentPassword = '';
-
-  final List<String> _speedOptions = ['LAMBAT', 'SEDANG', 'CEPAT', 'CEPAAT'];
-  final Map<String, int> _speedValues = {
-    'LAMBAT': 500,
-    'SEDANG': 200,
-    'CEPAT': 100,
-    'CEPAAT': 50,
-  };
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeData();
-    _setupSocketListeners();
+  class SettingsPage extends StatefulWidget {
+    final SocketService socketService;
     
-    // Request config data saat page dibuka
-    if (widget.socketService.isConnected) {
-      widget.socketService.requestConfig();
-    }
-  }
-
-  void _initializeData() {
-    // Default values
-    _emailController.text = 'example@gmail.com';
-    _ssidController.text = 'MaNo';
-    _passwordController.text = '11223344';
-    _serialController.text = 'Serial Number Kamu';
-    _activationController.text = 'Kode Aktivasi';
-    _mitraIdController.text = '';
-  }
-
-  void _setupSocketListeners() {
-    widget.socketService.messages.listen((message) {
-      _handleSocketMessage(message);
+    const SettingsPage({
+      super.key,
+      required this.socketService,
     });
+
+    @override
+    State<SettingsPage> createState() => _SettingsPageState();
   }
 
-  void _handleSocketMessage(String message) {
-    print('SettingsPage received: $message');
-    
-    if (message.startsWith('config,')) {
-      _handleConfigResponse(message);
-    } else if (message.startsWith('info,')) {
-      final infoMessage = message.substring(5);
-      _showSnackbar(infoMessage);
+  class _SettingsPageState extends State<SettingsPage> {
+    bool _welcomeModeEnabled = true;
+    String _selectedSpeed = 'SEDANG';
+    final TextEditingController _emailController = TextEditingController();
+    final TextEditingController _ssidController = TextEditingController();
+    final TextEditingController _passwordController = TextEditingController();
+    final TextEditingController _serialController = TextEditingController();
+    final TextEditingController _activationController = TextEditingController();
+    final TextEditingController _mitraIdController = TextEditingController();
+final Map<String, TextEditingController> _speedControllers = {
+  'LAMBAT': TextEditingController(text: '500'),
+  'SEDANG': TextEditingController(text: '200'),
+  'CEPAT': TextEditingController(text: '100'),
+  'CEPAAT': TextEditingController(text: '50'),
+};
+    // Data dari device (akan diupdate via socket)
+    String _firmwareVersion = '-';
+    String _deviceId = '';
+    String _licenseLevel = '';
+    String _deviceChannel = '';
+    String _currentEmail = '';
+    String _currentSSID = '';
+    String _currentPassword = '';
+
+    final List<String> _speedOptions = ['LAMBAT', 'SEDANG', 'CEPAT', 'CEPAAT'];
+    final Map<String, int> _speedValues = {
+      'LAMBAT': 500,
+      'SEDANG': 200,
+      'CEPAT': 100,
+      'CEPAAT': 50,
+    };
+
+    @override
+    void initState() {
+      super.initState();
+      _initializeData();
+      _setupSocketListeners();
+      
+      // Request config data saat page dibuka
+      if (widget.socketService.isConnected) {
+        widget.socketService.requestConfig();
+      }
     }
-  }
 
-  void _handleConfigResponse(String message) {
-    final parts = message.split(',');
-    if (parts.length >= 20) {
-      setState(() {
-        _firmwareVersion = parts[1];
-        _deviceId = parts[16];
-        _licenseLevel = parts[3];
-        _deviceChannel = parts[4];
-        _currentEmail = parts[5];
-        _currentSSID = parts[6];
-        _currentPassword = parts[7];
-        
-        // Update controllers dengan data aktual
-        _emailController.text = _currentEmail;
-        _ssidController.text = _currentSSID;
-        _passwordController.text = _currentPassword;
-      });
+    void _initializeData() {
+      // Default values
+      _emailController.text = 'example@gmail.com';
+      _ssidController.text = 'MaNo';
+      _passwordController.text = '11223344';
+      _serialController.text = 'Serial Number Kamu';
+      _activationController.text = 'Kode Aktivasi';
+      _mitraIdController.text = '';
     }
-  }
-
-  // ========== SOCKET ACTIONS ==========
-
-  void _updateEmail() {
-    if (_emailController.text.isNotEmpty) {
-      widget.socketService.setEmail(_emailController.text);
-      _showSnackbar('Mengirim email: ${_emailController.text}');
-    }
-  }
-
-  void _updateWelcomeSettings() {
-    final speedValue = _speedValues[_selectedSpeed] ?? 200;
-    // Kirim welcome animation settings
-    widget.socketService.setWelcomeAnimation(
-      _welcomeModeEnabled ? 1 : 0, 
-      _welcomeModeEnabled ? 3 : 0
-    );
-    _showSnackbar('Welcome mode: ${_welcomeModeEnabled ? "Aktif" : "Nonaktif"} - Speed: $speedValue ms');
-  }
-
-  void _updateChannel() {
-    if (_deviceChannel.isNotEmpty) {
-      final channel = int.tryParse(_deviceChannel) ?? 8;
-      widget.socketService.setChannel(channel);
-      _showSnackbar('Channel diubah ke: $channel');
-    }
-  }
-
-  void _updateWiFi() {
-    if (_ssidController.text.isNotEmpty && _passwordController.text.isNotEmpty) {
-      widget.socketService.setWifi(_ssidController.text, _passwordController.text);
-      _showSnackbar('WiFi config dikirim - Restarting device...');
-    }
-  }
-
-  void _startCalibration() {
-    widget.socketService.setCalibrationMode(true);
-    _showSnackbar('Mode kalibrasi diaktifkan - Silakan tekan tombol remote');
-  }
-
-  void _activateLicense() {
-    if (_activationController.text.isNotEmpty) {
-      widget.socketService.activateLicense(_activationController.text);
-      _showSnackbar('Mengaktifkan lisensi...');
-    }
-  }
-
-  void _updateMitraID() {
-    if (_mitraIdController.text.isNotEmpty) {
-      widget.socketService.setMitraID(_mitraIdController.text);
-      _showSnackbar('Mitra ID diupdate: ${_mitraIdController.text}');
-    }
-  }
-
-  void _resetFactory() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.darkGrey,
-        title: const Text(
-          'Reset Pabrik?',
-          style: TextStyle(color: AppColors.neonGreen),
+Widget _buildSpeedInputGrid() {
+  return GridView.builder(
+    shrinkWrap: true,
+    physics: const NeverScrollableScrollPhysics(),
+    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 2,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      childAspectRatio: 1,
+    ),
+    itemCount: _speedOptions.length,
+    itemBuilder: (context, index) {
+      final speed = _speedOptions[index];
+      final controller = _speedControllers[speed]!;
+      
+      return Container(
+        decoration: BoxDecoration(
+          color: AppColors.primaryBlack,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.neonGreen.withOpacity(0.5)),
         ),
-        content: const Text(
-          'Semua settings akan dikembalikan ke default. Device akan restart.',
-          style: TextStyle(color: AppColors.pureWhite),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('BATAL', style: TextStyle(color: AppColors.pureWhite)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              widget.socketService.resetDevice();
-              Navigator.pop(context);
-              _showSnackbar('Reset pabrik dilakukan - Device restarting...');
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.errorRed,
-            ),
-            child: const Text('RESET', style: TextStyle(color: AppColors.pureWhite)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _checkUpdate() {
-    _showSnackbar('Checking for firmware updates...');
-    // Bisa ditambahkan logic untuk check update
-  }
-
-  void _uploadFirmware() {
-    _showSnackbar('Membuka firmware upload...');
-    // Bisa navigate ke firmware upload page
-  }
-
-  void _contactSupport() {
-    _showSnackbar('Membuka kontak support...');
-    // Buka email/link support
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.primaryBlack,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Connection Status
-            _buildConnectionStatus(),
-            const SizedBox(height: 16),
-
-            // Email Section
-            _buildSection(
-              title: 'Email',
-              children: [
-                _buildTextField(
-                  controller: _emailController,
-                  hintText: 'example@gmail.com',
-                ),
-                const SizedBox(height: 16),
-                _buildActionButton(
-                  text: 'UBAH',
-                  onPressed: _updateEmail,
-                  enabled: widget.socketService.isConnected,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            // Welcome Mode Section
-            _buildSection(
-              title: 'Welcome mode',
-              children: [
-                _buildSettingSwitch(
-                  title: 'Animasi',
-                  value: _welcomeModeEnabled,
-                  onChanged: (value) {
-                    setState(() {
-                      _welcomeModeEnabled = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
-                _buildSettingRow(
-                  title: 'Durasi',
-                  child: _buildSpeedSelector(),
-                ),
-                const SizedBox(height: 16),
-                _buildSettingRow(
-                  title: 'MaNo 06 || Balin.',
-                  child: Row(
-                    children: [
-                      _buildCheckbox(true),
-                      const SizedBox(width: 16),
-                      _buildCheckbox(false),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _buildActionButton(
-                  text: 'KIRIM',
-                  onPressed: _updateWelcomeSettings,
-                  enabled: widget.socketService.isConnected,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            // Firmware Info Section
-            _buildSection(
-              title: 'Versi Firmware : $_firmwareVersion',
-              children: [
-                _buildInfoRow('Versi Aplikasi', '1.0.6'),
-                _buildInfoRow('Device ID', _deviceId),
-                _buildInfoRow('Level Lisensi', _licenseLevel),
-                _buildInfoRow('Device Channel', _deviceChannel),
-                const SizedBox(height: 16),
-                _buildActionButton(
-                  text: 'UBAH',
-                  onPressed: _updateChannel,
-                  enabled: widget.socketService.isConnected,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            // DEARY Speed Section
-            _buildSection(
-              title: 'DEARY',
-              children: [
-                _buildSpeedGrid(),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            // WiFi Config Section
-            _buildSection(
-              title: '# WiFi Config',
-              children: [
-                _buildConfigRow('SSID', _ssidController),
-                _buildConfigRow('PASSWORD', _passwordController),
-                const SizedBox(height: 16),
-                _buildActionButton(
-                  text: 'UBAH',
-                  onPressed: _updateWiFi,
-                  enabled: widget.socketService.isConnected,
-                ),
-                const SizedBox(height: 20),
-                _buildSubSection(
-                  title: 'KALIBRASI REMOT',
-                  buttonText: 'MULAI',
-                  onPressed: _startCalibration,
-                  enabled: widget.socketService.isConnected,
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'MaNo type',
-                  style: TextStyle(
-                    color: AppColors.pureWhite,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            // Mitra ID Section
-            _buildSection(
-              title: '# Mitra ID',
-              children: [
-                _buildTextField(
-                  controller: _mitraIdController,
-                  hintText: 'Masukkan Mitra ID',
-                ),
-                const SizedBox(height: 16),
-                _buildActionButton(
-                  text: 'UPDATE',
-                  onPressed: _updateMitraID,
-                  enabled: widget.socketService.isConnected,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            // User Info Section
-            _buildSection(
-              title: '# Aktivasi',
-              children: [
-                _buildSubSection(
-                  title: 'USERSI',
-                  children: [
-                    _buildSerialRow('Serial Number', 'COPY', 'BUY NOW'),
-                    _buildSerialRow('Kode Aktivasi', 'PASTE', 'AKTIVASI', onActivate: _activateLicense),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                _buildSubSection(
-                  title: '',
-                  children: [
-                    _buildActionButton(
-                      text: 'RESET PABRIK',
-                      onPressed: _resetFactory,
-                      enabled: widget.socketService.isConnected,
-                      backgroundColor: AppColors.errorRed,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildActionButton(
-                      text: 'CHECK UPDATE',
-                      onPressed: _checkUpdate,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildActionButton(
-                      text: 'UPLOAD FIRMWARE',
-                      onPressed: _uploadFirmware,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                _buildActionButton(
-                  text: 'HUBUNGI KAMI',
-                  onPressed: _contactSupport,
-                  backgroundColor: AppColors.darkGrey,
-                  foregroundColor: AppColors.neonGreen,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 40),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildConnectionStatus() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.darkGrey,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: widget.socketService.isConnected 
-              ? AppColors.successGreen 
-              : AppColors.errorRed,
-          width: 2,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(
-              color: widget.socketService.isConnected 
-                  ? AppColors.successGreen 
-                  : AppColors.errorRed,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              widget.socketService.isConnected 
-                  ? 'Terhubung ke Device' 
-                  : 'DISCONNECTED - Tap Connect di Dashboard',
-              style: TextStyle(
-                color: widget.socketService.isConnected 
-                    ? AppColors.successGreen 
-                    : AppColors.errorRed,
+            Text(
+              speed,
+              style: const TextStyle(
+                color: AppColors.neonGreen,
+                fontSize: 12,
                 fontWeight: FontWeight.bold,
-                fontSize: 14,
               ),
             ),
-          ),
-          if (!widget.socketService.isConnected)
-            Icon(
-              Icons.warning_amber,
-              color: AppColors.errorRed,
-              size: 20,
+            const SizedBox(height: 4),
+            Container(
+              width: 80,
+              height: 40,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              decoration: BoxDecoration(
+                color: AppColors.darkGrey,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: TextField(
+                controller: controller,
+                style: const TextStyle(
+                  color: AppColors.pureWhite,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                  hintText: 'ms',
+                  hintStyle: TextStyle(
+                    color: AppColors.pureWhite.withOpacity(0.5),
+                    fontSize: 10,
+                  ),
+                ),
+                onChanged: (value) {
+                  // Validasi input number
+                  if (value.isNotEmpty && int.tryParse(value) == null) {
+                    // Jika bukan angka, hapus karakter terakhir
+                    controller.text = value.substring(0, value.length - 1);
+                    controller.selection = TextSelection.fromPosition(
+                      TextPosition(offset: controller.text.length),
+                    );
+                  }
+                },
+              ),
             ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSection({required String title, required List<Widget> children}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.darkGrey,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.neonGreen.withOpacity(0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: AppColors.neonGreen,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+            const SizedBox(height: 2),
+            Text(
+              'milidetik',
+              style: TextStyle(
+                color: AppColors.pureWhite.withOpacity(0.7),
+                fontSize: 8,
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          ...children,
-        ],
-      ),
-    );
+          ],
+        ),
+      );
+    },
+  );
+}
+
+// Method untuk apply speed settings
+void _updateSpeedSettings() {
+  final delays = <int>[];
+  var hasError = false;
+  var errorMessage = '';
+
+  // Validasi dan kumpulkan delay values
+  for (final speed in _speedOptions) {
+    final controller = _speedControllers[speed]!;
+    final value = controller.text.trim();
+    
+    if (value.isEmpty) {
+      hasError = true;
+      errorMessage = 'Delay untuk $speed tidak boleh kosong';
+      break;
+    }
+    
+    final delay = int.tryParse(value);
+    if (delay == null || delay <= 0) {
+      hasError = true;
+      errorMessage = 'Delay untuk $speed harus angka positif';
+      break;
+    }
+    
+    delays.add(delay);
   }
 
-  Widget _buildSubSection({
-    required String title, 
-    List<Widget>? children, 
-    String? buttonText, 
-    Function()? onPressed,
-    bool enabled = true,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (title.isNotEmpty) ...[
-          Text(
-            title,
-            style: const TextStyle(
-              color: AppColors.pureWhite,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+  if (hasError) {
+    _showSnackbar(errorMessage);
+    return;
+  }
+
+  if (delays.length == 4) {
+    // Kirim delay settings ke device
+    widget.socketService.setDelays(delays[0], delays[1], delays[2], delays[3]);
+    
+    _showSnackbar('Speed settings applied: ${delays[0]}, ${delays[1]}, ${delays[2]}, ${delays[3]} ms');
+    
+    // Update selected speed value juga
+    setState(() {
+      _speedValues['LAMBAT'] = delays[0];
+      _speedValues['SEDANG'] = delays[1];
+      _speedValues['CEPAT'] = delays[2];
+      _speedValues['CEPAAT'] = delays[3];
+    });
+  }
+}
+
+// Method untuk load current delay values dari config
+void _loadCurrentDelayValues() {
+  // Method ini akan dipanggil ketika config diterima dari device
+  // Contoh: jika ada data delay dari device, update controllers
+}
+
+// Update _handleConfigResponse untuk load delay values
+void _handleConfigResponse(String message) {
+  final parts = message.split(',');
+  if (parts.length >= 20) {
+    setState(() {
+      _firmwareVersion = parts[1];
+      _deviceId = parts[16];
+      _licenseLevel = parts[3];
+      _deviceChannel = parts[4];
+      _currentEmail = parts[5];
+      _currentSSID = parts[6];
+      _currentPassword = parts[7];
+      
+      // Update controllers dengan data aktual
+      _emailController.text = _currentEmail;
+      _ssidController.text = _currentSSID;
+      _passwordController.text = _currentPassword;
+      
+      // Update delay values jika ada di config
+      if (parts.length >= 12) {
+        try {
+          final delay1 = int.tryParse(parts[8]) ?? 500;
+          final delay2 = int.tryParse(parts[9]) ?? 200;
+          final delay3 = int.tryParse(parts[10]) ?? 100;
+          final delay4 = int.tryParse(parts[11]) ?? 50;
+          
+          _speedControllers['LAMBAT']!.text = delay1.toString();
+          _speedControllers['SEDANG']!.text = delay2.toString();
+          _speedControllers['CEPAT']!.text = delay3.toString();
+          _speedControllers['CEPAAT']!.text = delay4.toString();
+          
+          _speedValues['LAMBAT'] = delay1;
+          _speedValues['SEDANG'] = delay2;
+          _speedValues['CEPAT'] = delay3;
+          _speedValues['CEPAAT'] = delay4;
+          
+        } catch (e) {
+          print('Error parsing delay values: $e');
+        }
+      }
+    });
+  }
+}
+    void _setupSocketListeners() {
+      widget.socketService.messages.listen((message) {
+        _handleSocketMessage(message);
+      });
+    }
+
+    void _handleSocketMessage(String message) {
+      print('SettingsPage received: $message');
+      
+      if (message.startsWith('config,')) {
+        _handleConfigResponse(message);
+      } else if (message.startsWith('info,')) {
+        final infoMessage = message.substring(5);
+        _showSnackbar(infoMessage);
+      }
+    }
+
+    // ========== SOCKET ACTIONS ==========
+
+    void _updateEmail() {
+      if (_emailController.text.isNotEmpty) {
+        widget.socketService.setEmail(_emailController.text);
+        _showSnackbar('Mengirim email: ${_emailController.text}');
+      }
+    }
+
+    void _updateWelcomeSettings() {
+      final speedValue = _speedValues[_selectedSpeed] ?? 200;
+      // Kirim welcome animation settings
+      widget.socketService.setWelcomeAnimation(
+        _welcomeModeEnabled ? 1 : 0, 
+        _welcomeModeEnabled ? 3 : 0
+      );
+      _showSnackbar('Welcome mode: ${_welcomeModeEnabled ? "Aktif" : "Nonaktif"} - Speed: $speedValue ms');
+    }
+
+    void _updateChannel() {
+      if (_deviceChannel.isNotEmpty) {
+        final channel = int.tryParse(_deviceChannel) ?? 8;
+        widget.socketService.setChannel(channel);
+        _showSnackbar('Channel diubah ke: $channel');
+      }
+    }
+
+    void _updateWiFi() {
+      if (_ssidController.text.isNotEmpty && _passwordController.text.isNotEmpty) {
+        widget.socketService.setWifi(_ssidController.text, _passwordController.text);
+        _showSnackbar('WiFi config dikirim - Restarting device...');
+      }
+    }
+
+    void _startCalibration() {
+      widget.socketService.setCalibrationMode(true);
+      _showSnackbar('Mode kalibrasi diaktifkan - Silakan tekan tombol remote');
+    }
+
+    void _activateLicense() {
+      if (_activationController.text.isNotEmpty) {
+        widget.socketService.activateLicense(_activationController.text);
+        _showSnackbar('Mengaktifkan lisensi...');
+      }
+    }
+
+    void _updateMitraID() {
+      if (_mitraIdController.text.isNotEmpty) {
+        widget.socketService.setMitraID(_mitraIdController.text);
+        _showSnackbar('Mitra ID diupdate: ${_mitraIdController.text}');
+      }
+    }
+
+    void _resetFactory() {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: AppColors.darkGrey,
+          title: const Text(
+            'Reset Pabrik?',
+            style: TextStyle(color: AppColors.neonGreen),
+          ),
+          content: const Text(
+            'Semua settings akan dikembalikan ke default. Device akan restart.',
+            style: TextStyle(color: AppColors.pureWhite),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('BATAL', style: TextStyle(color: AppColors.pureWhite)),
             ),
-          ),
-          const SizedBox(height: 12),
-        ],
-        if (children != null) ...children,
-        if (buttonText != null && onPressed != null) 
-          _buildActionButton(
-            text: buttonText, 
-            onPressed: onPressed,
-            enabled: enabled,
-          ),
-      ],
-    );
-  }
+            ElevatedButton(
+              onPressed: () {
+                widget.socketService.resetDevice();
+                Navigator.pop(context);
+                _showSnackbar('Reset pabrik dilakukan - Device restarting...');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.errorRed,
+              ),
+              child: const Text('RESET', style: TextStyle(color: AppColors.pureWhite)),
+            ),
+          ],
+        ),
+      );
+    }
 
-  Widget _buildTextField({required TextEditingController controller, required String hintText}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.primaryBlack,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.neonGreen.withOpacity(0.5)),
-      ),
-      child: TextField(
-        controller: controller,
-        style: const TextStyle(color: AppColors.pureWhite),
-        decoration: InputDecoration(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          border: InputBorder.none,
-          hintText: hintText,
-          hintStyle: TextStyle(color: AppColors.pureWhite.withOpacity(0.6)),
-        ),
-      ),
-    );
-  }
+    void _checkUpdate() {
+      _showSnackbar('Checking for firmware updates...');
+      // Bisa ditambahkan logic untuk check update
+    }
 
-  Widget _buildActionButton({
-    required String text,
-    required Function() onPressed,
-    bool enabled = true,
-    Color? backgroundColor,
-    Color? foregroundColor,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      height: 45,
-      child: ElevatedButton(
-        onPressed: enabled ? onPressed : null,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: backgroundColor ?? AppColors.neonGreen,
-          foregroundColor: foregroundColor ?? AppColors.primaryBlack,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          disabledBackgroundColor: AppColors.darkGrey,
-          disabledForegroundColor: AppColors.pureWhite.withOpacity(0.5),
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
+    void _uploadFirmware() {
+      _showSnackbar('Membuka firmware upload...');
+      // Bisa navigate ke firmware upload page
+    }
 
-  Widget _buildSettingSwitch({
-    required String title,
-    required bool value,
-    required Function(bool) onChanged,
-  }) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: AppColors.pureWhite,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        Switch(
-          value: value,
-          onChanged: onChanged,
-          activeColor: AppColors.neonGreen,
-          activeTrackColor: AppColors.neonGreen.withOpacity(0.5),
-        ),
-      ],
-    );
-  }
+    void _contactSupport() {
+      _showSnackbar('Membuka kontak support...');
+      // Buka email/link support
+    }
 
-  Widget _buildSettingRow({required String title, required Widget child}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: AppColors.pureWhite,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        child,
-      ],
-    );
-  }
+    @override
+    Widget build(BuildContext context) {
+      return Scaffold(
+        backgroundColor: AppColors.primaryBlack,
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Connection Status
+              _buildConnectionStatus(),
+              const SizedBox(height: 16),
 
-  Widget _buildSpeedSelector() {
-    return DropdownButton<String>(
-      value: _selectedSpeed,
-      dropdownColor: AppColors.darkGrey,
-      style: const TextStyle(
+              // Email Section
+              _buildSection(
+                title: 'Email',
+                children: [
+                  _buildTextField(
+                    controller: _emailController,
+                    hintText: 'example@gmail.com',
+                  ),
+                  const SizedBox(height: 16),
+                  _buildActionButton(
+                    text: 'UBAH',
+                    onPressed: _updateEmail,
+                    enabled: widget.socketService.isConnected,
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
+              // Welcome Mode Section
+              _buildSection(
+                title: 'Welcome mode',
+                children: [
+                  _buildSettingSwitch(
+                    title: 'Animasi',
+                    value: _welcomeModeEnabled,
+                    onChanged: (value) {
+                      setState(() {
+                        _welcomeModeEnabled = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _buildSettingRow(
+                    title: 'Durasi',
+                    child: _buildSpeedSelector(),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildSettingRow(
+                    title: 'MaNo 06 || Balin.',
+                    child: Row(
+                      children: [
+                        _buildCheckbox(true),
+                        const SizedBox(width: 16),
+                        _buildCheckbox(false),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _buildActionButton(
+                    text: 'KIRIM',
+                    onPressed: _updateWelcomeSettings,
+                    enabled: widget.socketService.isConnected,
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
+              // Firmware Info Section
+              _buildSection(
+                title: 'Versi Firmware : $_firmwareVersion',
+                children: [
+                  _buildInfoRow('Versi Aplikasi', '1.0.6'),
+                  _buildInfoRow('Device ID', _deviceId),
+                  _buildInfoRow('Level Lisensi', _licenseLevel),
+                  _buildInfoRow('Device Channel', _deviceChannel),
+                  const SizedBox(height: 16),
+                  _buildActionButton(
+                    text: 'UBAH',
+                    onPressed: _updateChannel,
+                    enabled: widget.socketService.isConnected,
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
+              _buildSection(
+  title: 'Delay',
+  children: [
+    const SizedBox(height: 8),
+    const Text(
+      'Atur delay untuk setiap kecepatan (dalam milidetik)',
+      style: TextStyle(
         color: AppColors.pureWhite,
         fontSize: 12,
       ),
-      underline: Container(
-        height: 1,
-        color: AppColors.neonGreen,
-      ),
-      icon: Icon(Icons.arrow_drop_down, color: AppColors.neonGreen, size: 20),
-      items: _speedOptions.map((String speed) {
-        return DropdownMenuItem<String>(
-          value: speed,
+    ),
+    const SizedBox(height: 16),
+    _buildSpeedInputGrid(),
+    const SizedBox(height: 16),
+    _buildActionButton(
+      text: 'APPLY SPEED SETTINGS',
+      onPressed: _updateSpeedSettings,
+      enabled: widget.socketService.isConnected,
+    ),
+  ],
+),
+
+              const SizedBox(height: 24),
+
+              _buildSection(
+                title: 'WIFI CONFIG',
+                children: [
+                  _buildConfigRow('SSID', _ssidController),
+                  _buildConfigRow('PASSWORD', _passwordController),
+                  const SizedBox(height: 16),
+                  _buildActionButton(
+                    text: 'UBAH',
+                    onPressed: _updateWiFi,
+                    enabled: widget.socketService.isConnected,
+                  ),
+                  
+                ],
+              ),
+              const SizedBox(height: 24),
+              _buildSection(
+                title: 'KALIBRASI REMOT',
+                children: [
+                  _buildConfigRow('SSID', _ssidController),
+                  _buildActionButton(
+                    text: 'MULAI',
+                    onPressed: _startCalibration,
+                    enabled: widget.socketService.isConnected,
+                  ),
+                  
+                ],
+              ),
+
+              // const SizedBox(height: 24),
+
+              // // Mitra ID Section
+              // _buildSection(
+              //   title: '# Mitra ID',
+              //   children: [
+              //     _buildTextField(
+              //       controller: _mitraIdController,
+              //       hintText: 'Masukkan Mitra ID',
+              //     ),
+              //     const SizedBox(height: 16),
+              //     _buildActionButton(
+              //       text: 'UPDATE',
+              //       onPressed: _updateMitraID,
+              //       enabled: widget.socketService.isConnected,
+              //     ),
+              //   ],
+              // ),
+
+              const SizedBox(height: 24),
+
+              // User Info Section
+              _buildSection(
+                title: 'AKTIVASE',
+                children: [
+                  _buildSubSection(
+                    title: 'User Lisensi',
+                    children: [
+                      _buildSerialRow('Serial Number', 'COPY', 'BUY NOW'),
+                      _buildSerialRow('Kode Aktivasi', 'PASTE', 'AKTIVASI', onActivate: _activateLicense),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  _buildSubSection(
+                    title: '',
+                    children: [
+                      _buildActionButton(
+                        text: 'RESET PABRIK',
+                        onPressed: _resetFactory,
+                        enabled: widget.socketService.isConnected,
+                        backgroundColor: AppColors.errorRed,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildActionButton(
+                        text: 'CHECK UPDATE',
+                        onPressed: _checkUpdate,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildActionButton(
+                        text: 'UPLOAD FIRMWARE',
+                        onPressed: _uploadFirmware,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  _buildActionButton(
+                    text: 'HUBUNGI KAMI',
+                    onPressed: _contactSupport,
+                    backgroundColor: AppColors.darkGrey,
+                    foregroundColor: AppColors.neonGreen,
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 40),
+            ],
+          ),
+        ),
+      );
+    }
+
+    Widget _buildConnectionStatus() {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.darkGrey,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: widget.socketService.isConnected 
+                ? AppColors.successGreen 
+                : AppColors.errorRed,
+            width: 2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: widget.socketService.isConnected 
+                    ? AppColors.successGreen 
+                    : AppColors.errorRed,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                widget.socketService.isConnected 
+                    ? 'Terhubung ke Device' 
+                    : 'DISCONNECTED - Tap Connect di Dashboard',
+                style: TextStyle(
+                  color: widget.socketService.isConnected 
+                      ? AppColors.successGreen 
+                      : AppColors.errorRed,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            if (!widget.socketService.isConnected)
+              Icon(
+                Icons.warning_amber,
+                color: AppColors.errorRed,
+                size: 20,
+              ),
+          ],
+        ),
+      );
+    }
+
+    Widget _buildSection({required String title, required List<Widget> children}) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.darkGrey,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.neonGreen.withOpacity(0.3)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                color: AppColors.neonGreen,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ...children,
+          ],
+        ),
+      );
+    }
+
+    Widget _buildSubSection({
+      required String title, 
+      List<Widget>? children, 
+      String? buttonText, 
+      Function()? onPressed,
+      bool enabled = true,
+    }) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (title.isNotEmpty) ...[
+            Text(
+              title,
+              style: const TextStyle(
+                color: AppColors.pureWhite,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (children != null) ...children,
+          if (buttonText != null && onPressed != null) 
+            _buildActionButton(
+              text: buttonText, 
+              onPressed: onPressed,
+              enabled: enabled,
+            ),
+        ],
+      );
+    }
+
+    Widget _buildTextField({required TextEditingController controller, required String hintText}) {
+      return Container(
+        decoration: BoxDecoration(
+          color: AppColors.primaryBlack,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.neonGreen.withOpacity(0.5)),
+        ),
+        child: TextField(
+          controller: controller,
+          style: const TextStyle(color: AppColors.pureWhite),
+          decoration: InputDecoration(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            border: InputBorder.none,
+            hintText: hintText,
+            hintStyle: TextStyle(color: AppColors.pureWhite.withOpacity(0.6)),
+          ),
+        ),
+      );
+    }
+
+    Widget _buildActionButton({
+      required String text,
+      required Function() onPressed,
+      bool enabled = true,
+      Color? backgroundColor,
+      Color? foregroundColor,
+    }) {
+      return SizedBox(
+        width: double.infinity,
+        height: 45,
+        child: ElevatedButton(
+          onPressed: enabled ? onPressed : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: backgroundColor ?? AppColors.neonGreen,
+            foregroundColor: foregroundColor ?? AppColors.primaryBlack,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            disabledBackgroundColor: AppColors.darkGrey,
+            disabledForegroundColor: AppColors.pureWhite.withOpacity(0.5),
+          ),
           child: Text(
-            '$speed (${_speedValues[speed]}ms)',
+            text,
             style: const TextStyle(
-              color: AppColors.pureWhite,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
             ),
           ),
-        );
-      }).toList(),
-      onChanged: (value) {
-        setState(() {
-          _selectedSpeed = value!;
-        });
-      },
-    );
-  }
+        ),
+      );
+    }
 
-  Widget _buildCheckbox(bool value) {
-    return Container(
-      width: 20,
-      height: 20,
-      decoration: BoxDecoration(
-        color: value ? AppColors.neonGreen : AppColors.primaryBlack,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: AppColors.neonGreen),
-      ),
-      child: value
-          ? Icon(Icons.check, size: 16, color: AppColors.primaryBlack)
-          : null,
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
+    Widget _buildSettingSwitch({
+      required String title,
+      required bool value,
+      required Function(bool) onChanged,
+    }) {
+      return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            '$label :',
-            style: TextStyle(
-              color: AppColors.pureWhite.withOpacity(0.8),
-              fontSize: 12,
-            ),
-          ),
-          Text(
-            value.isEmpty ? '-' : value,
+            title,
             style: const TextStyle(
               color: AppColors.pureWhite,
-              fontSize: 12,
+              fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
           ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: AppColors.neonGreen,
+            activeTrackColor: AppColors.neonGreen.withOpacity(0.5),
+          ),
         ],
-      ),
-    );
-  }
+      );
+    }
 
-  Widget _buildSpeedGrid() {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-        childAspectRatio: 2,
-      ),
-      itemCount: _speedOptions.length,
-      itemBuilder: (context, index) {
-        final speed = _speedOptions[index];
-        final isSelected = _selectedSpeed == speed;
-        
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedSpeed = speed;
-            });
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              color: isSelected ? AppColors.neonGreen : AppColors.primaryBlack,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.neonGreen),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  speed,
-                  style: TextStyle(
-                    color: isSelected ? AppColors.primaryBlack : AppColors.pureWhite,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  '${_speedValues[speed]}',
-                  style: TextStyle(
-                    color: isSelected ? AppColors.primaryBlack : AppColors.pureWhite,
-                    fontSize: 8,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildConfigRow(String label, TextEditingController controller) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.pureWhite,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 8),
-        _buildTextField(controller: controller, hintText: ''),
-        const SizedBox(height: 12),
-      ],
-    );
-  }
-
-  Widget _buildSerialRow(String label, String leftButton, String rightButton, {Function()? onActivate}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.primaryBlack,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.neonGreen.withOpacity(0.5)),
-      ),
-      child: Row(
+    Widget _buildSettingRow({required String title, required Widget child}) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.pureWhite,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          child,
+        ],
+      );
+    }
+
+    Widget _buildSpeedSelector() {
+      return DropdownButton<String>(
+        value: _selectedSpeed,
+        dropdownColor: AppColors.darkGrey,
+        style: const TextStyle(
+          color: AppColors.pureWhite,
+          fontSize: 12,
+        ),
+        underline: Container(
+          height: 1,
+          color: AppColors.neonGreen,
+        ),
+        icon: Icon(Icons.arrow_drop_down, color: AppColors.neonGreen, size: 20),
+        items: _speedOptions.map((String speed) {
+          return DropdownMenuItem<String>(
+            value: speed,
             child: Text(
-              label,
+              '$speed (${_speedValues[speed]}ms)',
               style: const TextStyle(
                 color: AppColors.pureWhite,
+              ),
+            ),
+          );
+        }).toList(),
+        onChanged: (value) {
+          setState(() {
+            _selectedSpeed = value!;
+          });
+        },
+      );
+    }
+
+    Widget _buildCheckbox(bool value) {
+      return Container(
+        width: 20,
+        height: 20,
+        decoration: BoxDecoration(
+          color: value ? AppColors.neonGreen : AppColors.primaryBlack,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: AppColors.neonGreen),
+        ),
+        child: value
+            ? Icon(Icons.check, size: 16, color: AppColors.primaryBlack)
+            : null,
+      );
+    }
+
+    Widget _buildInfoRow(String label, String value) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '$label :',
+              style: TextStyle(
+                color: AppColors.pureWhite.withOpacity(0.8),
                 fontSize: 12,
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          _buildSmallButton(leftButton, () {
-            _showSnackbar('$leftButton: $label');
-          }),
-          const SizedBox(width: 4),
-          _buildSmallButton(
-            rightButton, 
-            onActivate ?? () {
-              _showSnackbar('$rightButton: $label');
+            Text(
+              value.isEmpty ? '-' : value,
+              style: const TextStyle(
+                color: AppColors.pureWhite,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget _buildSpeedGrid() {
+      return GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 4,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
+          childAspectRatio: 2,
+        ),
+        itemCount: _speedOptions.length,
+        itemBuilder: (context, index) {
+          final speed = _speedOptions[index];
+          final isSelected = _selectedSpeed == speed;
+          
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedSpeed = speed;
+              });
             },
-            enabled: widget.socketService.isConnected || onActivate == null,
+            child: Container(
+              decoration: BoxDecoration(
+                color: isSelected ? AppColors.neonGreen : AppColors.primaryBlack,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.neonGreen),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    speed,
+                    style: TextStyle(
+                      color: isSelected ? AppColors.primaryBlack : AppColors.pureWhite,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    '${_speedValues[speed]}',
+                    style: TextStyle(
+                      color: isSelected ? AppColors.primaryBlack : AppColors.pureWhite,
+                      fontSize: 8,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    }
+
+    Widget _buildConfigRow(String label, TextEditingController controller) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.pureWhite,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
+          const SizedBox(height: 8),
+          _buildTextField(controller: controller, hintText: ''),
+          const SizedBox(height: 12),
         ],
-      ),
-    );
-  }
+      );
+    }
 
-  Widget _buildSmallButton(String text, Function() onPressed, {bool enabled = true}) {
-    return Container(
-      height: 25,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: enabled ? AppColors.neonGreen : AppColors.darkGrey,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
+    Widget _buildSerialRow(String label, String leftButton, String rightButton, {Function()? onActivate}) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.primaryBlack,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.neonGreen.withOpacity(0.5)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: AppColors.pureWhite,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            _buildSmallButton(leftButton, () {
+              _showSnackbar('$leftButton: $label');
+            }),
+            const SizedBox(width: 4),
+            _buildSmallButton(
+              rightButton, 
+              onActivate ?? () {
+                _showSnackbar('$rightButton: $label');
+              },
+              enabled: widget.socketService.isConnected || onActivate == null,
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget _buildSmallButton(String text, Function() onPressed, {bool enabled = true}) {
+      return Container(
+        height: 25,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
           color: enabled ? AppColors.neonGreen : AppColors.darkGrey,
-        ),
-      ),
-      child: TextButton(
-        onPressed: enabled ? onPressed : null,
-        style: TextButton.styleFrom(
-          padding: EdgeInsets.zero,
-          minimumSize: Size.zero,
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: enabled ? AppColors.primaryBlack : AppColors.pureWhite.withOpacity(0.5),
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: enabled ? AppColors.neonGreen : AppColors.darkGrey,
           ),
         ),
-      ),
-    );
-  }
+        child: TextButton(
+          onPressed: enabled ? onPressed : null,
+          style: TextButton.styleFrom(
+            padding: EdgeInsets.zero,
+            minimumSize: Size.zero,
+          ),
+          child: Text(
+            text,
+            style: TextStyle(
+              color: enabled ? AppColors.primaryBlack : AppColors.pureWhite.withOpacity(0.5),
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      );
+    }
 
-  void _showSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: AppColors.neonGreen,
-        content: Text(
-          message,
-          style: TextStyle(
-            color: AppColors.primaryBlack,
-            fontWeight: FontWeight.bold,
+    void _showSnackbar(String message) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.neonGreen,
+          content: Text(
+            message,
+            style: TextStyle(
+              color: AppColors.primaryBlack,
+              fontWeight: FontWeight.bold,
+            ),
           ),
+          duration: const Duration(seconds: 2),
         ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+      );
+    }
+    @override
+void dispose() {
+  // Dispose semua text controllers
+  _emailController.dispose();
+  _ssidController.dispose();
+  _passwordController.dispose();
+  _serialController.dispose();
+  _activationController.dispose();
+  _mitraIdController.dispose();
+  
+  // Dispose speed controllers
+  for (final controller in _speedControllers.values) {
+    controller.dispose();
   }
+  
+  super.dispose();
 }
+  }
