@@ -2,13 +2,15 @@
 import 'package:flutter/material.dart';
 import 'package:ninexmano_matrix/pages/cloud_file_page.dart';
 import 'package:ninexmano_matrix/pages/dashboard_page.dart';
-import 'package:ninexmano_matrix/pages/database_viewer_page.dart'; // ADD THIS
+import 'package:ninexmano_matrix/pages/database_viewer_page.dart';
+import 'package:ninexmano_matrix/pages/editor_page.dart';
 import 'package:ninexmano_matrix/pages/landing_page.dart';
 import 'package:ninexmano_matrix/pages/mapping_page.dart';
 import 'package:ninexmano_matrix/pages/my_file_page.dart';
 import 'package:ninexmano_matrix/pages/remote_page.dart';
 import 'package:ninexmano_matrix/pages/settings_page.dart';
 import 'package:ninexmano_matrix/pages/trigger_page.dart';
+import 'package:ninexmano_matrix/services/socket_service.dart';
 
 class AppRoutes {
   static const String landing = '/';
@@ -19,17 +21,19 @@ class AppRoutes {
   static const String myFile = '/my-file';
   static const String cloudFile = '/cloud-file';
   static const String settings = '/settings';
-  static const String databaseViewer = '/database-viewer'; // ADD THIS
+  static const String editor = '/editor';
+  static const String databaseViewer = '/database-viewer';
 
   static final Map<String, WidgetBuilder> routes = {
     landing: (context) => const LandingPage(),
     dashboard: (context) => const DashboardPage(),
-    remote: (context) => const RemotePage(),
-    mapping: (context) => const MappingPage(),
-    trigger: (context) => const TriggerPage(),
+    editor: (context) => const EditorPage(),
+    remote: (context) => RemotePage(socketService: SocketService()),
+    mapping: (context) => MappingPage(socketService: SocketService()),
+    trigger: (context) => TriggerPage(socketService: SocketService()),
     myFile: (context) => const MyFilePage(),
     cloudFile: (context) => const CloudFilePage(),
-    settings: (context) => const SettingsPage(),
-    databaseViewer: (context) => const DatabaseViewerPage(), // ADD THIS
+    settings: (context) => SettingsPage(socketService: SocketService()),
+    databaseViewer: (context) => const DatabaseViewerPage(),
   };
 }

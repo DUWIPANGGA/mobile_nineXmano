@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:ninexmano_matrix/constants/app_colors.dart';
 import 'package:ninexmano_matrix/pages/cloud_file_page.dart';
+import 'package:ninexmano_matrix/pages/editor_page.dart';
 import 'package:ninexmano_matrix/pages/mapping_page.dart';
 import 'package:ninexmano_matrix/pages/my_file_page.dart';
 import 'package:ninexmano_matrix/pages/remote_page.dart';
 import 'package:ninexmano_matrix/pages/settings_page.dart';
 import 'package:ninexmano_matrix/pages/trigger_page.dart';
+import 'package:ninexmano_matrix/services/socket_service.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -16,16 +18,12 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   int _currentIndex = 0;
+  final SocketService _socketService = SocketService();
+  bool _isConnecting = false;
+  bool _isConnected = false;
 
-  final List<Widget> _pages = [
-    const RemotePage(),
-    const MappingPage(),
-    Container(color: AppColors.darkGrey, child: const Center(child: Text('Editor Page', style: TextStyle(color: AppColors.pureWhite)))),
-    const TriggerPage(),
-    const MyFilePage(),
-    const CloudFilePage(),
-    const SettingsPage(),
-  ];
+  // Pages akan di-initialize di initState dengan shared socketService
+  late final List<Widget> _pages;
 
   final List<Map<String, dynamic>> _menuItems = [
     {'title': 'Remote', 'icon': Icons.gamepad, 'color': AppColors.neonGreen},
@@ -38,12 +36,312 @@ class _DashboardPageState extends State<DashboardPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _initializePages();
+    _setupSocketListeners();
+  }
+
+  void _initializePages() {
+    _pages = [
+      RemotePage(socketService: _socketService),
+      MappingPage(socketService: _socketService),
+      EditorPage(),
+      TriggerPage(socketService: _socketService),
+      MyFilePage(),
+      CloudFilePage(), // Jika CloudFilePage perlu socketetService: _socketService),
+    ];
+  }
+
+  void _setupSocketListeners() {
+    _socketService.connectionStatus.listen((connected) {
+      if (mounted) {
+        setState(() {
+          _isConnected = connected;
+          _isConnecting = false;
+        });
+      }
+    });
+
+    _socketService.messages.listen((message) {
+      print('Dashboard received: $message');
+    });
+  }
+
+  Future<void> _connectToDevice() async {
+    if (_isConnecting || _isConnected) return;
+
+    setState(() {
+      _isConnecting = true;
+    });
+
+    await _socketService.connect();
+
+    if (_socketService.isConnected) {
+      _socketService.requestConfig();
+    }
+  }
+
+  void _disconnectFromDevice() {
+    _socketService.disconnect();
+    setState(() {
+      _isConnected = false;
+      _isConnecting = false;
+    });
+  }
+
+  Widget _buildConnectionButton() {
+    if (_isConnecting) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.warningYellow.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.warningYellow),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.warningYellow,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Connecting...',
+              style: TextStyle(
+                color: AppColors.warningYellow,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_isConnected) {
+      return GestureDetector(
+        onTap: _disconnectFromDevice,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.successGreen.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.successGreen),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: AppColors.successGreen,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Connected',
+                style: TextStyle(
+                  color: AppColors.successGreen,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.expand_more,
+                size: 12,
+                color: AppColors.successGreen,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: _connectToDevice,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.errorRed.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.errorRed),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.wifi_off, size: 12, color: AppColors.errorRed),
+            const SizedBox(width: 6),
+            Text(
+              'Connect',
+              style: TextStyle(
+                color: AppColors.errorRed,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showConnectionMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.darkGrey,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Connection Menu',
+                style: TextStyle(
+                  color: AppColors.neonGreen,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // Connection Status
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryBlack,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _isConnected ? AppColors.successGreen : AppColors.errorRed,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: _isConnected ? AppColors.successGreen : AppColors.errorRed,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _isConnected 
+                            ? 'Connected to Device' 
+                            : 'Disconnected',
+                        style: TextStyle(
+                          color: _isConnected ? AppColors.successGreen : AppColors.errorRed,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Connection Actions
+              if (_isConnected) ...[
+                _buildConnectionAction(
+                  icon: Icons.refresh,
+                  title: 'Reconnect',
+                  onTap: _connectToDevice,
+                ),
+                _buildConnectionAction(
+                  icon: Icons.settings,
+                  title: 'Request Config',
+                  onTap: () {
+                    _socketService.requestConfig();
+                    Navigator.pop(context);
+                    _showSnackbar('Requesting device config...');
+                  },
+                ),
+                _buildConnectionAction(
+                  icon: Icons.wifi_off,
+                  title: 'Disconnect',
+                  onTap: () {
+                    _disconnectFromDevice();
+                    Navigator.pop(context);
+                  },
+                  isDestructive: true,
+                ),
+              ] else ...[
+                _buildConnectionAction(
+                  icon: Icons.wifi,
+                  title: 'Connect to Device',
+                  onTap: () {
+                    _connectToDevice();
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildConnectionAction({
+    required IconData icon,
+    required String title,
+    required Function() onTap,
+    bool isDestructive = false,
+  }) {
+    return ListTile(
+      leading: Icon(
+        icon,
+        color: isDestructive ? AppColors.errorRed : AppColors.neonGreen,
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: isDestructive ? AppColors.errorRed : AppColors.pureWhite,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      onTap: onTap,
+    );
+  }
+
+  void _showSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: AppColors.neonGreen,
+        content: Text(
+          message,
+          style: TextStyle(
+            color: AppColors.primaryBlack,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.primaryBlack,
       body: Column(
         children: [
-          // Header dengan logo NINE X MANO
+          // Header dengan logo NINE X MANO dan connection button
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
@@ -83,7 +381,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     ),
                   ],
                 ),
-                
+
                 // Current Page Title
                 Text(
                   _menuItems[_currentIndex]['title'],
@@ -93,13 +391,16 @@ class _DashboardPageState extends State<DashboardPage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                
-                // Placeholder untuk balance layout
-                const SizedBox(width: 60),
+
+                // Connection Status Button dengan menu
+                GestureDetector(
+                  onTap: () => _showConnectionMenu(context),
+                  child: _buildConnectionButton(),
+                ),
               ],
             ),
           ),
-          
+
           // Shortcut Menu dengan design modern
           Container(
             height: 90,
@@ -126,7 +427,7 @@ class _DashboardPageState extends State<DashboardPage> {
               ],
             ),
           ),
-          
+
           // Content Area
           Expanded(
             child: Container(
@@ -150,7 +451,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildShortcut(String title, IconData icon, int index) {
     final isActive = _currentIndex == index;
-    
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -199,5 +500,11 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _socketService.dispose();
+    super.dispose();
   }
 }

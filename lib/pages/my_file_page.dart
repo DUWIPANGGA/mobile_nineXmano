@@ -1,7 +1,8 @@
-// Halaman My File
+// Halaman My File - Updated
 import 'package:flutter/material.dart';
 import 'package:ninexmano_matrix/constants/app_colors.dart';
 import 'package:ninexmano_matrix/models/animation_model.dart';
+import 'package:ninexmano_matrix/services/default_animations_service.dart';
 import 'package:ninexmano_matrix/services/firebase_data_service.dart';
 
 class MyFilePage extends StatefulWidget {
@@ -13,48 +14,57 @@ class MyFilePage extends StatefulWidget {
 
 class _MyFilePageState extends State<MyFilePage> {
   final FirebaseDataService _firebaseService = FirebaseDataService();
+  final DefaultAnimationsService _defaultAnimationsService = DefaultAnimationsService();
   
-  // Data dari user selections di preferences
+  // Data dari user selections dan default animations
   List<AnimationModel> _userSelectedFiles = [];
+  List<AnimationModel> _defaultFiles = [];
   final Set<int> _selectedFiles = {};
+  final Set<int> _selectedDefaultFiles = {};
   bool _isLoading = true;
   String _errorMessage = '';
 
   @override
   void initState() {
     super.initState();
-    _loadUserSelectedFiles();
+    _loadAllFiles();
   }
 
-  // Load data dari user selections di preferences
-  Future<void> _loadUserSelectedFiles() async {
+  // Load data dari semua sumber
+  Future<void> _loadAllFiles() async {
     try {
       setState(() {
         _isLoading = true;
         _errorMessage = '';
       });
 
+      // Initialize default animations
+      await _defaultAnimationsService.initializeDefaultAnimations();
+
+      // Load data dari berbagai sumber
       final selectedFiles = await _firebaseService.getUserSelectedAnimations();
+      final defaultFiles = await _defaultAnimationsService.getDefaultAnimations();
       
       setState(() {
         _userSelectedFiles = selectedFiles;
+        _defaultFiles = defaultFiles;
         _isLoading = false;
       });
 
-      print('✅ Loaded ${_userSelectedFiles.length} user selected files from preferences');
+      print('✅ Loaded ${_userSelectedFiles.length} user files + ${_defaultFiles.length} default files');
 
     } catch (e) {
       setState(() {
         _errorMessage = 'Error loading files: $e';
         _isLoading = false;
       });
-      print('❌ Error loading user selected files: $e');
+      print('❌ Error loading files: $e');
     }
   }
 
   // Refresh data
   Future<void> _refreshData() async {
-    await _loadUserSelectedFiles();
+    await _loadAllFiles();
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -70,6 +80,23 @@ class _MyFilePageState extends State<MyFilePage> {
       ),
     );
   }
+
+  // Check if file is default (tidak bisa dihapus)
+  bool _isDefaultFile(int index) {
+    return index < _defaultFiles.length;
+  }
+
+  // Get file by index (menggabungkan default + user files)
+  AnimationModel _getFile(int index) {
+    if (index < _defaultFiles.length) {
+      return _defaultFiles[index];
+    } else {
+      return _userSelectedFiles[index - _defaultFiles.length];
+    }
+  }
+
+  // Get total files count
+  int get _totalFiles => _defaultFiles.length + _userSelectedFiles.length;
 
   @override
   Widget build(BuildContext context) {
@@ -115,7 +142,7 @@ class _MyFilePageState extends State<MyFilePage> {
                     ),
                   ),
                   child: Text(
-                    '${_userSelectedFiles.length} files',
+                    '${_defaultFiles.length} default + ${_userSelectedFiles.length} user',
                     style: TextStyle(
                       color: AppColors.pureWhite,
                       fontSize: 12,
@@ -128,7 +155,7 @@ class _MyFilePageState extends State<MyFilePage> {
           ),
 
           // Options Bar (muncul ketika ada file yang dipilih)
-          if (_selectedFiles.isNotEmpty)
+          if (_selectedFiles.isNotEmpty || _selectedDefaultFiles.isNotEmpty)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
@@ -136,35 +163,36 @@ class _MyFilePageState extends State<MyFilePage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  // DELETE Button
-                  Expanded(
-                    child: Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      child: ElevatedButton(
-                        onPressed: _deleteSelectedFiles,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          foregroundColor: AppColors.pureWhite,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                  // DELETE Button (hanya untuk non-default files)
+                  if (_selectedFiles.isNotEmpty)
+                    Expanded(
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        child: ElevatedButton(
+                          onPressed: _deleteSelectedFiles,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: AppColors.pureWhite,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                           ),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.delete, size: 18),
-                            SizedBox(width: 4),
-                            Text('DELETE'),
-                          ],
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.delete, size: 18),
+                              SizedBox(width: 4),
+                              Text('DELETE'),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
                   
                   // SAVE TO CLOUD Button
                   Expanded(
                     child: Container(
-                      margin: const EdgeInsets.only(left: 8),
+                      margin: EdgeInsets.only(left: _selectedFiles.isNotEmpty ? 8 : 0),
                       child: ElevatedButton(
                         onPressed: _saveToCloud,
                         style: ElevatedButton.styleFrom(
@@ -246,7 +274,7 @@ class _MyFilePageState extends State<MyFilePage> {
             )
 
           // Empty State
-          else if (_userSelectedFiles.isEmpty)
+          else if (_totalFiles == 0)
             Expanded(
               child: Center(
                 child: Column(
@@ -291,14 +319,17 @@ class _MyFilePageState extends State<MyFilePage> {
               ),
             )
 
-          // List File Animasi dari User Selections
+          // List File Animasi (Default + User Selections)
           else
             Expanded(
               child: ListView.builder(
-                itemCount: _userSelectedFiles.length,
+                itemCount: _totalFiles,
                 itemBuilder: (context, index) {
-                  final file = _userSelectedFiles[index];
-                  final isSelected = _selectedFiles.contains(index);
+                  final file = _getFile(index);
+                  final isDefault = _isDefaultFile(index);
+                  final isSelected = isDefault 
+                      ? _selectedDefaultFiles.contains(index)
+                      : _selectedFiles.contains(index);
                   
                   return Container(
                     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -306,7 +337,9 @@ class _MyFilePageState extends State<MyFilePage> {
                       color: AppColors.darkGrey,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected ? AppColors.neonGreen : Colors.transparent,
+                        color: isSelected 
+                            ? (isDefault ? Colors.blue : AppColors.neonGreen)
+                            : Colors.transparent,
                         width: 2,
                       ),
                       boxShadow: [
@@ -318,27 +351,55 @@ class _MyFilePageState extends State<MyFilePage> {
                       ],
                     ),
                     child: ListTile(
-                      leading: Checkbox(
-                        value: isSelected,
-                        onChanged: (value) {
-                          setState(() {
-                            if (value == true) {
-                              _selectedFiles.add(index);
-                            } else {
-                              _selectedFiles.remove(index);
-                            }
-                          });
-                        },
-                        checkColor: AppColors.primaryBlack,
-                        fillColor: MaterialStateProperty.all(AppColors.neonGreen),
-                      ),
-                      title: Text(
-                        file.name,
-                        style: TextStyle(
-                          color: AppColors.pureWhite,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      leading: isDefault 
+                          ? Icon(
+                              Icons.security,
+                              color: Colors.blue,
+                              size: 24,
+                            )
+                          : Checkbox(
+                              value: isSelected,
+                              onChanged: (value) {
+                                setState(() {
+                                  if (value == true) {
+                                    _selectedFiles.add(index);
+                                  } else {
+                                    _selectedFiles.remove(index);
+                                  }
+                                });
+                              },
+                              checkColor: AppColors.primaryBlack,
+                              fillColor: MaterialStateProperty.all(AppColors.neonGreen),
+                            ),
+                      title: Row(
+                        children: [
+                          Text(
+                            file.name,
+                            style: TextStyle(
+                              color: AppColors.pureWhite,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (isDefault) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'DEFAULT',
+                                style: TextStyle(
+                                  color: Colors.blue,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -421,19 +482,21 @@ class _MyFilePageState extends State<MyFilePage> {
                       ),
                       trailing: Icon(
                         Icons.animation,
-                        color: AppColors.neonGreen,
+                        color: isDefault ? Colors.blue : AppColors.neonGreen,
                       ),
                       onTap: () {
-                        setState(() {
-                          if (_selectedFiles.contains(index)) {
-                            _selectedFiles.remove(index);
-                          } else {
-                            _selectedFiles.add(index);
-                          }
-                        });
+                        if (!isDefault) {
+                          setState(() {
+                            if (_selectedFiles.contains(index)) {
+                              _selectedFiles.remove(index);
+                            } else {
+                              _selectedFiles.add(index);
+                            }
+                          });
+                        }
                       },
                       onLongPress: () {
-                        _previewFile(file);
+                        _previewFile(file, isDefault);
                       },
                     ),
                   );
@@ -479,8 +542,8 @@ class _MyFilePageState extends State<MyFilePage> {
           ),
           ElevatedButton(
             onPressed: () async {
-              // Hapus file dari user selections
-              final filesToRemove = _selectedFiles.map((index) => _userSelectedFiles[index]).toList();
+              // Hapus file dari user selections (hanya non-default)
+              final filesToRemove = _selectedFiles.map((index) => _userSelectedFiles[index - _defaultFiles.length]).toList();
               
               for (final file in filesToRemove) {
                 await _firebaseService.removeUserSelectedAnimation(file.name);
@@ -519,11 +582,14 @@ class _MyFilePageState extends State<MyFilePage> {
   }
 
   void _saveToCloud() {
-    if (_selectedFiles.isEmpty) return;
+    final selectedFiles = _selectedFiles.map((index) => _userSelectedFiles[index - _defaultFiles.length]).toList();
+    final selectedDefaultFiles = _selectedDefaultFiles.map((index) => _defaultFiles[index]).toList();
+    final allSelectedFiles = [...selectedFiles, ...selectedDefaultFiles];
+    
+    if (allSelectedFiles.isEmpty) return;
     
     // Simulasi save to cloud
-    final selectedFiles = _selectedFiles.map((index) => _userSelectedFiles[index]).toList();
-    final selectedFileNames = selectedFiles.map((file) => file.name).toList();
+    final selectedFileNames = allSelectedFiles.map((file) => file.name).toList();
     
     // TODO: Implement actual cloud save functionality
     ScaffoldMessenger.of(context).showSnackBar(
@@ -541,26 +607,56 @@ class _MyFilePageState extends State<MyFilePage> {
     
     setState(() {
       _selectedFiles.clear();
+      _selectedDefaultFiles.clear();
     });
   }
 
-  void _previewFile(AnimationModel file) {
+  void _previewFile(AnimationModel file, bool isDefault) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.darkGrey,
-        title: Text(
-          file.name,
-          style: TextStyle(
-            color: AppColors.neonGreen,
-            fontWeight: FontWeight.bold,
-          ),
+        title: Row(
+          children: [
+            Text(
+              file.name,
+              style: TextStyle(
+                color: isDefault ? Colors.blue : AppColors.neonGreen,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            if (isDefault) ...[
+              const SizedBox(width: 8),
+              Icon(Icons.security, color: Colors.blue, size: 20),
+            ],
+          ],
         ),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (isDefault)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(8),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                  ),
+                  child: Text(
+                    'Default Animation - Cannot be deleted',
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              
               // Description
               Text(
                 'Description: ${file.description.isEmpty ? "No description" : file.description}',
@@ -574,6 +670,7 @@ class _MyFilePageState extends State<MyFilePage> {
               _buildDetailRow('Total Frames', '${file.totalFrames}'),
               _buildDetailRow('Delay Data', file.delayData),
               _buildDetailRow('Validation', file.isValid ? 'Valid' : 'Invalid'),
+              _buildDetailRow('Type', isDefault ? 'Default' : 'User'),
               
               const SizedBox(height: 12),
               
@@ -582,7 +679,7 @@ class _MyFilePageState extends State<MyFilePage> {
                 Text(
                   'Frame Data Preview:',
                   style: TextStyle(
-                    color: AppColors.neonGreen,
+                    color: isDefault ? Colors.blue : AppColors.neonGreen,
                     fontWeight: FontWeight.bold,
                   ),
                 ),

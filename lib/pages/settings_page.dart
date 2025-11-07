@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:ninexmano_matrix/constants/app_colors.dart';
+import 'package:ninexmano_matrix/services/socket_service.dart';
 
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+  final SocketService socketService;
+  
+  const SettingsPage({
+    super.key,
+    required this.socketService,
+  });
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -11,11 +17,21 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   bool _welcomeModeEnabled = true;
   String _selectedSpeed = 'SEDANG';
-  final TextEditingController _emailController = TextEditingController(text: 'example@gmail.com');
-  final TextEditingController _ssidController = TextEditingController(text: 'MaNo');
-  final TextEditingController _passwordController = TextEditingController(text: '11223344');
-  final TextEditingController _serialController = TextEditingController(text: 'Serial Number Kamu');
-  final TextEditingController _activationController = TextEditingController(text: 'Kode Aktivasi');
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _ssidController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _serialController = TextEditingController();
+  final TextEditingController _activationController = TextEditingController();
+  final TextEditingController _mitraIdController = TextEditingController();
+
+  // Data dari device (akan diupdate via socket)
+  String _firmwareVersion = '-';
+  String _deviceId = '';
+  String _licenseLevel = '';
+  String _deviceChannel = '';
+  String _currentEmail = '';
+  String _currentSSID = '';
+  String _currentPassword = '';
 
   final List<String> _speedOptions = ['LAMBAT', 'SEDANG', 'CEPAT', 'CEPAAT'];
   final Map<String, int> _speedValues = {
@@ -28,11 +44,162 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   void initState() {
     super.initState();
+    _initializeData();
+    _setupSocketListeners();
+    
+    // Request config data saat page dibuka
+    if (widget.socketService.isConnected) {
+      widget.socketService.requestConfig();
+    }
+  }
+
+  void _initializeData() {
+    // Default values
     _emailController.text = 'example@gmail.com';
     _ssidController.text = 'MaNo';
     _passwordController.text = '11223344';
     _serialController.text = 'Serial Number Kamu';
     _activationController.text = 'Kode Aktivasi';
+    _mitraIdController.text = '';
+  }
+
+  void _setupSocketListeners() {
+    widget.socketService.messages.listen((message) {
+      _handleSocketMessage(message);
+    });
+  }
+
+  void _handleSocketMessage(String message) {
+    print('SettingsPage received: $message');
+    
+    if (message.startsWith('config,')) {
+      _handleConfigResponse(message);
+    } else if (message.startsWith('info,')) {
+      final infoMessage = message.substring(5);
+      _showSnackbar(infoMessage);
+    }
+  }
+
+  void _handleConfigResponse(String message) {
+    final parts = message.split(',');
+    if (parts.length >= 20) {
+      setState(() {
+        _firmwareVersion = parts[1];
+        _deviceId = parts[16];
+        _licenseLevel = parts[3];
+        _deviceChannel = parts[4];
+        _currentEmail = parts[5];
+        _currentSSID = parts[6];
+        _currentPassword = parts[7];
+        
+        // Update controllers dengan data aktual
+        _emailController.text = _currentEmail;
+        _ssidController.text = _currentSSID;
+        _passwordController.text = _currentPassword;
+      });
+    }
+  }
+
+  // ========== SOCKET ACTIONS ==========
+
+  void _updateEmail() {
+    if (_emailController.text.isNotEmpty) {
+      widget.socketService.setEmail(_emailController.text);
+      _showSnackbar('Mengirim email: ${_emailController.text}');
+    }
+  }
+
+  void _updateWelcomeSettings() {
+    final speedValue = _speedValues[_selectedSpeed] ?? 200;
+    // Kirim welcome animation settings
+    widget.socketService.setWelcomeAnimation(
+      _welcomeModeEnabled ? 1 : 0, 
+      _welcomeModeEnabled ? 3 : 0
+    );
+    _showSnackbar('Welcome mode: ${_welcomeModeEnabled ? "Aktif" : "Nonaktif"} - Speed: $speedValue ms');
+  }
+
+  void _updateChannel() {
+    if (_deviceChannel.isNotEmpty) {
+      final channel = int.tryParse(_deviceChannel) ?? 8;
+      widget.socketService.setChannel(channel);
+      _showSnackbar('Channel diubah ke: $channel');
+    }
+  }
+
+  void _updateWiFi() {
+    if (_ssidController.text.isNotEmpty && _passwordController.text.isNotEmpty) {
+      widget.socketService.setWifi(_ssidController.text, _passwordController.text);
+      _showSnackbar('WiFi config dikirim - Restarting device...');
+    }
+  }
+
+  void _startCalibration() {
+    widget.socketService.setCalibrationMode(true);
+    _showSnackbar('Mode kalibrasi diaktifkan - Silakan tekan tombol remote');
+  }
+
+  void _activateLicense() {
+    if (_activationController.text.isNotEmpty) {
+      widget.socketService.activateLicense(_activationController.text);
+      _showSnackbar('Mengaktifkan lisensi...');
+    }
+  }
+
+  void _updateMitraID() {
+    if (_mitraIdController.text.isNotEmpty) {
+      widget.socketService.setMitraID(_mitraIdController.text);
+      _showSnackbar('Mitra ID diupdate: ${_mitraIdController.text}');
+    }
+  }
+
+  void _resetFactory() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.darkGrey,
+        title: const Text(
+          'Reset Pabrik?',
+          style: TextStyle(color: AppColors.neonGreen),
+        ),
+        content: const Text(
+          'Semua settings akan dikembalikan ke default. Device akan restart.',
+          style: TextStyle(color: AppColors.pureWhite),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('BATAL', style: TextStyle(color: AppColors.pureWhite)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              widget.socketService.resetDevice();
+              Navigator.pop(context);
+              _showSnackbar('Reset pabrik dilakukan - Device restarting...');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.errorRed,
+            ),
+            child: const Text('RESET', style: TextStyle(color: AppColors.pureWhite)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _checkUpdate() {
+    _showSnackbar('Checking for firmware updates...');
+    // Bisa ditambahkan logic untuk check update
+  }
+
+  void _uploadFirmware() {
+    _showSnackbar('Membuka firmware upload...');
+    // Bisa navigate ke firmware upload page
+  }
+
+  void _contactSupport() {
+    _showSnackbar('Membuka kontak support...');
+    // Buka email/link support
   }
 
   @override
@@ -44,9 +211,13 @@ class _SettingsPageState extends State<SettingsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Connection Status
+            _buildConnectionStatus(),
+            const SizedBox(height: 16),
+
             // Email Section
             _buildSection(
-              title: '# Émail',
+              title: 'Email',
               children: [
                 _buildTextField(
                   controller: _emailController,
@@ -55,9 +226,8 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SizedBox(height: 16),
                 _buildActionButton(
                   text: 'UBAH',
-                  onPressed: () {
-                    _showSnackbar('Email berhasil diubah');
-                  },
+                  onPressed: _updateEmail,
+                  enabled: widget.socketService.isConnected,
                 ),
               ],
             ),
@@ -96,9 +266,8 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SizedBox(height: 20),
                 _buildActionButton(
                   text: 'KIRIM',
-                  onPressed: () {
-                    _showSnackbar('Settings berhasil dikirim');
-                  },
+                  onPressed: _updateWelcomeSettings,
+                  enabled: widget.socketService.isConnected,
                 ),
               ],
             ),
@@ -107,18 +276,17 @@ class _SettingsPageState extends State<SettingsPage> {
 
             // Firmware Info Section
             _buildSection(
-              title: 'Versi Firmware : -',
+              title: 'Versi Firmware : $_firmwareVersion',
               children: [
                 _buildInfoRow('Versi Aplikasi', '1.0.6'),
-                _buildInfoRow('Device ID', ''),
-                _buildInfoRow('Level Lisensi', ''),
-                _buildInfoRow('Device Channel', ''),
+                _buildInfoRow('Device ID', _deviceId),
+                _buildInfoRow('Level Lisensi', _licenseLevel),
+                _buildInfoRow('Device Channel', _deviceChannel),
                 const SizedBox(height: 16),
                 _buildActionButton(
                   text: 'UBAH',
-                  onPressed: () {
-                    _showSnackbar('Firmware settings diubah');
-                  },
+                  onPressed: _updateChannel,
+                  enabled: widget.socketService.isConnected,
                 ),
               ],
             ),
@@ -135,26 +303,24 @@ class _SettingsPageState extends State<SettingsPage> {
 
             const SizedBox(height: 24),
 
-            // Ulfi Config Section
+            // WiFi Config Section
             _buildSection(
-              title: '# Ulfi Config',
+              title: '# WiFi Config',
               children: [
                 _buildConfigRow('SSID', _ssidController),
                 _buildConfigRow('PASSWORD', _passwordController),
                 const SizedBox(height: 16),
                 _buildActionButton(
                   text: 'UBAH',
-                  onPressed: () {
-                    _showSnackbar('Config berhasil diubah');
-                  },
+                  onPressed: _updateWiFi,
+                  enabled: widget.socketService.isConnected,
                 ),
                 const SizedBox(height: 20),
                 _buildSubSection(
                   title: 'KALIBRASI REMOT',
                   buttonText: 'MULAI',
-                  onPressed: () {
-                    _showSnackbar('Kalibrasi dimulai');
-                  },
+                  onPressed: _startCalibration,
+                  enabled: widget.socketService.isConnected,
                 ),
                 const SizedBox(height: 16),
                 const Text(
@@ -170,15 +336,34 @@ class _SettingsPageState extends State<SettingsPage> {
 
             const SizedBox(height: 24),
 
+            // Mitra ID Section
+            _buildSection(
+              title: '# Mitra ID',
+              children: [
+                _buildTextField(
+                  controller: _mitraIdController,
+                  hintText: 'Masukkan Mitra ID',
+                ),
+                const SizedBox(height: 16),
+                _buildActionButton(
+                  text: 'UPDATE',
+                  onPressed: _updateMitraID,
+                  enabled: widget.socketService.isConnected,
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
             // User Info Section
             _buildSection(
-              title: '# 18.57',
+              title: '# Aktivasi',
               children: [
                 _buildSubSection(
                   title: 'USERSI',
                   children: [
-                    _buildSerialRow('Serial Number Kamu', 'COPY', 'BUY NOW'),
-                    _buildSerialRow('Kode Aktivasi', 'PASTE', 'AKTIVASI'),
+                    _buildSerialRow('Serial Number', 'COPY', 'BUY NOW'),
+                    _buildSerialRow('Kode Aktivasi', 'PASTE', 'AKTIVASI', onActivate: _activateLicense),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -187,32 +372,26 @@ class _SettingsPageState extends State<SettingsPage> {
                   children: [
                     _buildActionButton(
                       text: 'RESET PABRIK',
-                      onPressed: () {
-                        _showSnackbar('Reset pabrik dilakukan');
-                      },
+                      onPressed: _resetFactory,
+                      enabled: widget.socketService.isConnected,
+                      backgroundColor: AppColors.errorRed,
                     ),
                     const SizedBox(height: 12),
                     _buildActionButton(
                       text: 'CHECK UPDATE',
-                      onPressed: () {
-                        _showSnackbar('Checking for updates...');
-                      },
+                      onPressed: _checkUpdate,
                     ),
                     const SizedBox(height: 12),
                     _buildActionButton(
                       text: 'UPLOAD FIRMWARE',
-                      onPressed: () {
-                        _showSnackbar('Upload firmware dimulai');
-                      },
+                      onPressed: _uploadFirmware,
                     ),
                   ],
                 ),
                 const SizedBox(height: 20),
                 _buildActionButton(
                   text: 'HUBUNGI KAMI',
-                  onPressed: () {
-                    _showSnackbar('Membuka kontak support');
-                  },
+                  onPressed: _contactSupport,
                   backgroundColor: AppColors.darkGrey,
                   foregroundColor: AppColors.neonGreen,
                 ),
@@ -222,6 +401,57 @@ class _SettingsPageState extends State<SettingsPage> {
             const SizedBox(height: 40),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildConnectionStatus() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.darkGrey,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: widget.socketService.isConnected 
+              ? AppColors.successGreen 
+              : AppColors.errorRed,
+          width: 2,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              color: widget.socketService.isConnected 
+                  ? AppColors.successGreen 
+                  : AppColors.errorRed,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              widget.socketService.isConnected 
+                  ? 'Terhubung ke Device' 
+                  : 'DISCONNECTED - Tap Connect di Dashboard',
+              style: TextStyle(
+                color: widget.socketService.isConnected 
+                    ? AppColors.successGreen 
+                    : AppColors.errorRed,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          if (!widget.socketService.isConnected)
+            Icon(
+              Icons.warning_amber,
+              color: AppColors.errorRed,
+              size: 20,
+            ),
+        ],
       ),
     );
   }
@@ -253,7 +483,13 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildSubSection({required String title, List<Widget>? children, String? buttonText, Function()? onPressed}) {
+  Widget _buildSubSection({
+    required String title, 
+    List<Widget>? children, 
+    String? buttonText, 
+    Function()? onPressed,
+    bool enabled = true,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -270,7 +506,11 @@ class _SettingsPageState extends State<SettingsPage> {
         ],
         if (children != null) ...children,
         if (buttonText != null && onPressed != null) 
-          _buildActionButton(text: buttonText, onPressed: onPressed),
+          _buildActionButton(
+            text: buttonText, 
+            onPressed: onPressed,
+            enabled: enabled,
+          ),
       ],
     );
   }
@@ -298,6 +538,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget _buildActionButton({
     required String text,
     required Function() onPressed,
+    bool enabled = true,
     Color? backgroundColor,
     Color? foregroundColor,
   }) {
@@ -305,13 +546,15 @@ class _SettingsPageState extends State<SettingsPage> {
       width: double.infinity,
       height: 45,
       child: ElevatedButton(
-        onPressed: onPressed,
+        onPressed: enabled ? onPressed : null,
         style: ElevatedButton.styleFrom(
           backgroundColor: backgroundColor ?? AppColors.neonGreen,
           foregroundColor: foregroundColor ?? AppColors.primaryBlack,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
+          disabledBackgroundColor: AppColors.darkGrey,
+          disabledForegroundColor: AppColors.pureWhite.withOpacity(0.5),
         ),
         child: Text(
           text,
@@ -428,7 +671,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
           Text(
-            value,
+            value.isEmpty ? '-' : value,
             style: const TextStyle(
               color: AppColors.pureWhite,
               fontSize: 12,
@@ -512,7 +755,7 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildSerialRow(String label, String leftButton, String rightButton) {
+  Widget _buildSerialRow(String label, String leftButton, String rightButton, {Function()? onActivate}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
@@ -537,24 +780,31 @@ class _SettingsPageState extends State<SettingsPage> {
             _showSnackbar('$leftButton: $label');
           }),
           const SizedBox(width: 4),
-          _buildSmallButton(rightButton, () {
-            _showSnackbar('$rightButton: $label');
-          }),
+          _buildSmallButton(
+            rightButton, 
+            onActivate ?? () {
+              _showSnackbar('$rightButton: $label');
+            },
+            enabled: widget.socketService.isConnected || onActivate == null,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildSmallButton(String text, Function() onPressed) {
+  Widget _buildSmallButton(String text, Function() onPressed, {bool enabled = true}) {
     return Container(
       height: 25,
       padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
-        color: AppColors.neonGreen,
+        color: enabled ? AppColors.neonGreen : AppColors.darkGrey,
         borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: enabled ? AppColors.neonGreen : AppColors.darkGrey,
+        ),
       ),
       child: TextButton(
-        onPressed: onPressed,
+        onPressed: enabled ? onPressed : null,
         style: TextButton.styleFrom(
           padding: EdgeInsets.zero,
           minimumSize: Size.zero,
@@ -562,7 +812,7 @@ class _SettingsPageState extends State<SettingsPage> {
         child: Text(
           text,
           style: TextStyle(
-            color: AppColors.primaryBlack,
+            color: enabled ? AppColors.primaryBlack : AppColors.pureWhite.withOpacity(0.5),
             fontSize: 10,
             fontWeight: FontWeight.bold,
           ),

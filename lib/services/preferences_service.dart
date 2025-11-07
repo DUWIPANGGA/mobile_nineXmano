@@ -17,6 +17,7 @@ class PreferencesService {
   static const String _lastSyncKey = 'last_sync';
   static const String _selectedAnimationsKey = 'selected_animations';
   static const String _userSettingsKey = 'user_settings';
+static const String _defaultAnimationsKey = 'default_animations';
 
   // Duration cache (1 jam)
   static const Duration cacheDuration = Duration(hours: 1);
@@ -41,6 +42,63 @@ class PreferencesService {
   // Key untuk settings user
   String _settingsKey(String settingName) => 'settings_$settingName';
 
+Future<bool> saveDefaultAnimations(List<AnimationModel> defaultAnimations) async {
+  if (!_isInitialized) await initialize();
+  
+  try {
+    final animationsData = defaultAnimations.map((anim) => anim.toMap()).toList();
+    final jsonString = jsonEncode(animationsData);
+    final success = await _prefs.setString(_defaultAnimationsKey, jsonString);
+    
+    if (success) {
+      print('💾 Default animations saved (${defaultAnimations.length} animations)');
+    }
+    return success;
+  } catch (e) {
+    print('❌ Error saving default animations: $e');
+    return false;
+  }
+}
+
+// Get default animations
+Future<List<AnimationModel>> getDefaultAnimations() async {
+  if (!_isInitialized) await initialize();
+  
+  try {
+    final jsonString = _prefs.getString(_defaultAnimationsKey);
+    if (jsonString == null) return [];
+    
+    final animationsList = jsonDecode(jsonString) as List<dynamic>;
+    
+    return animationsList.map((animMap) {
+      try {
+        final map = animMap as Map<String, dynamic>;
+        return AnimationModel.fromList(
+          map['name'] as String,
+          [
+            map['channelCount'],
+            map['animationLength'],
+            map['description'],
+            map['delayData'],
+            ...(map['frameData'] as List<dynamic>).cast<String>(),
+          ],
+        );
+      } catch (e) {
+        print('❌ Error parsing default animation: $e');
+        return null;
+      }
+    }).where((animation) => animation != null).cast<AnimationModel>().toList();
+  } catch (e) {
+    print('❌ Error reading default animations: $e');
+    return [];
+  }
+}
+
+// Check if animation is default
+Future<bool> isDefaultAnimation(String animationName) async {
+  final defaultAnimations = await getDefaultAnimations();
+  return defaultAnimations.any((anim) => anim.name == animationName);
+}
   // ============ API DATA METHODS (System & Animations dari Firebase) ============
 
   // Save system data dari API
