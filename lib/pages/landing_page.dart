@@ -24,7 +24,7 @@ class _LandingPageState extends State<LandingPage> {
   // Function untuk initialize data saat pertama kali masuk
   Future<void> _initializeAppData() async {
     if (_isInitializing) return;
-    
+
     setState(() {
       _isInitializing = true;
       _initStatus = 'Menyiapkan aplikasi...';
@@ -32,10 +32,10 @@ class _LandingPageState extends State<LandingPage> {
 
     try {
       print('🚀 Initializing app data...');
-      
+
       // Initialize Firebase Service
       _firebaseService.initialize();
-      
+
       setState(() {
         _initStatus = 'Memuat data sistem...';
       });
@@ -77,17 +77,16 @@ class _LandingPageState extends State<LandingPage> {
       });
 
       print('🎉 App data initialization completed');
-      
+
       // Tunggu sebentar lalu clear status
       await Future.delayed(const Duration(seconds: 1));
-      
+
       if (mounted) {
         setState(() {
           _isInitializing = false;
           _initStatus = '';
         });
       }
-
     } catch (e) {
       print('❌ App initialization error: $e');
       if (mounted) {
@@ -96,7 +95,7 @@ class _LandingPageState extends State<LandingPage> {
           _initStatus = 'Aplikasi siap (mode offline)';
         });
       }
-      
+
       // Clear status setelah beberapa detik
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) {
@@ -118,15 +117,15 @@ class _LandingPageState extends State<LandingPage> {
     try {
       // Clear cache dulu
       await _firebaseService.clearCache();
-      
+
       // Fetch data baru
       await _firebaseService.getSystemModel();
       await _firebaseService.getUserAnimations();
-      
+
       setState(() {
         _initStatus = 'Data diperbarui!';
       });
-      
+
       // Clear status setelah beberapa detik
       Future.delayed(const Duration(seconds: 1), () {
         if (mounted) {
@@ -136,14 +135,13 @@ class _LandingPageState extends State<LandingPage> {
           });
         }
       });
-      
     } catch (e) {
       print('❌ Force refresh failed: $e');
       setState(() {
         _isInitializing = false;
         _initStatus = 'Gagal memuat data';
       });
-      
+
       // Clear status setelah beberapa detik
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) {
@@ -164,7 +162,7 @@ class _LandingPageState extends State<LandingPage> {
           children: [
             // Background dengan efek gradient dan pattern
             _buildBackground(),
-            
+
             Center(
               child: SingleChildScrollView(
                 child: Column(
@@ -172,19 +170,19 @@ class _LandingPageState extends State<LandingPage> {
                   children: [
                     // Logo/Tulisan NINE X Mano dengan animasi
                     _buildLogoSection(),
-                    
+
                     const SizedBox(height: 40),
-                    
+
                     // Status initialization
                     if (_initStatus.isNotEmpty) _buildInitStatus(),
-                    
+
                     const SizedBox(height: 20),
-                    
+
                     // Container untuk kedua tombol dengan efek modern
                     _buildButtonSection(context),
-                    
+
                     const SizedBox(height: 40),
-                    
+
                     // Footer text
                     _buildFooter(),
                   ],
@@ -193,7 +191,7 @@ class _LandingPageState extends State<LandingPage> {
             ),
 
             // Loading overlay
-            if (_isInitializing) _buildLoadingOverlay(),
+            // if (_isInitializing) _buildLoadingOverlay(),
           ],
         ),
       ),
@@ -209,9 +207,7 @@ class _LandingPageState extends State<LandingPage> {
       decoration: BoxDecoration(
         color: AppColors.darkGrey.withOpacity(0.8),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppColors.neonGreen.withOpacity(0.3),
-        ),
+        border: Border.all(color: AppColors.neonGreen.withOpacity(0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -226,18 +222,11 @@ class _LandingPageState extends State<LandingPage> {
               ),
             )
           else
-            Icon(
-              Icons.check_circle,
-              color: AppColors.neonGreen,
-              size: 16,
-            ),
+            Icon(Icons.check_circle, color: AppColors.neonGreen, size: 16),
           const SizedBox(width: 8),
           Text(
             _initStatus,
-            style: TextStyle(
-              color: AppColors.pureWhite,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: AppColors.pureWhite, fontSize: 12),
           ),
         ],
       ),
@@ -251,16 +240,11 @@ class _LandingPageState extends State<LandingPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(
-              color: AppColors.neonGreen,
-            ),
+            CircularProgressIndicator(color: AppColors.neonGreen),
             const SizedBox(height: 16),
             Text(
               'Menyiapkan aplikasi...',
-              style: TextStyle(
-                color: AppColors.pureWhite,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: AppColors.pureWhite, fontSize: 16),
             ),
           ],
         ),
@@ -284,15 +268,10 @@ class _LandingPageState extends State<LandingPage> {
         gradient: RadialGradient(
           center: Alignment.topRight,
           radius: 1.5,
-          colors: [
-            AppColors.darkGrey.withOpacity(0.8),
-            AppColors.primaryBlack,
-          ],
+          colors: [AppColors.darkGrey.withOpacity(0.8), AppColors.primaryBlack],
         ),
       ),
-      child: CustomPaint(
-        painter: _BackgroundPatternPainter(),
-      ),
+      child: CustomPaint(painter: _BackgroundPatternPainter()),
     );
   }
 
@@ -318,18 +297,13 @@ class _LandingPageState extends State<LandingPage> {
               fontWeight: FontWeight.w900,
               color: AppColors.neonGreen,
               letterSpacing: 3,
-              shadows: [
-                Shadow(
-                  blurRadius: 10,
-                  color: AppColors.neonGreen,
-                ),
-              ],
+              shadows: [Shadow(blurRadius: 10, color: AppColors.neonGreen)],
             ),
           ),
         ),
-        
+
         const SizedBox(height: 8),
-        
+
         // X dengan efek modern
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -356,9 +330,9 @@ class _LandingPageState extends State<LandingPage> {
             ),
           ),
         ),
-        
+
         const SizedBox(height: 8),
-        
+
         // MANO dengan style yang konsisten
         const Text(
           'MANO',
@@ -367,17 +341,12 @@ class _LandingPageState extends State<LandingPage> {
             fontWeight: FontWeight.w800,
             color: AppColors.pureWhite,
             letterSpacing: 2,
-            shadows: [
-              Shadow(
-                blurRadius: 5,
-                color: Colors.black,
-              ),
-            ],
+            shadows: [Shadow(blurRadius: 5, color: Colors.black)],
           ),
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         // Subtitle
         Text(
           'LED MATRIX CONTROLLER',
@@ -421,10 +390,13 @@ class _LandingPageState extends State<LandingPage> {
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _isInitializing 
-                      ? null 
+                  onPressed: _isInitializing
+                      ? null
                       : () {
-                          Navigator.pushNamed(context, AppRoutes.databaseViewer);
+                          Navigator.pushNamed(
+                            context,
+                            AppRoutes.databaseViewer,
+                          );
                           print('Tombol Normal ditekan');
                         },
                   style: ElevatedButton.styleFrom(
@@ -600,12 +572,18 @@ class _BackgroundPatternPainter extends CustomPainter {
     // Bottom Right
     canvas.drawLine(
       Offset(size.width - cornerOffset, size.height - cornerOffset),
-      Offset(size.width - cornerOffset - cornerSize, size.height - cornerOffset),
+      Offset(
+        size.width - cornerOffset - cornerSize,
+        size.height - cornerOffset,
+      ),
       cornerPaint,
     );
     canvas.drawLine(
       Offset(size.width - cornerOffset, size.height - cornerOffset),
-      Offset(size.width - cornerOffset, size.height - cornerOffset - cornerSize),
+      Offset(
+        size.width - cornerOffset,
+        size.height - cornerOffset - cornerSize,
+      ),
       cornerPaint,
     );
   }

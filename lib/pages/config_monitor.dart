@@ -6,11 +6,8 @@ import 'package:ninexmano_matrix/services/socket_service.dart';
 
 class ConfigMonitorWidget extends StatefulWidget {
   final SocketService socketService;
-  
-  const ConfigMonitorWidget({
-    super.key,
-    required this.socketService,
-  });
+
+  const ConfigMonitorWidget({super.key, required this.socketService});
 
   @override
   State<ConfigMonitorWidget> createState() => _ConfigMonitorWidgetState();
@@ -46,10 +43,10 @@ class _ConfigMonitorWidgetState extends State<ConfigMonitorWidget> {
           _configStatus = 'Received & Saved';
           _lastUpdate = DateTime.now().toString().split('.')[0];
         });
-        
+
         // Reload config details
         _loadConfigStatus();
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Config updated successfully!'),
@@ -60,7 +57,7 @@ class _ConfigMonitorWidgetState extends State<ConfigMonitorWidget> {
         setState(() {
           _configStatus = 'Error: ${message.substring(12)}';
         });
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Config error: ${message.substring(12)}'),
@@ -74,18 +71,19 @@ class _ConfigMonitorWidgetState extends State<ConfigMonitorWidget> {
   Future<void> _loadConfigStatus() async {
     try {
       final stats = await _configService.getConfigStats();
-      _config = await _configService.loadConfig();
-      
+      _config = await _configService.currentConfig;
+
       setState(() {
-        _configStatus = stats['hasConfig'] ? 'Saved in Storage' : 'Not Received';
+        _configStatus = stats['hasConfig']
+            ? 'Saved in Storage'
+            : 'Not Received';
         if (stats['hasConfig']) {
           _configStatus += ' (${stats['firmware']})';
         }
       });
-      
+
       // Print semua data ke console untuk debug
       _printAllConfigData();
-      
     } catch (e) {
       setState(() {
         _configStatus = 'Error: $e';
@@ -95,12 +93,12 @@ class _ConfigMonitorWidgetState extends State<ConfigMonitorWidget> {
 
   void _printAllConfigData() {
     print('🔍 === ALL CONFIG DATA FROM STORAGE ===');
-    
+
     if (_config == null) {
       print('❌ No config data found in storage');
       return;
     }
-    
+
     print('📋 BASIC INFO:');
     print('   - Firmware: ${_config!.firmware}');
     print('   - MAC: ${_config!.mac}');
@@ -108,28 +106,30 @@ class _ConfigMonitorWidgetState extends State<ConfigMonitorWidget> {
     print('   - Jumlah Channel: ${_config!.jumlahChannel}');
     print('   - Email: ${_config!.email}');
     print('   - SSID: ${_config!.ssid}');
-    print('   - Password: ${_config!.password.isNotEmpty ? "***${_config!.password.substring(_config!.password.length - 3)}" : "Empty"}');
-    
+    print(
+      '   - Password: ${_config!.password.isNotEmpty ? "***${_config!.password.substring(_config!.password.length - 3)}" : "Empty"}',
+    );
+
     print('⏱️ DELAY SETTINGS:');
     print('   - Delay 1: ${_config!.delay1}ms');
     print('   - Delay 2: ${_config!.delay2}ms');
     print('   - Delay 3: ${_config!.delay3}ms');
     print('   - Delay 4: ${_config!.delay4}ms');
-    
+
     print('🎯 SELECTION SETTINGS:');
     print('   - Selection 1: ${_config!.selection1}');
     print('   - Selection 2: ${_config!.selection2}');
     print('   - Selection 3: ${_config!.selection3}');
     print('   - Selection 4: ${_config!.selection4}');
-    
+
     print('🆔 IDENTIFICATION:');
     print('   - Device ID: ${_config!.devID}');
     print('   - Mitra ID: ${_config!.mitraID}');
-    
+
     print('👋 WELCOME SETTINGS:');
     print('   - Welcome Animation: ${_config!.animWelcome}');
     print('   - Welcome Duration: ${_config!.durasiWelcome}s');
-    
+
     print('⚡ TRIGGER SETTINGS:');
     print('   - Trigger 1 Data: ${_config!.trigger1Data}');
     print('   - Trigger 2 Data: ${_config!.trigger2Data}');
@@ -138,15 +138,15 @@ class _ConfigMonitorWidgetState extends State<ConfigMonitorWidget> {
     print('   - Trigger 2 Mode: ${_config!.trigger2Mode}');
     print('   - Trigger 3 Mode: ${_config!.trigger3Mode}');
     print('   - Quick Trigger: ${_config!.quickTrigger}');
-    
+
     print('✅ VALIDATION:');
     print('   - Config Valid: ${_config!.isValid}');
     print('   - Summary: ${_config!.summary}');
-    
+
     print('📊 STORAGE INFO:');
     print('   - Last Update: $_lastUpdate');
     print('   - Status: $_configStatus');
-    
+
     print('🔚 === END CONFIG DATA ===');
   }
 
@@ -166,7 +166,7 @@ class _ConfigMonitorWidgetState extends State<ConfigMonitorWidget> {
     });
 
     widget.socketService.requestConfig();
-    
+
     // Tunggu maksimal 5 detik
     await Future.delayed(const Duration(seconds: 5));
     _loadConfigStatus();
@@ -178,7 +178,7 @@ class _ConfigMonitorWidgetState extends State<ConfigMonitorWidget> {
       _config = null;
       _configStatus = 'Cleared';
     });
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Config cleared from storage'),
@@ -206,7 +206,7 @@ class _ConfigMonitorWidgetState extends State<ConfigMonitorWidget> {
               style: TextStyle(color: Colors.grey),
             ),
             const SizedBox(height: 20),
-            
+
             // Status Card
             Card(
               child: Padding(
@@ -216,17 +216,26 @@ class _ConfigMonitorWidgetState extends State<ConfigMonitorWidget> {
                   children: [
                     const Text(
                       'Status Overview',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 12),
-                    
-                    _buildStatusRow('Connection', _isConnected ? '✅ Connected' : '❌ Disconnected'),
+
+                    _buildStatusRow(
+                      'Connection',
+                      _isConnected ? '✅ Connected' : '❌ Disconnected',
+                    ),
                     _buildStatusRow('Config Status', _configStatus),
                     _buildStatusRow('Last Update', _lastUpdate),
-                    _buildStatusRow('Config Valid', _config?.isValid.toString() ?? 'Unknown'),
-                    
+                    _buildStatusRow(
+                      'Config Valid',
+                      _config?.isValid.toString() ?? 'Unknown',
+                    ),
+
                     const SizedBox(height: 16),
-                    
+
                     Row(
                       children: [
                         Expanded(
@@ -247,9 +256,9 @@ class _ConfigMonitorWidgetState extends State<ConfigMonitorWidget> {
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 8),
-                    
+
                     Row(
                       children: [
                         Expanded(
@@ -270,7 +279,9 @@ class _ConfigMonitorWidgetState extends State<ConfigMonitorWidget> {
                                 _showDetails = !_showDetails;
                               });
                             },
-                            child: Text(_showDetails ? 'Hide Details' : 'Show Details'),
+                            child: Text(
+                              _showDetails ? 'Hide Details' : 'Show Details',
+                            ),
                           ),
                         ),
                       ],
@@ -279,9 +290,9 @@ class _ConfigMonitorWidgetState extends State<ConfigMonitorWidget> {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Detailed Config Data
             if (_showDetails && _config != null) ...[
               Card(
@@ -292,52 +303,94 @@ class _ConfigMonitorWidgetState extends State<ConfigMonitorWidget> {
                     children: [
                       const Text(
                         'Detailed Configuration',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 12),
-                      
+
                       _buildConfigSection('Basic Info', [
                         _buildDetailRow('Firmware', _config!.firmware),
                         _buildDetailRow('MAC Address', _config!.mac),
-                        _buildDetailRow('License Type', _config!.typeLicense.toString()),
-                        _buildDetailRow('Channels', _config!.jumlahChannel.toString()),
+                        _buildDetailRow(
+                          'License Type',
+                          _config!.typeLicense.toString(),
+                        ),
+                        _buildDetailRow(
+                          'Channels',
+                          _config!.jumlahChannel.toString(),
+                        ),
                         _buildDetailRow('Email', _config!.email),
                         _buildDetailRow('SSID', _config!.ssid),
-                        _buildDetailRow('Password', _config!.password.isNotEmpty ? '••••••••' : 'Empty'),
+                        _buildDetailRow(
+                          'Password',
+                          _config!.password.isNotEmpty ? '••••••••' : 'Empty',
+                        ),
                       ]),
-                      
+
                       _buildConfigSection('Timing Settings', [
                         _buildDetailRow('Delay 1', '${_config!.delay1}ms'),
                         _buildDetailRow('Delay 2', '${_config!.delay2}ms'),
                         _buildDetailRow('Delay 3', '${_config!.delay3}ms'),
                         _buildDetailRow('Delay 4', '${_config!.delay4}ms'),
                       ]),
-                      
+
                       _buildConfigSection('Animation Selections', [
-                        _buildDetailRow('Selection 1', _config!.selection1.toString()),
-                        _buildDetailRow('Selection 2', _config!.selection2.toString()),
-                        _buildDetailRow('Selection 3', _config!.selection3.toString()),
-                        _buildDetailRow('Selection 4', _config!.selection4.toString()),
+                        _buildDetailRow(
+                          'Selection 1',
+                          _config!.selection1.toString(),
+                        ),
+                        _buildDetailRow(
+                          'Selection 2',
+                          _config!.selection2.toString(),
+                        ),
+                        _buildDetailRow(
+                          'Selection 3',
+                          _config!.selection3.toString(),
+                        ),
+                        _buildDetailRow(
+                          'Selection 4',
+                          _config!.selection4.toString(),
+                        ),
                       ]),
-                      
+
                       _buildConfigSection('Device Info', [
                         _buildDetailRow('Device ID', _config!.devID),
                         _buildDetailRow('Mitra ID', _config!.mitraID),
-                        _buildDetailRow('Welcome Anim', _config!.animWelcome.toString()),
-                        _buildDetailRow('Welcome Duration', '${_config!.durasiWelcome}s'),
+                        _buildDetailRow(
+                          'Welcome Anim',
+                          _config!.animWelcome.toString(),
+                        ),
+                        _buildDetailRow(
+                          'Welcome Duration',
+                          '${_config!.durasiWelcome}s',
+                        ),
                       ]),
-                      
+
                       _buildConfigSection('Trigger Settings', [
-                        _buildDetailRow('Trigger 1 Mode', _config!.trigger1Mode.toString()),
-                        _buildDetailRow('Trigger 2 Mode', _config!.trigger2Mode.toString()),
-                        _buildDetailRow('Trigger 3 Mode', _config!.trigger3Mode.toString()),
-                        _buildDetailRow('Quick Trigger', _config!.quickTrigger.toString()),
+                        _buildDetailRow(
+                          'Trigger 1 Mode',
+                          _config!.trigger1Mode.toString(),
+                        ),
+                        _buildDetailRow(
+                          'Trigger 2 Mode',
+                          _config!.trigger2Mode.toString(),
+                        ),
+                        _buildDetailRow(
+                          'Trigger 3 Mode',
+                          _config!.trigger3Mode.toString(),
+                        ),
+                        _buildDetailRow(
+                          'Quick Trigger',
+                          _config!.quickTrigger.toString(),
+                        ),
                       ]),
                     ],
                   ),
                 ),
               ),
-              
+
               // Raw Data Card
               Card(
                 child: Padding(
@@ -347,7 +400,10 @@ class _ConfigMonitorWidgetState extends State<ConfigMonitorWidget> {
                     children: [
                       const Text(
                         'Raw Data Preview',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       const Text(
@@ -419,10 +475,15 @@ class _ConfigMonitorWidgetState extends State<ConfigMonitorWidget> {
             child: Text(
               value,
               style: TextStyle(
-                color: value.contains('✅') ? Colors.green : 
-                       value.contains('❌') ? Colors.red : 
-                       value == 'true' ? Colors.green :
-                       value == 'false' ? Colors.red : Colors.grey,
+                color: value.contains('✅')
+                    ? Colors.green
+                    : value.contains('❌')
+                    ? Colors.red
+                    : value == 'true'
+                    ? Colors.green
+                    : value == 'false'
+                    ? Colors.red
+                    : Colors.grey,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -458,18 +519,12 @@ class _ConfigMonitorWidgetState extends State<ConfigMonitorWidget> {
         children: [
           SizedBox(
             width: 140,
-            child: Text(
-              '$label:',
-              style: const TextStyle(fontSize: 12),
-            ),
+            child: Text('$label:', style: const TextStyle(fontSize: 12)),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
             ),
           ),
         ],

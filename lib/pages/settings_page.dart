@@ -293,7 +293,7 @@ class _SettingsPageState extends State<SettingsPage> {
   String _currentEmail = '';
   String _currentSSID = '';
   String _currentPassword = '';
-  late ConfigModel? config;
+  ConfigModel? config;
   bool _isCalibrating = false;
   String _currentCalibrationStep = 'A'; // A, B, C, D
   StreamSubscription<String>? _calibrationSubscription;
@@ -1177,8 +1177,8 @@ class _SettingsPageState extends State<SettingsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Connection Status
-            _buildConnectionStatus(),
-            const SizedBox(height: 16),
+            // _buildConnectionStatus(),
+            // const SizedBox(height: 16),
 
             // Email Section
             _buildSection(

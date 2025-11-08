@@ -56,23 +56,57 @@ class _EditorPageState extends State<EditorPage> {
       _delayData = anim.delayData;
       _frameData = List.from(anim.frameData);
 
-      // Initialize _frameDataHex dari frameData yang ada
-      // _frameDataHex = _convertFramesToHexFormat(_frameData, _channelCount);
+      // Initialize _listAnim dari frameData yang ada
+      _initializeListAnimFromFrameData();
 
       _nameController.text = anim.name;
       _descController.text = anim.description;
       _channelController.text = anim.channelCount.toString();
     } else {
-      _channelCount = 6;
+      _channelCount = 80; // Default 80 channel
       _animationLength = 1;
       _description = '';
       _delayData = '4';
       _frameData = ['0' * (_channelCount * 2)];
-      // _frameDataHex = _convertFramesToHexFormat(_frameData, _channelCount);
+
+      // Initialize _listAnim dengan data kosong
+      _initializeEmptyListAnim();
 
       _nameController.text = '';
       _descController.text = '';
       _channelController.text = _channelCount.toString();
+    }
+  }
+
+  void _initializeListAnimFromFrameData() {
+    // Reset _listAnim
+    _listAnim = List<String>.filled(11, '');
+
+    // Convert setiap frame ke format _listAnim
+    for (int frameIndex = 0; frameIndex < _frameData.length; frameIndex++) {
+      List<dynamic> hexData = _animationService.frameToHex(
+        _frameData[frameIndex],
+        _channelCount,
+      );
+
+      // Update setiap channel group di _listAnim
+      for (int i = 0; i < hexData.length; i++) {
+        final start = frameIndex * 2;
+        final end = start + 2;
+
+        if (_listAnim[i].length < end) {
+          _listAnim[i] = _listAnim[i].padRight(end, '0');
+        }
+
+        _listAnim[i] = _replaceRange(_listAnim[i], start, end, hexData[i]);
+      }
+    }
+  }
+
+  void _initializeEmptyListAnim() {
+    // Initialize dengan string kosong sepanjang yang dibutuhkan
+    for (int i = 0; i < _listAnim.length; i++) {
+      _listAnim[i] = '';
     }
   }
 
@@ -120,6 +154,8 @@ class _EditorPageState extends State<EditorPage> {
 
   // ============ FRAME MANAGEMENT METHODS ============
 
+  // ============ FRAME MANAGEMENT METHODS ============
+
   void _addFrame() {
     setState(() {
       _animationLength++;
@@ -130,8 +166,9 @@ class _EditorPageState extends State<EditorPage> {
         _animationLength,
         _channelCount,
       );
-      // Update frameDataHex
-      // _frameDataHex = _convertFramesToHexFormat(_frameData, _channelCount);
+
+      // Update _listAnim untuk frame baru
+      _updateListAnimForNewFrame(_animationLength - 1);
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _frameScrollController.animateTo(
@@ -143,6 +180,24 @@ class _EditorPageState extends State<EditorPage> {
     });
   }
 
+  void _updateListAnimForNewFrame(int frameIndex) {
+    List<dynamic> hexData = _animationService.frameToHex(
+      _frameData[frameIndex],
+      _channelCount,
+    );
+
+    for (int i = 0; i < hexData.length; i++) {
+      final start = frameIndex * 2;
+      final end = start + 2;
+
+      if (_listAnim[i].length < end) {
+        _listAnim[i] = _listAnim[i].padRight(end, '0');
+      }
+
+      _listAnim[i] = _replaceRange(_listAnim[i], start, end, hexData[i]);
+    }
+  }
+
   void _removeFrame(int index) {
     if (_animationLength <= 1) return;
 
@@ -151,13 +206,26 @@ class _EditorPageState extends State<EditorPage> {
       _frameData = _patternService.removeFrame(_frameData, _delayData, index);
       _delayData =
           _delayData.substring(0, index) + _delayData.substring(index + 1);
-      // Update frameDataHex
-      // _frameDataHex.removeAt(index);
+
+      // Update _listAnim - hapus data frame yang dihapus
+      _removeFrameFromListAnim(index);
 
       if (_currentFrame >= _animationLength) {
         _currentFrame = _animationLength - 1;
       }
     });
+  }
+
+  void _removeFrameFromListAnim(int frameIndex) {
+    for (int i = 0; i < _listAnim.length; i++) {
+      final start = frameIndex * 2;
+      final end = start + 2;
+
+      if (_listAnim[i].length >= end) {
+        _listAnim[i] =
+            _listAnim[i].substring(0, start) + _listAnim[i].substring(end);
+      }
+    }
   }
 
   void _duplicateFrame(int index) {
@@ -172,19 +240,76 @@ class _EditorPageState extends State<EditorPage> {
           _delayData.substring(0, index + 1) +
           _delayData[index] +
           _delayData.substring(index + 1);
-      // Update frameDataHex - duplicate hex juga
-      // _frameDataHex.insert(index + 1, _frameDataHex[index]);
+
+      // Update _listAnim - duplicate frame
+      _duplicateFrameInListAnim(index);
     });
+  }
+
+  void _duplicateFrameInListAnim(int frameIndex) {
+    for (int i = 0; i < _listAnim.length; i++) {
+      final start = frameIndex * 2;
+      final end = start + 2;
+
+      String frameData = '';
+
+      // Cek apakah string cukup panjang untuk diakses
+      if (_listAnim[i].length >= end) {
+        frameData = _listAnim[i].substring(start, end);
+      } else if (_listAnim[i].length > start) {
+        // Jika string lebih panjang dari start tapi kurang dari end
+        frameData = _listAnim[i].substring(start).padRight(2, '0');
+      } else {
+        // Jika string terlalu pendek, gunakan default
+        frameData = '00';
+      }
+
+      // Pastikan _listAnim[i] cukup panjang sebelum insert
+      int requiredLength = start + 2;
+      if (_listAnim[i].length < requiredLength) {
+        _listAnim[i] = _listAnim[i].padRight(requiredLength, '0');
+      }
+
+      // Insert duplicate data
+      _listAnim[i] =
+          _listAnim[i].substring(0, start + 2) +
+          frameData +
+          _listAnim[i].substring(start + 2);
+    }
   }
 
   void _clearFrame(int index) {
     setState(() {
       _frameData[index] = '0' * (_channelCount * 2);
-      // Update frameDataHex
-      // _frameDataHex[index] = _convertFramesToHexFormat([
-      //   _frameData[index],
-      // ], _channelCount).first;
+
+      // Update _listAnim - clear frame
+      _clearFrameInListAnim(index);
     });
+  }
+
+  void _clearFrameInListAnim(int frameIndex) {
+    List<dynamic> hexData = _animationService.frameToHex(
+      '0' * (_channelCount * 2), // Frame kosong
+      _channelCount,
+    );
+
+    for (int i = 0; i < hexData.length; i++) {
+      final start = frameIndex * 2;
+      final end = start + 2;
+
+      if (_listAnim[i].length < end) {
+        _listAnim[i] = _listAnim[i].padRight(end, '0');
+      }
+
+      _listAnim[i] = _replaceRange(_listAnim[i], start, end, hexData[i]);
+    }
+  }
+
+  String _replaceRange(String source, int start, int end, String replacement) {
+    if (source.length < end) {
+      source = source.padRight(end, '0');
+    }
+    return source.substring(0, start) + replacement + source.substring(end);
   }
 
   // ============ MATRIX EDITOR METHODS ============
@@ -210,6 +335,7 @@ class _EditorPageState extends State<EditorPage> {
       );
 
       print('After Toggle - Frame Data (raw hex): $hexDat');
+      print('delay data is: $_delayData');
 
       // Update setiap channel
       for (int i = 0; i < hexDat.length; i++) {
@@ -302,25 +428,26 @@ class _EditorPageState extends State<EditorPage> {
     }
 
     print('=== SAVING ANIMATION ===');
-    print('Frame Data (Original): $_frameData');
-    print('Frame Data Hex (8-channel): $_frameDataHex');
+    print('ListAnim Data: $_listAnim');
     print('Channel Count: $_channelCount');
     print('Animation Length: $_animationLength');
 
-    // Gunakan frameDataHex untuk disimpan
-    final gnmFrameData = _animationService.createGNMFrameData(
-      _frameDataHex, // Gunakan frameDataHex bukan frameData
-      _animationLength,
-      _channelCount,
-    );
-
+    // Convert _listAnim ke format yang sesuai untuk disimpan
+    for (int i = 0; i < _listAnim.length; i++) {
+      if (_listAnim[i].isEmpty) {
+        _listAnim[i] = ("00" * _animationLength);
+      } else if (_listAnim[i].length < _animationLength * 2) {
+        _listAnim[i] = ("00" * _animationLength);
+      }
+    }
+    print('ListAnim after filter: $_listAnim');
     final animation = AnimationModel(
       name: name,
       channelCount: _channelCount,
       animationLength: _animationLength,
       description: _descController.text.trim(),
       delayData: _delayData,
-      frameData: gnmFrameData,
+      frameData: _listAnim,
     );
 
     if (!animation.isValid) {
@@ -372,6 +499,8 @@ class _EditorPageState extends State<EditorPage> {
                   _animationLength,
                   (_) => '0' * (_channelCount * 2),
                 );
+                // Clear _listAnim juga
+                _initializeEmptyListAnim();
                 _currentFrame = 0;
                 _isPlaying = false;
               });
