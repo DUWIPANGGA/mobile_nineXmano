@@ -1,4 +1,6 @@
 // map_editor_modal.dart
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
 import 'package:iTen/constants/app_colors.dart';
 import 'package:iTen/services/config_service.dart';
@@ -46,7 +48,6 @@ class _MapEditorModalState extends State<MapEditorModal> {
   int _channelCount = 80;
   List<bool> _ledStates = List.filled(80, false);
   final TextEditingController _channelController = TextEditingController();
-  int _selectedChannel = 1; // Default channel 1
 
   @override
   void initState() {
@@ -246,65 +247,6 @@ class _MapEditorModalState extends State<MapEditorModal> {
                                 ],
                               ),
                             ),
-                            
-                            const SizedBox(width: 12),
-                            
-                            // Channel selection untuk mapping
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'CHANNEL MAP',
-                                    style: TextStyle(
-                                      color: AppColors.pureWhite.withOpacity(0.8),
-                                      fontSize: 10,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    decoration: BoxDecoration(
-                                      border: Border.all(color: AppColors.neonGreen),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: DropdownButton<int>(
-                                      value: _selectedChannel,
-                                      isExpanded: true,
-                                      dropdownColor: AppColors.darkGrey,
-                                      style: TextStyle(
-                                        color: AppColors.pureWhite,
-                                        fontSize: 14,
-                                      ),
-                                      underline: const SizedBox(),
-                                      icon: Icon(
-                                        Icons.arrow_drop_down,
-                                        color: AppColors.neonGreen,
-                                      ),
-                                      items: List.generate(16, (index) => index + 1)
-                                          .map((channel) {
-                                        return DropdownMenuItem<int>(
-                                          value: channel,
-                                          child: Text(
-                                            'Channel $channel',
-                                            style: TextStyle(
-                                              color: AppColors.pureWhite,
-                                            ),
-                                          ),
-                                        );
-                                      }).toList(),
-                                      onChanged: (value) {
-                                        if (value != null) {
-                                          setState(() {
-                                            _selectedChannel = value;
-                                          });
-                                        }
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
                           ],
                         ),
                         
@@ -321,64 +263,6 @@ class _MapEditorModalState extends State<MapEditorModal> {
                             const SizedBox(width: 8),
                             _buildQuickChannelButton(80),
                           ],
-                        ),
-                        
-                        const SizedBox(height: 8),
-                        Text(
-                          'Grid: ${gridSize}x$gridSize | Map Channel: $_selectedChannel',
-                          style: TextStyle(
-                            color: AppColors.pureWhite.withOpacity(0.7),
-                            fontSize: 10,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // Info Panel
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.darkGrey,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info, color: AppColors.neonGreen, size: 16),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Data akan dikirim sebagai 11 values:',
-                                style: TextStyle(
-                                  color: AppColors.pureWhite,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '10 frame values + 1 channel value',
-                                style: TextStyle(
-                                  color: AppColors.neonGreen,
-                                  fontSize: 11,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Frame yang kosong akan diisi 0',
-                                style: TextStyle(
-                                  color: AppColors.pureWhite.withOpacity(0.8),
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ],
-                          ),
                         ),
                       ],
                     ),
@@ -430,25 +314,6 @@ class _MapEditorModalState extends State<MapEditorModal> {
                             ),
                             Text(
                               '${_ledStates.where((state) => state).length}',
-                              style: TextStyle(
-                                color: AppColors.neonGreen,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Column(
-                          children: [
-                            Text(
-                              'MAP CHANNEL',
-                              style: TextStyle(
-                                color: AppColors.neonGreen.withOpacity(0.7),
-                                fontSize: 10,
-                              ),
-                            ),
-                            Text(
-                              '$_selectedChannel',
                               style: TextStyle(
                                 color: AppColors.neonGreen,
                                 fontSize: 16,
@@ -547,19 +412,6 @@ class _MapEditorModalState extends State<MapEditorModal> {
 
                         const SizedBox(width: 12),
 
-                        // Tombol Pattern
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _fillPattern,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.neonGreen,
-                              side: BorderSide(color: AppColors.neonGreen),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                            icon: Icon(Icons.pattern, size: 18),
-                            label: Text('PATTERN'),
-                          ),
-                        ),
 
                         const SizedBox(width: 12),
 
@@ -713,21 +565,13 @@ class _MapEditorModalState extends State<MapEditorModal> {
     });
   }
 
-  void _fillPattern() {
-    setState(() {
-      // Fill dengan pattern checkerboard
-      for (int i = 0; i < _ledStates.length; i++) {
-        _ledStates[i] = (i % 2 == 0);
-      }
-    });
-  }
 
   String _getPreviewData() {
     final mapData = _convertLEDStatesToMapData();
     final paddedData = _padMapDataTo10Frames(mapData);
     
     // Format: [frame1, frame2, ..., frame10, channel]
-    final result = [...paddedData, _selectedChannel];
+    final result = [...paddedData, int.parse(_channelController.text)];
     
     return result.map((v) => v.toString().padLeft(3)).join(' ');
   }
@@ -744,19 +588,19 @@ class _MapEditorModalState extends State<MapEditorModal> {
       
       // Kirim menggunakan socket service
       final mappingCode = _getMappingCode(widget.triggerLabel);
-      widget.socketService.sendMappingData(mappingCode, paddedData, _selectedChannel);
+      widget.socketService.sendMappingData(mappingCode, paddedData, int.parse(_channelController.text));
       
       // Panggil callback
-      widget.onMapDataCreated([...paddedData, _selectedChannel]);
+      widget.onMapDataCreated([...paddedData, int.parse(_channelController.text)]);
       
       _showSnackbar(
         'Data MAP berhasil dikirim! '
-        '(${paddedData.length} frame + channel $_selectedChannel)'
+        '(${paddedData.length} frame + channel $_channelController)'
       );
       
       print('🗺️ Sent MAP data for ${widget.triggerLabel}:');
       print('   - Frames: $paddedData');
-      print('   - Channel: $_selectedChannel');
+      print('   - Channel: $_channelController');
       print('   - Code: $mappingCode');
 
       Navigator.pop(context);
@@ -790,7 +634,7 @@ class _MapEditorModalState extends State<MapEditorModal> {
     
     // Pad dengan 0 jika kurang dari 10 frame
     while (padded.length < 10) {
-      padded.add(0);
+      padded.add(000);
     }
     
     // Pastikan tidak lebih dari 10 frame
