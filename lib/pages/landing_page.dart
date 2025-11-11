@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:ninexmano_matrix/constants/app_colors.dart';
-import 'package:ninexmano_matrix/routes/routes.dart';
-import 'package:ninexmano_matrix/services/firebase_data_service.dart';
+import 'package:iTen/constants/app_colors.dart';
+import 'package:iTen/routes/routes.dart';
+import 'package:iTen/services/firebase_data_service.dart';
 
 class LandingPage extends StatefulWidget {
   const LandingPage({super.key});

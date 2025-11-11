@@ -1,6 +1,6 @@
 // services/default_animations_service.dart
-import 'package:ninexmano_matrix/models/animation_model.dart';
-import 'package:ninexmano_matrix/services/preferences_service.dart';
+import 'package:iTen/models/animation_model.dart';
+import 'package:iTen/services/preferences_service.dart';
 
 class DefaultAnimationsService {
   static final DefaultAnimationsService _instance =

@@ -1,9 +1,9 @@
 // map_editor_modal.dart
 import 'package:flutter/material.dart';
-import 'package:ninexmano_matrix/constants/app_colors.dart';
-import 'package:ninexmano_matrix/services/config_service.dart';
-import 'package:ninexmano_matrix/services/matrix_pattern_service.dart';
-import 'package:ninexmano_matrix/services/socket_service.dart';
+import 'package:iTen/constants/app_colors.dart';
+import 'package:iTen/services/config_service.dart';
+import 'package:iTen/services/matrix_pattern_service.dart';
+import 'package:iTen/services/socket_service.dart';
 
 class MapEditorModal extends StatefulWidget {
   final String triggerLabel;

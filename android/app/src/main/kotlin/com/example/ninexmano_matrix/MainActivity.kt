@@ -1,4 +1,4 @@
-package com.example.ninexmano_matrix
+package com.iTen.matrix
 
 import io.flutter.embedding.android.FlutterActivity
 

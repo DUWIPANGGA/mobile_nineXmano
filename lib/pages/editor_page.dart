@@ -1,9 +1,9 @@
 // pages/editor_page.dart
 import 'package:flutter/material.dart';
-import 'package:ninexmano_matrix/constants/app_colors.dart';
-import 'package:ninexmano_matrix/models/animation_model.dart';
-import 'package:ninexmano_matrix/services/animation_service.dart';
-import 'package:ninexmano_matrix/services/matrix_pattern_service.dart';
+import 'package:iTen/constants/app_colors.dart';
+import 'package:iTen/models/animation_model.dart';
+import 'package:iTen/services/animation_service.dart';
+import 'package:iTen/services/matrix_pattern_service.dart';
 
 class EditorPage extends StatefulWidget {
   final AnimationModel? initialAnimation;

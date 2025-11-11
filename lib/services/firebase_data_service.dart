@@ -1,10 +1,10 @@
   import 'dart:convert';
 
   import 'package:dio/dio.dart';
-  import 'package:ninexmano_matrix/models/animation_model.dart';
-  import 'package:ninexmano_matrix/models/list_animation_model.dart';
-  import 'package:ninexmano_matrix/models/system_model.dart';
-  import 'package:ninexmano_matrix/services/preferences_service.dart';
+  import 'package:iTen/models/animation_model.dart';
+  import 'package:iTen/models/list_animation_model.dart';
+  import 'package:iTen/models/system_model.dart';
+  import 'package:iTen/services/preferences_service.dart';
 
   enum FirebaseNode {
     USER,

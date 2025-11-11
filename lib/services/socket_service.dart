@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:ninexmano_matrix/services/config_service.dart';
+import 'package:iTen/services/config_service.dart';
 
 class SocketService {
   final String host;

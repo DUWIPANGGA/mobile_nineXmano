@@ -1,9 +1,9 @@
 // widgets/config_monitor_widget.dart
 import 'package:flutter/material.dart';
-import 'package:ninexmano_matrix/constants/app_colors.dart';
-import 'package:ninexmano_matrix/models/config_model.dart';
-import 'package:ninexmano_matrix/services/config_service.dart';
-import 'package:ninexmano_matrix/services/socket_service.dart';
+import 'package:iTen/constants/app_colors.dart';
+import 'package:iTen/models/config_model.dart';
+import 'package:iTen/services/config_service.dart';
+import 'package:iTen/services/socket_service.dart';
 
 class ConfigMonitorWidget extends StatefulWidget {
   final SocketService socketService;

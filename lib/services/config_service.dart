@@ -2,8 +2,8 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:ninexmano_matrix/models/config_model.dart';
-import 'package:ninexmano_matrix/services/preferences_service.dart';
+import 'package:iTen/models/config_model.dart';
+import 'package:iTen/services/preferences_service.dart';
 
 class ConfigService {
   static final ConfigService _instance = ConfigService._internal();

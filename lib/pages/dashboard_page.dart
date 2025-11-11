@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:ninexmano_matrix/constants/app_colors.dart';
-import 'package:ninexmano_matrix/pages/cloud_file_page.dart';
-import 'package:ninexmano_matrix/pages/config_monitor.dart';
-import 'package:ninexmano_matrix/pages/editor_page.dart';
-import 'package:ninexmano_matrix/pages/mapping_page.dart';
-import 'package:ninexmano_matrix/pages/my_file_page.dart';
-import 'package:ninexmano_matrix/pages/remote_page.dart';
-import 'package:ninexmano_matrix/pages/settings_page.dart';
-import 'package:ninexmano_matrix/pages/trigger_page.dart';
-import 'package:ninexmano_matrix/services/socket_service.dart';
+import 'package:iTen/constants/app_colors.dart';
+import 'package:iTen/pages/cloud_file_page.dart';
+import 'package:iTen/pages/config_monitor.dart';
+import 'package:iTen/pages/editor_page.dart';
+import 'package:iTen/pages/mapping_page.dart';
+import 'package:iTen/pages/my_file_page.dart';
+import 'package:iTen/pages/remote_page.dart';
+import 'package:iTen/pages/settings_page.dart';
+import 'package:iTen/pages/trigger_page.dart';
+import 'package:iTen/services/socket_service.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});

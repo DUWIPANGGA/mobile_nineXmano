@@ -21,7 +21,7 @@ class FirebaseRealtimeService {
         options: const FirebaseOptions(
           apiKey: "AIzaSyDge3TsELZ9DbN08MwmBIvN7AY_8F2Pqhk",
           databaseURL: "https://mano-database-ba7bb-default-rtdb.firebaseio.com/",
-          appId: "com.example.ninexmano_matrix", // Ganti dengan App ID Anda
+          appId: "com.example.iTen", // Ganti dengan App ID Anda
           messagingSenderId: "YOUR_SENDER_ID", // Ganti dengan Sender ID Anda
           projectId: "mano-database-ba7bb",
         ),

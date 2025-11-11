@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:ninexmano_matrix/constants/app_colors.dart';
-import 'package:ninexmano_matrix/models/animation_model.dart';
-import 'package:ninexmano_matrix/models/config_model.dart';
-import 'package:ninexmano_matrix/services/default_animations_service.dart'; // Tambahkan ini
-import 'package:ninexmano_matrix/services/firebase_data_service.dart';
-import 'package:ninexmano_matrix/services/preferences_service.dart';
-import 'package:ninexmano_matrix/services/socket_service.dart';
+import 'package:iTen/constants/app_colors.dart';
+import 'package:iTen/models/animation_model.dart';
+import 'package:iTen/models/config_model.dart';
+import 'package:iTen/services/default_animations_service.dart'; // Tambahkan ini
+import 'package:iTen/services/firebase_data_service.dart';
+import 'package:iTen/services/preferences_service.dart';
+import 'package:iTen/services/socket_service.dart';
 
 class MappingPage extends StatefulWidget {
   final SocketService socketService;

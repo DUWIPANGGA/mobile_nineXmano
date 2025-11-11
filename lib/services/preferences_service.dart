@@ -1,10 +1,10 @@
 // services/preferences_service.dart
 import 'dart:convert';
 
-import 'package:ninexmano_matrix/models/animation_model.dart';
-import 'package:ninexmano_matrix/models/config_model.dart';
-import 'package:ninexmano_matrix/models/list_animation_model.dart';
-import 'package:ninexmano_matrix/models/system_model.dart';
+import 'package:iTen/models/animation_model.dart';
+import 'package:iTen/models/config_model.dart';
+import 'package:iTen/models/list_animation_model.dart';
+import 'package:iTen/models/system_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PreferencesService {

@@ -3,11 +3,10 @@ import 'dart:async';
 import 'package:barcode_scan2/barcode_scan2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:ninexmano_matrix/constants/app_colors.dart';
-import 'package:ninexmano_matrix/models/config_model.dart';
-import 'package:ninexmano_matrix/services/config_service.dart';
-import 'package:ninexmano_matrix/services/preferences_service.dart';
-import 'package:ninexmano_matrix/services/socket_service.dart';
+import 'package:iTen/constants/app_colors.dart';
+import 'package:iTen/services/config_service.dart';
+import 'package:iTen/services/preferences_service.dart';
+import 'package:iTen/services/socket_service.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 class SyncPage extends StatefulWidget {
@@ -29,6 +28,10 @@ class _SyncPageState extends State<SyncPage> {
   bool _showModeActive = false;
   bool _testModeEnabled = false;
   int _speedRun = 50;
+  
+  // Connection state (SAMA SEPERTI DASHBOARD)
+  bool _isConnecting = false;
+  bool _isConnected = false;
   
   List<DeviceInfo> _syncedDevices = [];
   List<String> _logMessages = [];
@@ -55,10 +58,6 @@ class _SyncPageState extends State<SyncPage> {
 
   Future<void> _checkMasterStatus() async {
     final config = await _preferencesService.getDeviceConfig();
-    // Logic untuk menentukan master device bisa berdasarkan:
-    // - Device dengan MAC tertentu
-    // - Device pertama yang di-scan
-    // - Manual selection
     setState(() {
       _isMasterDevice = config?.email.isNotEmpty ?? false;
     });
@@ -70,48 +69,269 @@ class _SyncPageState extends State<SyncPage> {
       _handleSocketMessage(message);
     });
 
-    // Listen untuk connection status
+    // Listen untuk connection status (SAMA SEPERTI DASHBOARD)
     _connectionSubscription = widget.socketService.connectionStatus.listen((connected) {
       if (mounted) {
-        setState(() {});
+        setState(() {
+          _isConnected = connected;
+          _isConnecting = false;
+        });
       }
     });
   }
 
-  void _handleSocketMessage(String message) {
-    print('SyncPage received: $message');
-    _addLogMessage('📥: $message');
+  // ========== CONNECTION METHODS (SAMA SEPERTI DASHBOARD) ==========
 
-    if (message.startsWith('config2,')) {
-      _handleConfigShowResponse(message);
-    } else if (message.startsWith('info,')) {
-      final infoMessage = message.substring(5);
-      _showSnackbar(infoMessage);
-      _addLogMessage('💡: $infoMessage');
-    } else if (message.startsWith('CONFIG_UPDATED:')) {
-      _handleConfigUpdated(message);
+  Future<void> _connectToDevice() async {
+    if (_isConnecting || _isConnected) return;
+
+    setState(() {
+      _isConnecting = true;
+    });
+
+    await widget.socketService.connect();
+
+    if (widget.socketService.isConnected) {
+      widget.socketService.requestConfig();
     }
   }
 
-  void _handleConfigShowResponse(String message) {
-    final parts = message.split(',');
-    if (parts.length >= 6) {
-      _addLogMessage('✅ Mode Show aktif - Firmware: ${parts[1]}');
-      
-      setState(() {
-        _showModeActive = true;
-        _speedRun = int.tryParse(parts[2]) ?? 50;
-        _speedController.text = _speedRun.toString();
-      });
-    }
+  void _disconnectFromDevice() {
+    widget.socketService.disconnect();
+    setState(() {
+      _isConnected = false;
+      _isConnecting = false;
+    });
   }
 
-  void _handleConfigUpdated(String message) {
-    final deviceId = message.substring(15);
-    _addLogMessage('🔄 Config updated for device: $deviceId');
-    
-    // Refresh master status
-    _checkMasterStatus();
+  // TOMBOL CONNECTION DI POJOK ATAS (SAMA SEPERTI DASHBOARD)
+  Widget _buildConnectionButton() {
+    if (_isConnecting) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.warningYellow.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.warningYellow),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.warningYellow,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Connecting...',
+              style: TextStyle(
+                color: AppColors.warningYellow,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_isConnected) {
+      return GestureDetector(
+        onTap: () => _showConnectionMenu(context),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.successGreen.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.successGreen),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: AppColors.successGreen,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Connected',
+                style: TextStyle(
+                  color: AppColors.successGreen,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.expand_more,
+                size: 12,
+                color: AppColors.successGreen,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: _connectToDevice,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.errorRed.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.errorRed),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.wifi_off, size: 12, color: AppColors.errorRed),
+            const SizedBox(width: 6),
+            Text(
+              'Connect',
+              style: TextStyle(
+                color: AppColors.errorRed,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showConnectionMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.darkGrey,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Connection Menu',
+                style: TextStyle(
+                  color: AppColors.neonGreen,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // Connection Status
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryBlack,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _isConnected ? AppColors.successGreen : AppColors.errorRed,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: _isConnected ? AppColors.successGreen : AppColors.errorRed,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _isConnected 
+                            ? 'Connected to Device' 
+                            : 'Disconnected',
+                        style: TextStyle(
+                          color: _isConnected ? AppColors.successGreen : AppColors.errorRed,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Connection Actions
+              if (_isConnected) ...[
+                _buildConnectionAction(
+                  icon: Icons.refresh,
+                  title: 'Reconnect',
+                  onTap: _connectToDevice,
+                ),
+                _buildConnectionAction(
+                  icon: Icons.settings,
+                  title: 'Request Config',
+                  onTap: () {
+                    widget.socketService.requestConfig();
+                    Navigator.pop(context);
+                    _showSnackbar('Requesting device config...');
+                  },
+                ),
+                _buildConnectionAction(
+                  icon: Icons.wifi_off,
+                  title: 'Disconnect',
+                  onTap: () {
+                    _disconnectFromDevice();
+                    Navigator.pop(context);
+                  },
+                  isDestructive: true,
+                ),
+              ] else ...[
+                _buildConnectionAction(
+                  icon: Icons.wifi,
+                  title: 'Connect to Device',
+                  onTap: () {
+                    _connectToDevice();
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildConnectionAction({
+    required IconData icon,
+    required String title,
+    required Function() onTap,
+    bool isDestructive = false,
+  }) {
+    return ListTile(
+      leading: Icon(
+        icon,
+        color: isDestructive ? AppColors.errorRed : AppColors.neonGreen,
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: isDestructive ? AppColors.errorRed : AppColors.pureWhite,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      onTap: onTap,
+    );
   }
 
   // ========== QR CODE & SCANNING ==========
@@ -156,7 +376,7 @@ class _SyncPageState extends State<SyncPage> {
         channels: int.tryParse(parts[2]) ?? 0,
         email: parts[3],
         firmware: parts[4],
-        isOnline: false, // Akan diupdate via ESP-NOW
+        isOnline: false,
       );
       
       _addSyncedDevice(deviceInfo);
@@ -221,7 +441,6 @@ class _SyncPageState extends State<SyncPage> {
     if (!_showModeActive) return;
     
     // Logic untuk next animation berdasarkan stateRemoteShow di Arduino
-    // Ini akan dihandle oleh Arduino secara otomatis dalam playAnimShow()
     _addLogMessage('⏭️ Next animation...');
   }
 
@@ -255,44 +474,76 @@ class _SyncPageState extends State<SyncPage> {
     _addLogMessage('🎛️ Animasi $animationNumber');
   }
 
+  // ========== SOCKET MESSAGE HANDLING ==========
+
+  void _handleSocketMessage(String message) {
+    print('SyncPage received: $message');
+    _addLogMessage('📥: $message');
+
+    if (message.startsWith('config2,')) {
+      _handleConfigShowResponse(message);
+    } else if (message.startsWith('info,')) {
+      final infoMessage = message.substring(5);
+      _showSnackbar(infoMessage);
+      _addLogMessage('💡: $infoMessage');
+    } else if (message.startsWith('CONFIG_UPDATED:')) {
+      _handleConfigUpdated(message);
+    }
+  }
+
+  void _handleConfigShowResponse(String message) {
+    final parts = message.split(',');
+    if (parts.length >= 6) {
+      _addLogMessage('✅ Mode Show aktif - Firmware: ${parts[1]}');
+      
+      setState(() {
+        _showModeActive = true;
+        _speedRun = int.tryParse(parts[2]) ?? 50;
+        _speedController.text = _speedRun.toString();
+      });
+    }
+  }
+
+  void _handleConfigUpdated(String message) {
+    final deviceId = message.substring(15);
+    _addLogMessage('🔄 Config updated for device: $deviceId');
+    
+    // Refresh master status
+    _checkMasterStatus();
+  }
+
   // ========== UI BUILDERS ==========
 
-  Widget _buildConnectionStatus() {
+  Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.all(12),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
       decoration: BoxDecoration(
-        color: widget.socketService.isConnected 
-            ? AppColors.successGreen.withOpacity(0.1)
-            : AppColors.errorRed.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: widget.socketService.isConnected 
-              ? AppColors.successGreen 
-              : AppColors.errorRed,
+        color: AppColors.darkGrey,
+        border: Border(
+          bottom: BorderSide(
+            color: AppColors.neonGreen.withOpacity(0.3),
+            width: 1,
+          ),
         ),
       ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(
-            widget.socketService.isConnected ? Icons.wifi : Icons.wifi_off,
-            color: widget.socketService.isConnected 
-                ? AppColors.successGreen 
-                : AppColors.errorRed,
-            size: 20,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              widget.socketService.isConnected 
-                  ? 'Terhubung ke Device - Siap Sync'
-                  : 'DISCONNECTED - Tidak bisa sync',
-              style: TextStyle(
-                color: widget.socketService.isConnected 
-                    ? AppColors.successGreen 
-                    : AppColors.errorRed,
-                fontWeight: FontWeight.bold,
-              ),
+          // Logo/Title
+          const Text(
+            'SYNC DEVICE',
+            style: TextStyle(
+              color: AppColors.pureWhite,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
             ),
+          ),
+
+          // Connection Status Button dengan menu (SAMA SEPERTI DASHBOARD)
+          GestureDetector(
+            onTap: () => _showConnectionMenu(context),
+            child: _buildConnectionButton(),
           ),
         ],
       ),
@@ -736,7 +987,7 @@ class _SyncPageState extends State<SyncPage> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            _buildConnectionStatus(),
+            _buildHeader(), // HEADER DENGAN TOMBOL CONNECT
             const SizedBox(height: 16),
             _buildQRCodeSection(),
             const SizedBox(height: 16),

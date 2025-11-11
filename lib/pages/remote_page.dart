@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:ninexmano_matrix/constants/app_colors.dart';
-import 'package:ninexmano_matrix/services/socket_service.dart';
+import 'package:iTen/constants/app_colors.dart';
+import 'package:iTen/services/socket_service.dart';
 
 class RemotePage extends StatefulWidget {
   final SocketService socketService;

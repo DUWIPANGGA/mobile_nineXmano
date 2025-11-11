@@ -1,7 +1,7 @@
 // providers/config_provider.dart
 import 'package:flutter/material.dart';
-import 'package:ninexmano_matrix/models/config_model.dart';
-import 'package:ninexmano_matrix/services/config_service.dart';
+import 'package:iTen/models/config_model.dart';
+import 'package:iTen/services/config_service.dart';
 
 class ConfigProvider with ChangeNotifier {
   final ConfigService _configService = ConfigService();

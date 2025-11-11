@@ -1,18 +1,18 @@
 // routes/routes.dart
 import 'package:flutter/material.dart';
-import 'package:ninexmano_matrix/pages/cloud_file_page.dart';
-import 'package:ninexmano_matrix/pages/config_monitor.dart';
-import 'package:ninexmano_matrix/pages/dashboard_page.dart';
-import 'package:ninexmano_matrix/pages/database_viewer_page.dart';
-import 'package:ninexmano_matrix/pages/editor_page.dart';
-import 'package:ninexmano_matrix/pages/landing_page.dart';
-import 'package:ninexmano_matrix/pages/mapping_page.dart';
-import 'package:ninexmano_matrix/pages/my_file_page.dart';
-import 'package:ninexmano_matrix/pages/remote_page.dart';
-import 'package:ninexmano_matrix/pages/settings_page.dart';
-import 'package:ninexmano_matrix/pages/sysc_page.dart';
-import 'package:ninexmano_matrix/pages/trigger_page.dart';
-import 'package:ninexmano_matrix/services/socket_service.dart';
+import 'package:iTen/pages/cloud_file_page.dart';
+import 'package:iTen/pages/config_monitor.dart';
+import 'package:iTen/pages/dashboard_page.dart';
+import 'package:iTen/pages/database_viewer_page.dart';
+import 'package:iTen/pages/editor_page.dart';
+import 'package:iTen/pages/landing_page.dart';
+import 'package:iTen/pages/mapping_page.dart';
+import 'package:iTen/pages/my_file_page.dart';
+import 'package:iTen/pages/remote_page.dart';
+import 'package:iTen/pages/settings_page.dart';
+import 'package:iTen/pages/sysc_page.dart';
+import 'package:iTen/pages/trigger_page.dart';
+import 'package:iTen/services/socket_service.dart';
 
 class AppRoutes {
   static const String landing = '/';

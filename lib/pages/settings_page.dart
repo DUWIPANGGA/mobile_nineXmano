@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:ninexmano_matrix/constants/app_colors.dart';
-import 'package:ninexmano_matrix/models/config_model.dart';
-import 'package:ninexmano_matrix/services/preferences_service.dart';
-import 'package:ninexmano_matrix/services/socket_service.dart';
+import 'package:iTen/constants/app_colors.dart';
+import 'package:iTen/models/config_model.dart';
+import 'package:iTen/services/preferences_service.dart';
+import 'package:iTen/services/socket_service.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 class SettingsPage extends StatefulWidget {
