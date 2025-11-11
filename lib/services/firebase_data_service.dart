@@ -71,6 +71,98 @@
       }
       return nodePath;
     }
+  // Di FirebaseDataService class - update method ini
+Future<bool> saveLocalAnimationToCloud(AnimationModel animation) async {
+  try {
+    if (!_isInitialized) {
+      throw Exception('Service not initialized. Call initialize() first.');
+    }
+
+    // Ambil config dari preferences untuk mendapatkan email
+    final config = await _prefsService.getDeviceConfig();
+    
+    // Gunakan email dari config jika ada, jika kosong gunakan "CC"
+    String email = config?.email ?? 'CC';
+    if (email.isEmpty) {
+      email = 'CC';
+    }
+
+    // Format key: [jumlah channel 3 digit] [nama animasi] [email]
+    String channelPart = animation.channelCount.toString().padLeft(3, '0');
+    
+    // Bersihkan nama animasi dari karakter khusus
+    String cleanName = animation.name.replaceAll(RegExp(r'[^\w\s]'), '');
+    String key = '$channelPart $cleanName $email';
+
+    // Prepare data dalam format yang sesuai
+    List<dynamic> firebaseData = [
+      animation.channelCount.toString(),
+      animation.animationLength,
+      animation.description.isEmpty ? '' : animation.description,
+      animation.delayData,
+      ...animation.frameData,
+    ];
+
+    print('💾 Saving to cloud: $key');
+    print('📊 Data: ${firebaseData.length} elements');
+
+    // Save ke Firebase
+    final response = await _dio.put(
+      'USER/$key.json',
+      data: jsonEncode(firebaseData),
+    );
+
+    if (response.statusCode == 200) {
+      print('✅ Animation saved to cloud: $key');
+      return true;
+    }
+    
+    return false;
+  } on DioException catch (e) {
+    print('❌ Error saving animation to cloud: $e');
+    throw _handleError(e);
+  }
+}
+
+// Method untuk mendapatkan email yang akan digunakan
+Future<String> getCloudEmail() async {
+  final config = await _prefsService.getDeviceConfig();
+  String email = config?.email ?? 'CC';
+  if (email.isEmpty) {
+    email = 'CC';
+  }
+  return email;
+}
+// Method untuk save multiple animations
+Future<Map<String, bool>> saveMultipleAnimationsToCloud(
+  List<AnimationModel> animations,
+) async {
+  final results = <String, bool>{};
+  
+  for (final animation in animations) {
+    try {
+      final success = await saveLocalAnimationToCloud(animation);
+      results[animation.name] = success;
+    } catch (e) {
+      results[animation.name] = false;
+      print('❌ Failed to save ${animation.name}: $e');
+    }
+  }
+  
+  return results;
+}
+
+// Method untuk mendapatkan email dari config
+Future<String?> getDeviceEmail() async {
+  final config = await _prefsService.getDeviceConfig();
+  return config?.email;
+}
+
+// Method untuk mengecek apakah device sudah dikonfigurasi
+Future<bool> isDeviceConfigured() async {
+  final config = await _prefsService.getDeviceConfig();
+  return config != null && config.email.isNotEmpty;
+}
   Future<ListAnimationModel> getUserAnimationsWithCache() async {
       try {
         // Cek cache dulu
