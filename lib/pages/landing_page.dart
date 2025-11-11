@@ -402,9 +402,9 @@ class _LandingPageState extends State<LandingPage> {
                       : () {
                           Navigator.pushNamed(
                             context,
-                            AppRoutes.databaseViewer,
+                            AppRoutes.dashboard,
                           );
-                          print('Tombol Normal ditekan');
+                          // print('Tombol Normal ditekan');
                         },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.neonGreen,
@@ -449,7 +449,7 @@ class _LandingPageState extends State<LandingPage> {
                   onPressed: _isInitializing
                       ? null
                       : () {
-                          Navigator.pushNamed(context, AppRoutes.dashboard);
+                          Navigator.pushNamed(context, AppRoutes.sync);
                         },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,

@@ -16,6 +16,7 @@ dependencies:
   dio: ^5.9.0
   shared_preferences: ^2.5.3
   qr_flutter: ^4.1.0
+  barcode_scan2: ^4.5.1
 
 dev_dependencies:
   flutter_test:
