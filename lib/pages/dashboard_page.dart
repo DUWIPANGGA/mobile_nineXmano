@@ -60,41 +60,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   // Placeholder untuk page yang belum ada
-  Widget _buildPlaceholderPage(String title) {
-    return Scaffold(
-      backgroundColor: AppColors.primaryBlack,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.settings,
-              size: 64,
-              color: AppColors.neonGreen,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: TextStyle(
-                color: AppColors.pureWhite,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'This page is under development',
-              style: TextStyle(
-                color: AppColors.pureWhite.withOpacity(0.7),
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
+  
   void _setupSocketListeners() {
     _socketService.connectionStatus.listen((connected) {
       if (mounted) {
@@ -397,50 +363,62 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Logo
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'NINE',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.neonGreen,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                    Text(
-                      'X MANO',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.pureWhite,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
+  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  children: [
+    // Logo dari asset
+    SizedBox(
+      width: 100, // Sesuaikan ukuran sesuai kebutuhan
+      height: 40,  // Sesuaikan ukuran sesuai kebutuhan
+      child: Image.asset(
+        'assets/image/Logo_transparent.png',
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          // Fallback jika gambar tidak ditemukan
+          return const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'NINE',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.neonGreen,
+                  letterSpacing: 1,
                 ),
+              ),
+              Text(
+                'X MANO',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.pureWhite,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    ),
 
-                // Current Page Title dengan validasi index
-                Text(
-                  _getCurrentPageTitle(),
-                  style: const TextStyle(
-                    color: AppColors.pureWhite,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+    // Current Page Title dengan validasi index
+    Text(
+      _getCurrentPageTitle(),
+      style: const TextStyle(
+        color: AppColors.pureWhite,
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
 
-                // Connection Status Button dengan menu
-                GestureDetector(
-                  onTap: () => _showConnectionMenu(context),
-                  child: _buildConnectionButton(),
-                ),
-              ],
-            ),
+    // Connection Status Button dengan menu
+    GestureDetector(
+      onTap: () => _showConnectionMenu(context),
+      child: _buildConnectionButton(),
+    ),
+  ],
+),
           ),
 
           // Shortcut Menu dengan design modern

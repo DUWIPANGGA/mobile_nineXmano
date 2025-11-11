@@ -1,7 +1,6 @@
 // map_editor_modal.dart
 import 'package:flutter/material.dart';
 import 'package:ninexmano_matrix/constants/app_colors.dart';
-import 'package:ninexmano_matrix/models/config_model.dart';
 import 'package:ninexmano_matrix/services/config_service.dart';
 import 'package:ninexmano_matrix/services/matrix_pattern_service.dart';
 import 'package:ninexmano_matrix/services/socket_service.dart';
@@ -47,6 +46,7 @@ class _MapEditorModalState extends State<MapEditorModal> {
   int _channelCount = 80;
   List<bool> _ledStates = List.filled(80, false);
   final TextEditingController _channelController = TextEditingController();
+  int _selectedChannel = 1; // Default channel 1
 
   @override
   void initState() {
@@ -166,7 +166,7 @@ class _MapEditorModalState extends State<MapEditorModal> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 children: [
-                  // Channel Count Input
+                  // Channel Configuration
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
@@ -181,7 +181,7 @@ class _MapEditorModalState extends State<MapEditorModal> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'JUMLAH CHANNEL',
+                          'KONFIGURASI CHANNEL',
                           style: TextStyle(
                             color: AppColors.neonGreen,
                             fontSize: 12,
@@ -189,119 +189,143 @@ class _MapEditorModalState extends State<MapEditorModal> {
                           ),
                         ),
                         const SizedBox(height: 8),
+                        
+                        // Baris untuk jumlah channel
                         Row(
                           children: [
-                            // Input Number
                             Expanded(
-                              child: TextField(
-                                controller: _channelController,
-                                keyboardType: TextInputType.number,
-                                style: TextStyle(
-                                  color: AppColors.pureWhite,
-                                  fontSize: 16,
-                                ),
-                                decoration: InputDecoration(
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide(
-                                      color: AppColors.neonGreen,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'JUMLAH CHANNEL',
+                                    style: TextStyle(
+                                      color: AppColors.pureWhite.withOpacity(0.8),
+                                      fontSize: 10,
                                     ),
                                   ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide(
-                                      color: AppColors.neonGreen,
+                                  const SizedBox(height: 4),
+                                  TextField(
+                                    controller: _channelController,
+                                    keyboardType: TextInputType.number,
+                                    style: TextStyle(
+                                      color: AppColors.pureWhite,
+                                      fontSize: 14,
                                     ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide(
-                                      color: AppColors.neonGreen,
+                                    decoration: InputDecoration(
+                                      contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 8,
+                                      ),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(6),
+                                        borderSide: BorderSide(
+                                          color: AppColors.neonGreen,
+                                        ),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(6),
+                                        borderSide: BorderSide(
+                                          color: AppColors.neonGreen,
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(6),
+                                        borderSide: BorderSide(
+                                          color: AppColors.neonGreen,
+                                        ),
+                                      ),
+                                      hintText: '1-80',
+                                      hintStyle: TextStyle(
+                                        color: AppColors.pureWhite.withOpacity(0.5),
+                                      ),
+                                      counterText: '',
                                     ),
+                                    maxLength: 2,
                                   ),
-                                  hintText: '1-80',
-                                  hintStyle: TextStyle(
-                                    color: AppColors.pureWhite.withOpacity(0.5),
-                                  ),
-                                  counterText: '',
-                                ),
-                                maxLength: 2,
+                                ],
                               ),
                             ),
+                            
                             const SizedBox(width: 12),
-                            // Quick Buttons
-                            Column(
-                              children: [
-                                SizedBox(
-                                  width: 60,
-                                  height: 30,
-                                  child: ElevatedButton(
-                                    onPressed: () => _setChannelCount(16),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: _channelCount == 16
-                                          ? AppColors.neonGreen
-                                          : AppColors.darkGrey,
-                                      foregroundColor: _channelCount == 16
-                                          ? AppColors.primaryBlack
-                                          : AppColors.neonGreen,
-                                      padding: EdgeInsets.zero,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(6),
-                                        side: BorderSide(
-                                          color: AppColors.neonGreen,
-                                        ),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      '16',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                            
+                            // Channel selection untuk mapping
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'CHANNEL MAP',
+                                    style: TextStyle(
+                                      color: AppColors.pureWhite.withOpacity(0.8),
+                                      fontSize: 10,
                                     ),
                                   ),
-                                ),
-                                const SizedBox(height: 4),
-                                SizedBox(
-                                  width: 60,
-                                  height: 30,
-                                  child: ElevatedButton(
-                                    onPressed: () => _setChannelCount(80),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: _channelCount == 80
-                                          ? AppColors.neonGreen
-                                          : AppColors.darkGrey,
-                                      foregroundColor: _channelCount == 80
-                                          ? AppColors.primaryBlack
-                                          : AppColors.neonGreen,
-                                      padding: EdgeInsets.zero,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(6),
-                                        side: BorderSide(
-                                          color: AppColors.neonGreen,
-                                        ),
-                                      ),
+                                  const SizedBox(height: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: AppColors.neonGreen),
+                                      borderRadius: BorderRadius.circular(6),
                                     ),
-                                    child: Text(
-                                      '80',
+                                    child: DropdownButton<int>(
+                                      value: _selectedChannel,
+                                      isExpanded: true,
+                                      dropdownColor: AppColors.darkGrey,
                                       style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.pureWhite,
+                                        fontSize: 14,
                                       ),
+                                      underline: const SizedBox(),
+                                      icon: Icon(
+                                        Icons.arrow_drop_down,
+                                        color: AppColors.neonGreen,
+                                      ),
+                                      items: List.generate(16, (index) => index + 1)
+                                          .map((channel) {
+                                        return DropdownMenuItem<int>(
+                                          value: channel,
+                                          child: Text(
+                                            'Channel $channel',
+                                            style: TextStyle(
+                                              color: AppColors.pureWhite,
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                      onChanged: (value) {
+                                        if (value != null) {
+                                          setState(() {
+                                            _selectedChannel = value;
+                                          });
+                                        }
+                                      },
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ],
                         ),
+                        
+                        const SizedBox(height: 8),
+                        
+                        // Quick channel buttons
+                        Row(
+                          children: [
+                            _buildQuickChannelButton(16),
+                            const SizedBox(width: 8),
+                            _buildQuickChannelButton(32),
+                            const SizedBox(width: 8),
+                            _buildQuickChannelButton(64),
+                            const SizedBox(width: 8),
+                            _buildQuickChannelButton(80),
+                          ],
+                        ),
+                        
                         const SizedBox(height: 8),
                         Text(
-                          'Range: 1-80 channels | Grid: ${gridSize}x$gridSize',
+                          'Grid: ${gridSize}x$gridSize | Map Channel: $_selectedChannel',
                           style: TextStyle(
                             color: AppColors.pureWhite.withOpacity(0.7),
                             fontSize: 10,
@@ -313,7 +337,7 @@ class _MapEditorModalState extends State<MapEditorModal> {
 
                   const SizedBox(height: 12),
 
-                  // Info
+                  // Info Panel
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
@@ -326,12 +350,34 @@ class _MapEditorModalState extends State<MapEditorModal> {
                         Icon(Icons.info, color: AppColors.neonGreen, size: 16),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text(
-                            'Tap LED untuk menyalakan/mematikan. Grid akan menyesuaikan jumlah channel.',
-                            style: TextStyle(
-                              color: AppColors.pureWhite,
-                              fontSize: 12,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Data akan dikirim sebagai 11 values:',
+                                style: TextStyle(
+                                  color: AppColors.pureWhite,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '10 frame values + 1 channel value',
+                                style: TextStyle(
+                                  color: AppColors.neonGreen,
+                                  fontSize: 11,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Frame yang kosong akan diisi 0',
+                                style: TextStyle(
+                                  color: AppColors.pureWhite.withOpacity(0.8),
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -395,14 +441,14 @@ class _MapEditorModalState extends State<MapEditorModal> {
                         Column(
                           children: [
                             Text(
-                              'GRID SIZE',
+                              'MAP CHANNEL',
                               style: TextStyle(
                                 color: AppColors.neonGreen.withOpacity(0.7),
                                 fontSize: 10,
                               ),
                             ),
                             Text(
-                              '${gridSize}x$gridSize',
+                              '$_selectedChannel',
                               style: TextStyle(
                                 color: AppColors.neonGreen,
                                 fontSize: 16,
@@ -445,6 +491,41 @@ class _MapEditorModalState extends State<MapEditorModal> {
 
                   const SizedBox(height: 16),
 
+                  // Preview Data
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryBlack,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.neonGreen),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'PREVIEW DATA (11 VALUES):',
+                          style: TextStyle(
+                            color: AppColors.neonGreen,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _getPreviewData(),
+                          style: TextStyle(
+                            color: AppColors.pureWhite,
+                            fontSize: 10,
+                            fontFamily: 'Monospace',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
                   // Controls
                   SafeArea(
                     top: false,
@@ -466,8 +547,25 @@ class _MapEditorModalState extends State<MapEditorModal> {
 
                         const SizedBox(width: 12),
 
+                        // Tombol Pattern
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _fillPattern,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.neonGreen,
+                              side: BorderSide(color: AppColors.neonGreen),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            icon: Icon(Icons.pattern, size: 18),
+                            label: Text('PATTERN'),
+                          ),
+                        ),
+
+                        const SizedBox(width: 12),
+
                         // Tombol Kirim ke Device
                         Expanded(
+                          flex: 2,
                           child: ElevatedButton.icon(
                             onPressed: _sendToDevice,
                             style: ElevatedButton.styleFrom(
@@ -489,6 +587,37 @@ class _MapEditorModalState extends State<MapEditorModal> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildQuickChannelButton(int count) {
+    return Expanded(
+      child: SizedBox(
+        height: 30,
+        child: ElevatedButton(
+          onPressed: () => _setChannelCount(count),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _channelCount == count
+                ? AppColors.neonGreen
+                : AppColors.darkGrey,
+            foregroundColor: _channelCount == count
+                ? AppColors.primaryBlack
+                : AppColors.neonGreen,
+            padding: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(4),
+              side: BorderSide(color: AppColors.neonGreen),
+            ),
+          ),
+          child: Text(
+            '$count',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -520,8 +649,8 @@ class _MapEditorModalState extends State<MapEditorModal> {
 
     if (!isValid) {
       return Container(
-        width: 30,
-        height: 30,
+        width: 28,
+        height: 28,
         margin: const EdgeInsets.all(1),
         decoration: BoxDecoration(
           color: AppColors.darkGrey.withOpacity(0.3),
@@ -536,8 +665,8 @@ class _MapEditorModalState extends State<MapEditorModal> {
     return GestureDetector(
       onTap: () => _toggleLED(channel),
       child: Container(
-        width: 30,
-        height: 30,
+        width: 28,
+        height: 28,
         margin: const EdgeInsets.all(1),
         decoration: BoxDecoration(
           color: isOn ? AppColors.neonGreen : AppColors.primaryBlack,
@@ -550,7 +679,7 @@ class _MapEditorModalState extends State<MapEditorModal> {
               ? [
                   BoxShadow(
                     color: AppColors.neonGreen.withOpacity(0.6),
-                    blurRadius: 8,
+                    blurRadius: 6,
                     spreadRadius: 1,
                   ),
                 ]
@@ -561,7 +690,7 @@ class _MapEditorModalState extends State<MapEditorModal> {
             '$displayNumber',
             style: TextStyle(
               color: isOn ? AppColors.primaryBlack : AppColors.pureWhite,
-              fontSize: 8,
+              fontSize: 7,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -584,14 +713,64 @@ class _MapEditorModalState extends State<MapEditorModal> {
     });
   }
 
-  void _sendToDevice() {
+  void _fillPattern() {
+    setState(() {
+      // Fill dengan pattern checkerboard
+      for (int i = 0; i < _ledStates.length; i++) {
+        _ledStates[i] = (i % 2 == 0);
+      }
+    });
+  }
+
+  String _getPreviewData() {
     final mapData = _convertLEDStatesToMapData();
-    widget.onMapDataCreated(mapData);
-    Navigator.pop(context);
+    final paddedData = _padMapDataTo10Frames(mapData);
+    
+    // Format: [frame1, frame2, ..., frame10, channel]
+    final result = [...paddedData, _selectedChannel];
+    
+    return result.map((v) => v.toString().padLeft(3)).join(' ');
+  }
+
+  void _sendToDevice() {
+    if (!widget.socketService.isConnected) {
+      _showSnackbar('Harap connect ke device terlebih dahulu!', isError: true);
+      return;
+    }
+
+    try {
+      final mapData = _convertLEDStatesToMapData();
+      final paddedData = _padMapDataTo10Frames(mapData);
+      
+      // Kirim menggunakan socket service
+      final mappingCode = _getMappingCode(widget.triggerLabel);
+      widget.socketService.sendMappingData(mappingCode, paddedData, _selectedChannel);
+      
+      // Panggil callback
+      widget.onMapDataCreated([...paddedData, _selectedChannel]);
+      
+      _showSnackbar(
+        'Data MAP berhasil dikirim! '
+        '(${paddedData.length} frame + channel $_selectedChannel)'
+      );
+      
+      print('🗺️ Sent MAP data for ${widget.triggerLabel}:');
+      print('   - Frames: $paddedData');
+      print('   - Channel: $_selectedChannel');
+      print('   - Code: $mappingCode');
+
+      Navigator.pop(context);
+
+    } catch (e) {
+      _showSnackbar('Error mengirim data MAP: $e', isError: true);
+      print('❌ Error sending MAP data: $e');
+    }
   }
 
   List<int> _convertLEDStatesToMapData() {
     List<int> result = [];
+    
+    // Convert LED states ke bytes (8 LED per byte)
     for (int i = 0; i < _channelCount; i += 8) {
       int byteValue = 0;
       for (int j = 0; j < 8; j++) {
@@ -602,6 +781,52 @@ class _MapEditorModalState extends State<MapEditorModal> {
       }
       result.add(byteValue);
     }
+    
     return result;
+  }
+
+  List<int> _padMapDataTo10Frames(List<int> frameData) {
+    final List<int> padded = List<int>.from(frameData);
+    
+    // Pad dengan 0 jika kurang dari 10 frame
+    while (padded.length < 10) {
+      padded.add(0);
+    }
+    
+    // Pastikan tidak lebih dari 10 frame
+    if (padded.length > 10) {
+      padded.removeRange(10, padded.length);
+    }
+    
+    return padded;
+  }
+
+  String _getMappingCode(String triggerLabel) {
+    switch (triggerLabel) {
+      case 'LOW BEAM':
+        return 'DL'; // Data Low Beam Mapping
+      case 'HIGH BEAM':
+        return 'DH'; // Data High Beam Mapping
+      case 'FOG LAMP':
+        return 'DF'; // Data Fog Lamp Mapping
+      default:
+        return 'DM'; // Default Mapping
+    }
+  }
+
+  void _showSnackbar(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: isError ? Colors.orange : AppColors.neonGreen,
+        content: Text(
+          message,
+          style: TextStyle(
+            color: AppColors.primaryBlack,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 }

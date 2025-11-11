@@ -1149,25 +1149,27 @@ class _MappingPageState extends State<MappingPage> {
   }
 
   Widget _buildMappingItem({
-    required String label,
-    required String? selectedValue,
-    required Function(String?) onChanged,
-    required Function() sendPerAnim, // Diubah menjadi Function()
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.primaryBlack,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.neonGreen.withOpacity(0.5)),
-      ),
-      child: Row(
-        children: [
-          // Label tombol
-          Expanded(
-            flex: 2,
-            child: Text(
+  required String label,
+  required String? selectedValue,
+  required Function(String?) onChanged,
+  required Function() sendPerAnim,
+}) {
+  return Container(
+    margin: const EdgeInsets.only(bottom: 12),
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: AppColors.primaryBlack,
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: AppColors.neonGreen.withOpacity(0.5)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Baris pertama: Label dan Tombol Kirim
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
               label,
               style: const TextStyle(
                 color: AppColors.pureWhite,
@@ -1175,342 +1177,366 @@ class _MappingPageState extends State<MappingPage> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-          ),
 
-          const SizedBox(width: 10),
-
-          // Dropdown animasi
-          Expanded(
-            flex: 3,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: AppColors.darkGrey,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.neonGreen),
-              ),
-              child: DropdownButton<String>(
-                value: selectedValue,
-                isExpanded: true,
-                dropdownColor: AppColors.darkGrey,
-                style: const TextStyle(
-                  color: AppColors.pureWhite,
-                  fontSize: 14,
+            // Tombol Kirim - lebih kecil
+            SizedBox(
+              height: 28,
+              child: ElevatedButton(
+                onPressed: selectedValue != null && selectedValue!.isNotEmpty
+                    ? sendPerAnim
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.neonGreen,
+                  foregroundColor: AppColors.primaryBlack,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  disabledBackgroundColor: AppColors.darkGrey,
+                  disabledForegroundColor: AppColors.pureWhite.withOpacity(0.5),
                 ),
-                underline: const SizedBox(), // Remove default underline
-                icon: Icon(Icons.arrow_drop_down, color: AppColors.neonGreen),
-                hint: Text(
-                  'Pilih Animasi',
+                child: const Text(
+                  'KIRIM',
                   style: TextStyle(
-                    color: AppColors.pureWhite.withOpacity(0.7),
-                    fontSize: 14,
+                    fontSize: 11, 
+                    fontWeight: FontWeight.bold
                   ),
                 ),
-                items: _buildDropdownItems(),
-                onChanged: onChanged,
               ),
             ),
+          ],
+        ),
+
+        const SizedBox(height: 6),
+
+        // Baris kedua: Dropdown animasi
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            color: AppColors.darkGrey,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: AppColors.neonGreen),
           ),
-
-          const SizedBox(width: 8),
-
-          // Tombol Kirim Individual
-          Container(
-            height: 40,
-            child: ElevatedButton(
-              onPressed: selectedValue != null && selectedValue!.isNotEmpty
-                  ? sendPerAnim
-                  : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.neonGreen,
-                foregroundColor: AppColors.primaryBlack,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                disabledBackgroundColor: AppColors.darkGrey,
-                disabledForegroundColor: AppColors.pureWhite.withOpacity(0.5),
-              ),
-              child: const Text(
-                'KIRIM',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          child: DropdownButton<String>(
+            value: selectedValue,
+            isExpanded: true,
+            dropdownColor: AppColors.darkGrey,
+            style: const TextStyle(
+              color: AppColors.pureWhite,
+              fontSize: 13,
+            ),
+            underline: const SizedBox(),
+            icon: Icon(
+              Icons.arrow_drop_down, 
+              color: AppColors.neonGreen,
+              size: 20,
+            ),
+            hint: Text(
+              'Pilih animation...',
+              style: TextStyle(
+                color: AppColors.pureWhite.withOpacity(0.7),
+                fontSize: 13,
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<DropdownMenuItem<String>> _buildDropdownItems() {
-    final items = <DropdownMenuItem<String>>[
-      // Item untuk clear selection
-      DropdownMenuItem<String>(
-        value: null,
-        child: Text(
-          'Tidak ada animasi',
-          style: TextStyle(
-            color: AppColors.pureWhite.withOpacity(0.5),
-            fontStyle: FontStyle.italic,
+            items: _buildDropdownItems(),
+            onChanged: onChanged,
           ),
         ),
+      ],
+    ),
+  );
+}
+  List<DropdownMenuItem<String>> _buildDropdownItems() {
+  final items = <DropdownMenuItem<String>>[
+    // Item untuk clear selection
+    DropdownMenuItem<String>(
+      value: null,
+      child: Text(
+        'Tidak ada animasi',
+        style: TextStyle(
+          color: AppColors.pureWhite.withOpacity(0.5),
+          fontStyle: FontStyle.italic,
+        ),
+        overflow: TextOverflow.ellipsis, // Tambahkan ini
       ),
-    ];
+    ),
+  ];
 
-    // Add default animations FIRST dengan label khusus
-    items.addAll(
-      _defaultAnimations.map((animation) {
-        return DropdownMenuItem<String>(
-          value: animation.name,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Text(
+  // Add default animations FIRST dengan label khusus
+  items.addAll(
+    _defaultAnimations.map((animation) {
+      return DropdownMenuItem<String>(
+        value: animation.name,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Expanded( // Tambahkan Expanded di sini
+                  child: Text(
                     animation.name,
                     style: TextStyle(
                       color: AppColors.pureWhite,
                       fontWeight: FontWeight.bold,
                     ),
+                    overflow: TextOverflow.ellipsis, // Tambahkan ini
+                    maxLines: 1, // Tambahkan ini
                   ),
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 1,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: Colors.blue),
-                    ),
-                    child: Text(
-                      'DEFAULT',
-                      style: TextStyle(
-                        color: Colors.blue,
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                      ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.blue),
+                  ),
+                  child: Text(
+                    'DEFAULT',
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                ],
-              ),
-              Text(
-                '${animation.channelCount}C • ${animation.animationLength}L • ${animation.totalFrames}F',
-                style: TextStyle(
-                  color: AppColors.pureWhite.withOpacity(0.7),
-                  fontSize: 10,
                 ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-
-    // Add separator antara default dan user animations
-    if (_defaultAnimations.isNotEmpty && _userAnimations.isNotEmpty) {
-      items.add(
-        DropdownMenuItem<String>(
-          enabled: false,
-          value: '__separator__',
-          child: Container(
-            height: 1,
-            margin: const EdgeInsets.symmetric(vertical: 4),
-            color: AppColors.neonGreen.withOpacity(0.3),
-          ),
-        ),
-      );
-    }
-
-    // Add user animations
-    items.addAll(
-      _userAnimations.map((animation) {
-        return DropdownMenuItem<String>(
-          value: animation.name,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                animation.name,
-                style: TextStyle(
-                  color: AppColors.pureWhite,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                '${animation.channelCount}C • ${animation.animationLength}L • ${animation.totalFrames}F',
-                style: TextStyle(
-                  color: AppColors.pureWhite.withOpacity(0.7),
-                  fontSize: 10,
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-
-    return items;
-  }
-
-  Widget _buildMappingInfo(String buttonName, String? animationName) {
-    // Cari animasi di semua sumber
-    final animation = _allAnimations.firstWhere(
-      (anim) => anim.name == animationName,
-      orElse: () => AnimationModel(
-        name: '',
-        channelCount: 0,
-        animationLength: 0,
-        description: '',
-        delayData: '',
-        frameData: [],
-      ),
-    );
-
-    final isDefault = _defaultAnimations.any(
-      (anim) => anim.name == animationName,
-    );
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2.0),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 70,
-            child: Text(
-              '$buttonName:',
+              ],
+            ),
+            Text(
+              '${animation.channelCount}C • ${animation.animationLength}L • ${animation.totalFrames}F',
               style: TextStyle(
                 color: AppColors.pureWhite.withOpacity(0.7),
-                fontSize: 12,
+                fontSize: 10,
               ),
+              overflow: TextOverflow.ellipsis, // Tambahkan ini
+              maxLines: 1, // Tambahkan ini
             ),
+          ],
+        ),
+      );
+    }).toList(),
+  );
+
+  // Add separator antara default dan user animations
+  if (_defaultAnimations.isNotEmpty && _userAnimations.isNotEmpty) {
+    items.add(
+      DropdownMenuItem<String>(
+        enabled: false,
+        value: '__separator__',
+        child: Container(
+          height: 1,
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          color: AppColors.neonGreen.withOpacity(0.3),
+        ),
+      ),
+    );
+  }
+
+  // Add user animations
+  items.addAll(
+    _userAnimations.map((animation) {
+      return DropdownMenuItem<String>(
+        value: animation.name,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              animation.name,
+              style: TextStyle(
+                color: AppColors.pureWhite,
+                fontWeight: FontWeight.bold,
+              ),
+              overflow: TextOverflow.ellipsis, // Tambahkan ini
+              maxLines: 1, // Tambahkan ini
+            ),
+            Text(
+              '${animation.channelCount}C • ${animation.animationLength}L • ${animation.totalFrames}F',
+              style: TextStyle(
+                color: AppColors.pureWhite.withOpacity(0.7),
+                fontSize: 10,
+              ),
+              overflow: TextOverflow.ellipsis, // Tambahkan ini
+              maxLines: 1, // Tambahkan ini
+            ),
+          ],
+        ),
+      );
+    }).toList(),
+  );
+
+  return items;
+}
+
+ Widget _buildMappingInfo(String buttonName, String? animationName) {
+  // Cari animasi di semua sumber
+  final animation = _allAnimations.firstWhere(
+    (anim) => anim.name == animationName,
+    orElse: () => AnimationModel(
+      name: '',
+      channelCount: 0,
+      animationLength: 0,
+      description: '',
+      delayData: '',
+      frameData: [],
+    ),
+  );
+
+  final isDefault = _defaultAnimations.any(
+    (anim) => anim.name == animationName,
+  );
+
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 2.0),
+    child: Row(
+      children: [
+        SizedBox(
+          width: 70,
+          child: Text(
+            '$buttonName:',
+            style: TextStyle(
+              color: AppColors.pureWhite.withOpacity(0.7),
+              fontSize: 12,
+            ),
+            overflow: TextOverflow.ellipsis, // Tambahkan ini
+            maxLines: 1, // Tambahkan ini
           ),
-          if (animationName != null && animation.name.isNotEmpty)
-            Expanded(
-              child: Row(
-                children: [
-                  Text(
+        ),
+        if (animationName != null && animation.name.isNotEmpty)
+          Expanded(
+            child: Row(
+              children: [
+                Expanded( // Tambahkan Expanded di sini
+                  child: Text(
                     animationName,
                     style: TextStyle(
                       color: isDefault ? Colors.blue : AppColors.neonGreen,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
+                    overflow: TextOverflow.ellipsis, // Tambahkan ini
+                    maxLines: 1, // Tambahkan ini
                   ),
-                  const SizedBox(width: 6),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDefault
+                        ? Colors.blue.withOpacity(0.2)
+                        : AppColors.neonGreen.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: isDefault ? Colors.blue : AppColors.neonGreen,
+                    ),
+                  ),
+                  child: Text(
+                    isDefault ? 'DEFAULT' : 'CUSTOM',
+                    style: TextStyle(
+                      color: isDefault ? Colors.blue : AppColors.neonGreen,
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                if (!isDefault) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.neonGreen.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      '${animation.channelCount}C',
+                      style: TextStyle(
+                        color: AppColors.neonGreen,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      '${animation.animationLength}L',
+                      style: TextStyle(color: Colors.blue, fontSize: 10),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      '${animation.totalFrames}F',
+                      style: TextStyle(color: Colors.orange, fontSize: 10),
+                    ),
+                  ),
+                ] else ...[
+                  // Tampilkan index untuk default animations
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 6,
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: isDefault
-                          ? Colors.blue.withOpacity(0.2)
-                          : AppColors.neonGreen.withOpacity(0.2),
+                      color: Colors.purple.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(4),
-                      border: Border.all(
-                        color: isDefault ? Colors.blue : AppColors.neonGreen,
-                      ),
                     ),
                     child: Text(
-                      isDefault ? 'DEFAULT' : 'CUSTOM',
+                      'ID: ${_getDefaultAnimationIndex(animationName).toString().padLeft(2, '0')}',
                       style: TextStyle(
-                        color: isDefault ? Colors.blue : AppColors.neonGreen,
-                        fontSize: 8,
+                        color: Colors.purple,
+                        fontSize: 10,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  if (!isDefault) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.neonGreen.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        '${animation.channelCount}C',
-                        style: TextStyle(
-                          color: AppColors.neonGreen,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        '${animation.animationLength}L',
-                        style: TextStyle(color: Colors.blue, fontSize: 10),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        '${animation.totalFrames}F',
-                        style: TextStyle(color: Colors.orange, fontSize: 10),
-                      ),
-                    ),
-                  ] else ...[
-                    // Tampilkan index untuk default animations
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.purple.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        'ID: ${_getDefaultAnimationIndex(animationName).toString().padLeft(2, '0')}',
-                        style: TextStyle(
-                          color: Colors.purple,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
                 ],
-              ),
-            )
-          else
-            Text(
+              ],
+            ),
+          )
+        else
+          Expanded( // Tambahkan Expanded di sini juga
+            child: Text(
               'Not assigned',
               style: TextStyle(
                 color: AppColors.pureWhite.withOpacity(0.5),
                 fontSize: 12,
                 fontStyle: FontStyle.italic,
               ),
+              overflow: TextOverflow.ellipsis, // Tambahkan ini
+              maxLines: 1, // Tambahkan ini
             ),
-        ],
-      ),
-    );
-  }
+          ),
+      ],
+    ),
+  );
+}
 
   // Helper method untuk mendapatkan index animasi default
   int _getDefaultAnimationIndex(String animationName) {

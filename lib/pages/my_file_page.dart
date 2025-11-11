@@ -102,107 +102,96 @@ class _MyFilePageState extends State<MyFilePage> {
   int get _totalFiles => _defaultFiles.length + _userSelectedFiles.length;
 
   @override
+ @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.primaryBlack,
       body: Column(
         children: [
-          // Di bagian App Bar Custom di MyFilePage, ganti dengan ini:
+          // Header dengan styling matrix
           Container(
-            padding: const EdgeInsets.all(16),
-            color: AppColors.darkGrey,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.darkGrey,
+                  AppColors.primaryBlack,
+                ],
+              ),
+              border: Border(
+                bottom: BorderSide(
+                  color: AppColors.neonGreen.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.neonGreen.withOpacity(0.1),
+                  blurRadius: 10,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
             child: Row(
               children: [
-                // Title
+                // Title dengan icon
+                Icon(
+                  Icons.folder_special,
+                  color: AppColors.neonGreen,
+                  size: 28,
+                ),
+                const SizedBox(width: 12),
                 Text(
                   'MY FILES',
                   style: TextStyle(
                     color: AppColors.neonGreen,
-                    fontSize: 18,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
+                    letterSpacing: 1.5,
                   ),
                 ),
                 const Spacer(),
-
-                // Cloud Identifier Status
-                FutureBuilder(
-                  future: _firebaseService.getCloudEmail(),
-                  builder: (context, snapshot) {
-                    final email = snapshot.data ?? 'CC';
-                    final isUsingCC = email == 'CC';
-
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      margin: const EdgeInsets.only(right: 8),
-                      decoration: BoxDecoration(
-                        color: isUsingCC
-                            ? Colors.blue.withOpacity(0.2)
-                            : AppColors.neonGreen.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: isUsingCC ? Colors.blue : AppColors.neonGreen,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            isUsingCC ? Icons.cloud : Icons.email,
-                            color: isUsingCC
-                                ? Colors.blue
-                                : AppColors.neonGreen,
-                            size: 12,
-                          ),
-                          SizedBox(width: 4),
-                          Text(
-                            isUsingCC ? 'Using CC' : 'Using Email',
-                            style: TextStyle(
-                              color: isUsingCC
-                                  ? Colors.blue
-                                  : AppColors.neonGreen,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-
-                // Refresh Button
-                IconButton(
-                  onPressed: _isLoading ? null : _refreshData,
-                  icon: Icon(
-                    Icons.refresh,
-                    color: _isLoading
-                        ? AppColors.pureWhite.withOpacity(0.5)
-                        : AppColors.neonGreen,
-                  ),
-                  tooltip: 'Refresh files',
-                ),
-
-                // Statistics
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
+                    horizontal: 16,
+                    vertical: 8,
                   ),
                   decoration: BoxDecoration(
                     color: AppColors.primaryBlack,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: AppColors.neonGreen.withOpacity(0.3),
+                      color: AppColors.neonGreen.withOpacity(0.5),
                     ),
                   ),
-                  child: Text(
-                    '${_defaultFiles.length} default + ${_userSelectedFiles.length} user',
-                    style: TextStyle(
-                      color: AppColors.pureWhite,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+                  child: RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '${_defaultFiles.length}',
+                          style: TextStyle(
+                            color: Colors.blue,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextSpan(
+                          text: ' + ',
+                          style: TextStyle(
+                            color: AppColors.pureWhite.withOpacity(0.5),
+                            fontSize: 10,
+                          ),
+                        ),
+                        TextSpan(
+                          text: '${_userSelectedFiles.length}',
+                          style: TextStyle(
+                            color: AppColors.neonGreen,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -215,7 +204,22 @@ class _MyFilePageState extends State<MyFilePage> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
-              color: AppColors.darkGrey,
+              decoration: BoxDecoration(
+                color: AppColors.darkGrey,
+                border: Border(
+                  bottom: BorderSide(
+                    color: AppColors.neonGreen.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
@@ -224,21 +228,45 @@ class _MyFilePageState extends State<MyFilePage> {
                     Expanded(
                       child: Container(
                         margin: const EdgeInsets.only(right: 8),
+                        height: 45,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.red.withOpacity(0.8),
+                              Colors.red.withOpacity(0.6),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.red.withOpacity(0.3),
+                              blurRadius: 8,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
                         child: ElevatedButton(
                           onPressed: _deleteSelectedFiles,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
+                            backgroundColor: Colors.transparent,
                             foregroundColor: AppColors.pureWhite,
+                            shadowColor: Colors.transparent,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(10),
                             ),
                           ),
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.delete, size: 18),
-                              SizedBox(width: 4),
-                              Text('DELETE'),
+                              Icon(Icons.delete_forever, size: 18),
+                              SizedBox(width: 6),
+                              Text(
+                                'DELETE',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -251,21 +279,45 @@ class _MyFilePageState extends State<MyFilePage> {
                       margin: EdgeInsets.only(
                         left: _selectedFiles.isNotEmpty ? 8 : 0,
                       ),
+                      height: 45,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.neonGreen.withOpacity(0.9),
+                            AppColors.neonGreen.withOpacity(0.7),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.neonGreen.withOpacity(0.4),
+                            blurRadius: 8,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
                       child: ElevatedButton(
                         onPressed: _saveToCloud,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.neonGreen,
+                          backgroundColor: Colors.transparent,
                           foregroundColor: AppColors.primaryBlack,
+                          shadowColor: Colors.transparent,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(10),
                           ),
                         ),
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.cloud_upload, size: 18),
-                            SizedBox(width: 4),
-                            Text('SAVE TO CLOUD'),
+                            SizedBox(width: 6),
+                            Text(
+                              'SAVE TO CLOUD',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -275,21 +327,48 @@ class _MyFilePageState extends State<MyFilePage> {
               ),
             ),
 
-          // Separator Line
-          Container(height: 1, color: AppColors.neonGreen.withOpacity(0.3)),
-
           // Loading Indicator
           if (_isLoading)
-            const Expanded(
+            Expanded(
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(color: AppColors.neonGreen),
-                    SizedBox(height: 16),
-                    Text(
-                      'Loading your files...',
-                      style: TextStyle(color: AppColors.pureWhite),
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppColors.darkGrey,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: AppColors.neonGreen.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(
+                            color: AppColors.neonGreen,
+                            strokeWidth: 3,
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            'Loading your files...',
+                            style: TextStyle(
+                              color: AppColors.pureWhite,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Please wait while we load your animations',
+                            style: TextStyle(
+                              color: AppColors.pureWhite.withOpacity(0.7),
+                              fontSize: 12,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -299,26 +378,73 @@ class _MyFilePageState extends State<MyFilePage> {
           else if (_errorMessage.isNotEmpty)
             Expanded(
               child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.error_outline, color: Colors.red, size: 48),
-                    const SizedBox(height: 16),
-                    Text(
-                      _errorMessage,
-                      style: const TextStyle(color: Colors.red),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: _refreshData,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.neonGreen,
-                        foregroundColor: AppColors.primaryBlack,
+                child: Container(
+                  margin: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: AppColors.darkGrey,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.red.withOpacity(0.5)),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        color: Colors.red,
+                        size: 48,
                       ),
-                      child: const Text('RETRY'),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      Text(
+                        'Oops! Something went wrong',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        _errorMessage,
+                        style: TextStyle(
+                          color: AppColors.pureWhite,
+                          fontSize: 14,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 20),
+                      Container(
+                        height: 45,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppColors.neonGreen.withOpacity(0.9),
+                              AppColors.neonGreen.withOpacity(0.7),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: ElevatedButton(
+                          onPressed: _refreshData,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            foregroundColor: AppColors.primaryBlack,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: const Text(
+                            'TRY AGAIN',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             )
@@ -326,44 +452,86 @@ class _MyFilePageState extends State<MyFilePage> {
           else if (_totalFiles == 0)
             Expanded(
               child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.folder_open,
-                      color: AppColors.pureWhite.withOpacity(0.5),
-                      size: 64,
+                child: Container(
+                  margin: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: AppColors.darkGrey,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppColors.neonGreen.withOpacity(0.3),
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No files found',
-                      style: TextStyle(
-                        color: AppColors.pureWhite.withOpacity(0.7),
-                        fontSize: 16,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.folder_open,
+                        color: AppColors.neonGreen.withOpacity(0.5),
+                        size: 64,
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Download animations from Cloud Files to get started',
-                      style: TextStyle(
-                        color: AppColors.pureWhite.withOpacity(0.5),
-                        fontSize: 12,
+                      const SizedBox(height: 20),
+                      Text(
+                        'No Animations Found',
+                        style: TextStyle(
+                          color: AppColors.pureWhite,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: () {
-                        // Navigate to Cloud Files page
-                        // Navigator.push(context, MaterialPageRoute(builder: (context) => CloudFilePage()));
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.neonGreen,
-                        foregroundColor: AppColors.primaryBlack,
+                      const SizedBox(height: 12),
+                      Text(
+                        'Your animation library is empty.\nDownload animations from Cloud Files to get started.',
+                        style: TextStyle(
+                          color: AppColors.pureWhite.withOpacity(0.7),
+                          fontSize: 14,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      child: const Text('GO TO CLOUD FILES'),
-                    ),
-                  ],
+                      const SizedBox(height: 24),
+                      Container(
+                        height: 45,
+                        width: 200,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppColors.neonGreen.withOpacity(0.9),
+                              AppColors.neonGreen.withOpacity(0.7),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.neonGreen.withOpacity(0.3),
+                              blurRadius: 10,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          onPressed: () {
+                            // Navigate to Cloud Files page
+                            // Navigator.push(context, MaterialPageRoute(builder: (context) => CloudFilePage()));
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            foregroundColor: AppColors.primaryBlack,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: const Text(
+                            'GO TO CLOUD FILES',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             )
@@ -371,6 +539,7 @@ class _MyFilePageState extends State<MyFilePage> {
           else
             Expanded(
               child: ListView.builder(
+                padding: const EdgeInsets.all(16),
                 itemCount: _totalFiles,
                 itemBuilder: (context, index) {
                   final file = _getFile(index);
@@ -380,66 +549,110 @@ class _MyFilePageState extends State<MyFilePage> {
                       : _selectedFiles.contains(index);
 
                   return Container(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 6,
-                    ),
+                    margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
                       color: AppColors.darkGrey,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: isSelected
                             ? (isDefault ? Colors.blue : AppColors.neonGreen)
-                            : Colors.transparent,
-                        width: 2,
+                            : AppColors.neonGreen.withOpacity(0.2),
+                        width: isSelected ? 3 : 1,
                       ),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.3),
-                          blurRadius: 4,
+                          blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
+                        if (isSelected)
+                          BoxShadow(
+                            color: (isDefault ? Colors.blue : AppColors.neonGreen)
+                                .withOpacity(0.3),
+                            blurRadius: 10,
+                            spreadRadius: 2,
+                          ),
                       ],
                     ),
                     child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       leading: isDefault
-                          ? Icon(Icons.security, color: Colors.blue, size: 24)
-                          : Checkbox(
-                              value: isSelected,
-                              onChanged: (value) {
-                                setState(() {
-                                  if (value == true) {
-                                    _selectedFiles.add(index);
-                                  } else {
-                                    _selectedFiles.remove(index);
-                                  }
-                                });
-                              },
-                              checkColor: AppColors.primaryBlack,
-                              fillColor: MaterialStateProperty.all(
-                                AppColors.neonGreen,
+                          ? Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.blue),
+                              ),
+                              child: Icon(
+                                Icons.verified_user,
+                                color: Colors.blue,
+                                size: 24,
+                              ),
+                            )
+                          : Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? AppColors.neonGreen
+                                    : AppColors.neonGreen.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? AppColors.neonGreen
+                                      : AppColors.neonGreen.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Checkbox(
+                                value: isSelected,
+                                onChanged: (value) {
+                                  setState(() {
+                                    if (value == true) {
+                                      _selectedFiles.add(index);
+                                    } else {
+                                      _selectedFiles.remove(index);
+                                    }
+                                  });
+                                },
+                                checkColor: AppColors.primaryBlack,
+                                fillColor: MaterialStateProperty.all(
+                                  isSelected
+                                      ? AppColors.neonGreen
+                                      : Colors.transparent,
+                                ),
+                                side: BorderSide(
+                                  color: AppColors.neonGreen.withOpacity(0.5),
+                                ),
                               ),
                             ),
                       title: Row(
                         children: [
-                          Text(
-                            file.name,
-                            style: TextStyle(
-                              color: AppColors.pureWhite,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                          Expanded(
+                            child: Text(
+                              file.name,
+                              style: TextStyle(
+                                color: AppColors.pureWhite,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
                             ),
                           ),
                           if (isDefault) ...[
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
+                                horizontal: 8,
+                                vertical: 4,
                               ),
                               decoration: BoxDecoration(
                                 color: Colors.blue.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.blue),
                               ),
                               child: Text(
                                 'DEFAULT',
@@ -456,77 +669,78 @@ class _MyFilePageState extends State<MyFilePage> {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          const SizedBox(height: 6),
                           Text(
                             file.description.isEmpty
-                                ? 'No description'
+                                ? 'No description available'
                                 : file.description,
                             style: TextStyle(
-                              color: AppColors.pureWhite.withOpacity(0.8),
+                              color: AppColors.pureWhite.withOpacity(0.7),
                               fontSize: 12,
                             ),
-                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 8),
                           Row(
                             children: [
                               // Channel Count
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
+                                  horizontal: 8,
+                                  vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.neonGreen.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(4),
+                                  color: AppColors.neonGreen.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
                                   '${file.channelCount}C',
                                   style: TextStyle(
                                     color: AppColors.neonGreen,
-                                    fontSize: 10,
+                                    fontSize: 11,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 6),
 
                               // Animation Length
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
+                                  horizontal: 8,
+                                  vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.blue.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(4),
+                                  color: Colors.blue.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
                                   '${file.animationLength}L',
                                   style: TextStyle(
                                     color: Colors.blue,
-                                    fontSize: 10,
+                                    fontSize: 11,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 6),
 
                               // Frame Count
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
+                                  horizontal: 8,
+                                  vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.orange.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(4),
+                                  color: Colors.orange.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
                                   '${file.totalFrames}F',
                                   style: TextStyle(
                                     color: Colors.orange,
-                                    fontSize: 10,
+                                    fontSize: 11,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -534,13 +748,7 @@ class _MyFilePageState extends State<MyFilePage> {
                               const Spacer(),
 
                               // Validation Status
-                              Icon(
-                                file.isValid ? Icons.check_circle : Icons.error,
-                                color: file.isValid
-                                    ? AppColors.neonGreen
-                                    : Colors.red,
-                                size: 16,
-                              ),
+
                             ],
                           ),
                         ],
@@ -548,6 +756,7 @@ class _MyFilePageState extends State<MyFilePage> {
                       trailing: Icon(
                         Icons.animation,
                         color: isDefault ? Colors.blue : AppColors.neonGreen,
+                        size: 24,
                       ),
                       onTap: () {
                         if (!isDefault) {
@@ -571,19 +780,24 @@ class _MyFilePageState extends State<MyFilePage> {
         ],
       ),
 
-      // Refresh indicator
+      // Refresh FAB dengan styling
       floatingActionButton: _isLoading
           ? null
-          : FloatingActionButton(
-              onPressed: _refreshData,
-              backgroundColor: AppColors.neonGreen,
-              foregroundColor: AppColors.primaryBlack,
-              mini: true,
-              child: const Icon(Icons.refresh),
+          : Container(
+              margin: const EdgeInsets.only(bottom: 16, right: 16),
+              child: FloatingActionButton(
+                onPressed: _refreshData,
+                backgroundColor: AppColors.neonGreen,
+                foregroundColor: AppColors.primaryBlack,
+                elevation: 8,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(Icons.refresh, size: 24),
+              ),
             ),
     );
   }
-
   void _deleteSelectedFiles() {
     if (_selectedFiles.isEmpty) return;
 

@@ -168,7 +168,7 @@ class _LandingPageState extends State<LandingPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Logo/Tulisan NINE X Mano dengan animasi
+                    // Logo NINE X Mano dari asset
                     _buildLogoSection(),
 
                     const SizedBox(height: 40),
@@ -278,7 +278,7 @@ class _LandingPageState extends State<LandingPage> {
   Widget _buildLogoSection() {
     return Column(
       children: [
-        // Glow effect untuk NINE
+        // Logo dari asset dengan glow effect
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
@@ -290,58 +290,65 @@ class _LandingPageState extends State<LandingPage> {
               ),
             ],
           ),
-          child: const Text(
-            'NINE',
-            style: TextStyle(
-              fontSize: 64,
-              fontWeight: FontWeight.w900,
-              color: AppColors.neonGreen,
-              letterSpacing: 3,
-              shadows: [Shadow(blurRadius: 10, color: AppColors.neonGreen)],
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 8),
-
-        // X dengan efek modern
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                AppColors.neonGreen.withOpacity(0.1),
-                AppColors.neonGreen.withOpacity(0.05),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppColors.neonGreen.withOpacity(0.3),
-              width: 1,
-            ),
-          ),
-          child: const Text(
-            'X',
-            style: TextStyle(
-              fontSize: 42,
-              fontWeight: FontWeight.w700,
-              color: AppColors.pureWhite,
-              letterSpacing: 2,
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 8),
-
-        // MANO dengan style yang konsisten
-        const Text(
-          'MANO',
-          style: TextStyle(
-            fontSize: 48,
-            fontWeight: FontWeight.w800,
-            color: AppColors.pureWhite,
-            letterSpacing: 2,
-            shadows: [Shadow(blurRadius: 5, color: Colors.black)],
+          child: Image.asset(
+            'assets/image/Logo_transparent.png',
+            width: 280, // Sesuaikan ukuran sesuai kebutuhan
+            height: 120, // Sesuaikan ukuran sesuai kebutuhan
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              // Fallback jika gambar tidak ditemukan
+              return Column(
+                children: [
+                  const Text(
+                    'NINE',
+                    style: TextStyle(
+                      fontSize: 64,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.neonGreen,
+                      letterSpacing: 3,
+                      shadows: [Shadow(blurRadius: 10, color: AppColors.neonGreen)],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.neonGreen.withOpacity(0.1),
+                          AppColors.neonGreen.withOpacity(0.05),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.neonGreen.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: const Text(
+                      'X',
+                      style: TextStyle(
+                        fontSize: 42,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.pureWhite,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'MANO',
+                    style: TextStyle(
+                      fontSize: 48,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.pureWhite,
+                      letterSpacing: 2,
+                      shadows: [Shadow(blurRadius: 5, color: Colors.black)],
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
 

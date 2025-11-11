@@ -555,6 +555,41 @@ class _TriggerPageState extends State<TriggerPage> {
         return 1;
     }
   }
+// Di TriggerPage - tambahkan method untuk kirim semua settings
+Future<void> _sendAllTriggerSettings() async {
+  if (!widget.socketService.isConnected) {
+    _showSnackbar('Harap connect ke device terlebih dahulu!', isError: true);
+    return;
+  }
+
+  try {
+    print('🔄 Mengirim semua trigger settings...');
+
+    // Kirim QUICK setting (jika ada)
+    if (_selectedQuick != null && _selectedQuick != 'MATI') {
+      _sendQuickSetting('QUICK', _selectedQuick);
+    }
+
+    // Kirim MAP toggle settings
+    _sendMapToggleIfActive('LOW BEAM', _selectedLowBeam);
+    _sendMapToggleIfActive('HIGH BEAM', _selectedHighBeam); 
+    _sendMapToggleIfActive('FOG LAMP', _selectedFogLamp);
+
+    _showSnackbar('Semua trigger settings berhasil dikirim!');
+    
+  } catch (e) {
+    _showSnackbar('Error mengirim trigger settings: $e', isError: true);
+    print('❌ Error sending all trigger settings: $e');
+  }
+}
+
+// Method untuk kirim MAP toggle jika aktif
+void _sendMapToggleIfActive(String triggerLabel, String? setting) {
+  if (setting == 'MAP STATIS' || setting == 'MAP DINAMIS') {
+    final isStatic = setting == 'MAP STATIS';
+    _sendMapToggleCommand(triggerLabel, isStatic);
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -949,176 +984,168 @@ class _TriggerPageState extends State<TriggerPage> {
     );
   }
 
-  // FIXED: Implementasi _buildTriggerItem yang benar
-  Widget _buildTriggerItem({
-    required String label,
-    required String? selectedValue,
-    required Function(String?) onChanged,
-  }) {
-    final isConnected = widget.socketService.isConnected;
+  // Di TriggerPage - ganti _buildTriggerItem dengan ini
+Widget _buildTriggerItem({
+  required String label,
+  required String? selectedValue,
+  required Function(String?) onChanged,
+}) {
+  final isConnected = widget.socketService.isConnected;
 
-    // HAPUS CUSTOM ANIMATION - hanya MAP modes saja
-    // final List<String> triggerOptions = [
-    //   "MATI",
-    //   "MAP STATIS",
-    //   "MAP DINAMIS",
-    //   // HAPUS: ..._userAnimations.map((anim) => anim.name),
-    // ];
+  // Tentukan apakah mode MAP aktif dan jenisnya
+  bool isMapStatic = selectedValue == 'MAP STATIS';
+  bool isMapDynamic = selectedValue == 'MAP DINAMIS';
+  bool isMapActive = isMapStatic || isMapDynamic;
 
-    // Tentukan apakah mode MAP aktif dan jenisnya
-    bool isMapStatic = selectedValue == 'MAP STATIS';
-    bool isMapDynamic = selectedValue == 'MAP DINAMIS';
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.primaryBlack,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isConnected
-              ? AppColors.neonGreen.withOpacity(0.5)
-              : AppColors.neonGreen.withOpacity(0.2),
-        ),
+  return Container(
+    margin: const EdgeInsets.only(bottom: 16),
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: AppColors.primaryBlack,
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(
+        color: isConnected
+            ? AppColors.neonGreen.withOpacity(0.5)
+            : AppColors.neonGreen.withOpacity(0.2),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Baris pertama: Label dan Dropdown
-          Row(
-            children: [
-              // Label trigger
-              Expanded(
-                flex: 2,
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    color: isConnected
-                        ? AppColors.pureWhite
-                        : AppColors.pureWhite.withOpacity(0.5),
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Baris pertama: Label
+        Row(
+          children: [
+            // Label trigger
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isConnected
+                      ? AppColors.pureWhite
+                      : AppColors.pureWhite.withOpacity(0.5),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-
-              const SizedBox(width: 10),
-
-              // Dropdown opsi trigger
-            ],
-          ),
-
-          // Baris kedua: Tombol MAP dan Toggle (hanya muncul jika MAP dipilih)
-          // if (isMapStatic || isMapDynamic) ...[
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.darkGrey.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(8),
             ),
-            child: Row(
-              children: [
-                // Tombol MAP - Bisa diklik untuk buka editor
-                Expanded(
-                  child: GestureDetector(
-                    onTap: isConnected ? () => _openMapEditor(label) : null,
-                    child: Container(
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: isConnected
-                            ? AppColors.neonGreen
-                            : AppColors.neonGreen.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Center(
-                        child: Text(
-                          'MAP',
-                          style: TextStyle(
-                            color: isConnected
-                                ? AppColors.primaryBlack
-                                : AppColors.primaryBlack.withOpacity(0.5),
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
+          ],
+        ),
+
+        const SizedBox(height: 12),
+
+        // Baris kedua: Tombol MAP dan Toggle
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.darkGrey.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              // Tombol MAP - Bisa diklik untuk buka editor
+              Expanded(
+                child: GestureDetector(
+                  onTap: isConnected ? () => _openMapEditor(label) : null,
+                  child: Container(
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: isConnected
+                          ? AppColors.neonGreen
+                          : AppColors.neonGreen.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Center(
+                      child: Text(
+                        'MAP',
+                        style: TextStyle(
+                          color: isConnected
+                              ? AppColors.primaryBlack
+                              : AppColors.primaryBlack.withOpacity(0.5),
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
                   ),
                 ),
+              ),
 
-                const SizedBox(width: 16),
+              const SizedBox(width: 16),
 
-                // Label KEDIP
-                Text(
-                  'KEDIP',
-                  style: TextStyle(
-                    color: isMapDynamic
-                        ? (isConnected
-                              ? AppColors.neonGreen
-                              : AppColors.neonGreen.withOpacity(0.3))
-                        : AppColors.pureWhite.withOpacity(
-                            isConnected ? 0.5 : 0.3,
-                          ),
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
+              // Label KEDIP
+              Text(
+                'KEDIP',
+                style: TextStyle(
+                  color: isMapDynamic
+                      ? (isConnected
+                            ? AppColors.neonGreen
+                            : AppColors.neonGreen.withOpacity(0.3))
+                      : AppColors.pureWhite.withOpacity(
+                          isConnected ? 0.5 : 0.3,
+                        ),
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
                 ),
+              ),
 
-                const SizedBox(width: 8),
+              const SizedBox(width: 8),
 
-                // Toggle Switch
-                Transform.scale(
-                  scale: 0.8,
-                  child: Switch(
-                    value: isMapStatic,
-                    activeColor: isConnected
-                        ? AppColors.neonGreen
-                        : AppColors.neonGreen.withOpacity(0.3),
-                    activeTrackColor: isConnected
-                        ? AppColors.neonGreen.withOpacity(0.3)
-                        : AppColors.neonGreen.withOpacity(0.1),
-                    inactiveThumbColor: isConnected
-                        ? AppColors.pureWhite
-                        : AppColors.pureWhite.withOpacity(0.3),
-                    inactiveTrackColor: isConnected
-                        ? AppColors.pureWhite.withOpacity(0.3)
-                        : AppColors.pureWhite.withOpacity(0.1),
-                    onChanged: isConnected
-                        ? (value) {
-                            // Toggle antara MAP STATIS dan MAP DINAMIS
-                            final newValue = value
-                                ? 'MAP STATIS'
-                                : 'MAP DINAMIS';
-                            onChanged(newValue);
-                          }
-                        : null,
-                  ),
+              // Toggle Switch - Kirim format [kode][0/1]
+              Transform.scale(
+                scale: 0.8,
+                child: Switch(
+                  value: isMapStatic,
+                  activeColor: isConnected
+                      ? AppColors.neonGreen
+                      : AppColors.neonGreen.withOpacity(0.3),
+                  activeTrackColor: isConnected
+                      ? AppColors.neonGreen.withOpacity(0.3)
+                      : AppColors.neonGreen.withOpacity(0.1),
+                  inactiveThumbColor: isConnected
+                      ? AppColors.pureWhite
+                      : AppColors.pureWhite.withOpacity(0.3),
+                  inactiveTrackColor: isConnected
+                      ? AppColors.pureWhite.withOpacity(0.3)
+                      : AppColors.pureWhite.withOpacity(0.1),
+                  onChanged: isConnected
+                      ? (value) {
+                          // Toggle antara MAP STATIS dan MAP DINAMIS
+                          final newValue = value
+                              ? 'MAP STATIS'
+                              : 'MAP DINAMIS';
+                          onChanged(newValue);
+
+                          // Kirim toggle command ke device
+                          _sendMapToggleCommand(label, value);
+                        }
+                      : null,
                 ),
+              ),
 
-                const SizedBox(width: 8),
+              const SizedBox(width: 8),
 
-                // Label STATIS
-                Text(
-                  'STATIS',
-                  style: TextStyle(
-                    color: isMapStatic
-                        ? (isConnected
-                              ? AppColors.neonGreen
-                              : AppColors.neonGreen.withOpacity(0.3))
-                        : AppColors.pureWhite.withOpacity(
-                            isConnected ? 0.5 : 0.3,
-                          ),
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
+              // Label STATIS
+              Text(
+                'STATIS',
+                style: TextStyle(
+                  color: isMapStatic
+                      ? (isConnected
+                            ? AppColors.neonGreen
+                            : AppColors.neonGreen.withOpacity(0.3))
+                      : AppColors.pureWhite.withOpacity(
+                          isConnected ? 0.5 : 0.3,
+                        ),
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
+        ),
 
-          // Info tambahan untuk mode MAP
-          const SizedBox(height: 8),
+        // Info tambahan untuk mode MAP
+        const SizedBox(height: 8),
+        if (isMapActive)
           Text(
             isMapStatic
                 ? 'Mode MAP STATIS: Gambar tetap menyala'
@@ -1128,11 +1155,51 @@ class _TriggerPageState extends State<TriggerPage> {
               fontSize: 11,
             ),
           ),
-          // ],
-        ],
-      ),
-    );
+        
+        // Status MAP aktif/nonaktif
+        const SizedBox(height: 4),
+        Text(
+          isMapActive ? 'MAP AKTIF' : 'MAP NONAKTIF',
+          style: TextStyle(
+            color: isMapActive 
+                ? AppColors.neonGreen.withOpacity(isConnected ? 1.0 : 0.3)
+                : AppColors.pureWhite.withOpacity(isConnected ? 0.5 : 0.3),
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+// Method untuk kirim toggle command [kode][0/1]
+void _sendMapToggleCommand(String triggerLabel, bool isStatic) {
+  if (!widget.socketService.isConnected) return;
+
+  try {
+    final triggerCode = _getMapToggleCode(triggerLabel);
+    widget.socketService.sendTriggerToggle(triggerCode, isStatic);
+    
+    print('🔘 Sent MAP toggle: $triggerCode${isStatic ? 1 : 0}');
+    _showSnackbar('$triggerLabel: ${isStatic ? 'STATIS' : 'KEDIP'}');
+  } catch (e) {
+    print('❌ Error sending MAP toggle: $e');
   }
+}
+
+String _getMapToggleCode(String triggerLabel) {
+  switch (triggerLabel) {
+    case 'LOW BEAM':
+      return 'ML'; // Map Low Beam
+    case 'HIGH BEAM':
+      return 'MH'; // Map High Beam  
+    case 'FOG LAMP':
+      return 'MF'; // Map Fog Lamp
+    default:
+      return 'MX'; // Default Map
+  }
+}
 
   // FIXED: Implementasi _buildQuickItem yang benar
   Widget _buildQuickItem({

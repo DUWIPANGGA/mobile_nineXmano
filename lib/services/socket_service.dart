@@ -420,7 +420,44 @@ class SocketService {
   void setTriggerHigh(int value) => send('SH$value');
   void setTriggerFog(int value) => send('SF$value');
   void setQuickTrigger(int value) => send('SQ$value');
+// Di SocketService class - tambahkan method ini
 
+/// Kirim trigger toggle (0 atau 1)
+void sendTriggerToggle(String triggerCode, bool isActive) {
+  final value = isActive ? 1 : 0;
+  send('$triggerCode$value');
+  print('🔘 Trigger Toggle: $triggerCode$value');
+}
+
+/// Kirim mapping data (10 frame + 1 channel)
+void sendMappingData(String mappingCode, List<int> frameData, int channel) {
+  // Validasi frame data harus 10 elements
+  final paddedFrameData = List<int>.from(frameData);
+  
+  // Pad dengan 0 jika kurang dari 10 frame
+  while (paddedFrameData.length < 10) {
+    paddedFrameData.add(0);
+  }
+  
+  // Pastikan tidak lebih dari 10 frame
+  if (paddedFrameData.length > 10) {
+    paddedFrameData.removeRange(10, paddedFrameData.length);
+  }
+  
+  // Format: [code][frame1],[frame2],...,[frame10],[channel]
+  final frameString = paddedFrameData.take(10).join(',');
+  final data = '$frameString,$channel';
+  
+  send('$mappingCode$data');
+  print('🗺️ Mapping Data: $mappingCode$data');
+  print('   - Frames: ${paddedFrameData.length} (padded to 10)');
+  print('   - Channel: $channel');
+}
+
+/// Kirim mapping data dengan List<int> untuk frames
+void sendMappingDataWithList(String mappingCode, List<int> frames, int channel) {
+  sendMappingData(mappingCode, frames, channel);
+}
   // ========== OUTGOING MESSAGES - WELCOME ANIMATION ==========
 
   /// Set welcome animation

@@ -1095,58 +1095,194 @@ class _EditorPageState extends State<EditorPage> {
   }
 
   Widget _buildBottomControls() {
-    return Card(
+  return Container(
+    margin: const EdgeInsets.all(16.0),
+    decoration: BoxDecoration(
       color: AppColors.darkGrey,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(
+        color: AppColors.neonGreen.withOpacity(0.5),
+        width: 2,
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: AppColors.neonGreen.withOpacity(0.1),
+          blurRadius: 10,
+          spreadRadius: 2,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(20.0),
+      child: Column(
+        children: [
+          // Info Section dengan styling matrix
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.primaryBlack,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.neonGreen.withOpacity(0.3),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                Text(
-                  'Channels: $_channelCount',
-                  style: const TextStyle(color: AppColors.pureWhite),
-                ),
-                Text(
-                  'Frames: $_animationLength',
-                  style: const TextStyle(color: AppColors.pureWhite),
-                ),
-                Text(
-                  'Total LEDs: ${_channelCount * _animationLength}',
-                  style: const TextStyle(color: AppColors.pureWhite),
-                ),
+                _buildInfoItem('CHANNELS', '$_channelCount', Icons.cable),
+                _buildInfoItem('FRAMES', '$_animationLength', Icons.video_label),
+                _buildInfoItem('TOTAL LEDs', '${_channelCount * _animationLength}', Icons.lightbulb),
               ],
             ),
-            Row(
-              children: [
-                OutlinedButton.icon(
-                  onPressed: _clearAllFrames,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.errorRed,
-                    side: BorderSide(color: AppColors.errorRed),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Buttons Section dengan styling modern
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Clear Button
+              Expanded(
+                child: Container(
+                  height: 50,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.red.withOpacity(0.8),
+                        Colors.red.withOpacity(0.6),
+                      ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.red.withOpacity(0.3),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
                   ),
-                  icon: const Icon(Icons.clear),
-                  label: const Text('Clear All'),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton.icon(
-                  onPressed: _saveAnimation,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.neonGreen,
-                    foregroundColor: AppColors.primaryBlack,
+                  child: ElevatedButton.icon(
+                    onPressed: _clearAllFrames,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      foregroundColor: AppColors.pureWhite,
+                      shadowColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                    icon: const Icon(Icons.delete_sweep, size: 20),
+                    label: const Text(
+                      'CLEAR',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
                   ),
-                  icon: const Icon(Icons.save),
-                  label: const Text('Save'),
                 ),
-              ],
-            ),
-          ],
+              ),
+
+              const SizedBox(width: 16),
+
+              // Save Button
+              Expanded(
+                child: Container(
+                  height: 50,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.neonGreen.withOpacity(0.9),
+                        AppColors.neonGreen.withOpacity(0.7),
+                      ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.neonGreen.withOpacity(0.4),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: ElevatedButton.icon(
+                    onPressed: _saveAnimation,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      foregroundColor: AppColors.primaryBlack,
+                      shadowColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                    icon: const Icon(Icons.save_alt, size: 20),
+                    label: const Text(
+                      'SAVE',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+// Helper widget untuk info item
+Widget _buildInfoItem(String label, String value, IconData icon) {
+  return Column(
+    children: [
+      Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppColors.neonGreen.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: AppColors.neonGreen.withOpacity(0.3),
+          ),
+        ),
+        child: Icon(
+          icon,
+          color: AppColors.neonGreen,
+          size: 20,
         ),
       ),
-    );
-  }
+      const SizedBox(height: 8),
+      Text(
+        value,
+        style: TextStyle(
+          color: AppColors.neonGreen,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          fontFamily: 'Monospace',
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        label,
+        style: TextStyle(
+          color: AppColors.pureWhite.withOpacity(0.7),
+          fontSize: 10,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 1.0,
+        ),
+      ),
+    ],
+  );
+}
 
   @override
   void dispose() {
