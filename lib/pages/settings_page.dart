@@ -39,7 +39,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
   };
   static const List<Map<String, dynamic>> _defaultAnimationsData = [
     {
-      'name': 'MaNo 01 || AUTO',
+      'name': 'Animation 01 - AUTO',
       'channelCount': 4,
       'animationLength': 10,
       'description': 'Automatic animation sequence',
@@ -47,7 +47,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 02 || AUTO ALL BUILTIN',
+      'name': 'Animation 02 - AUTO ALL BUILTIN',
       'channelCount': 4,
       'animationLength': 15,
       'description': 'All built-in automatic animations',
@@ -55,7 +55,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 03 || Baling - Baling',
+      'name': 'Animation 03 - Baling - Baling',
       'channelCount': 4,
       'animationLength': 8,
       'description': 'Propeller rotation effect',
@@ -63,7 +63,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 04 || X Loop',
+      'name': 'Animation 04 - X Loop',
       'channelCount': 4,
       'animationLength': 12,
       'description': 'X pattern looping animation',
@@ -71,7 +71,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 05 || X Run',
+      'name': 'Animation 05 - X Run',
       'channelCount': 4,
       'animationLength': 10,
       'description': 'X pattern running effect',
@@ -79,7 +79,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 06 || Baling Kedip',
+      'name': 'Animation 06 - Baling Kedip',
       'channelCount': 4,
       'animationLength': 6,
       'description': 'Blinking propeller effect',
@@ -87,7 +87,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 07 || Left Right',
+      'name': 'Animation 07 - Left Right',
       'channelCount': 4,
       'animationLength': 8,
       'description': 'Left to right movement',
@@ -95,7 +95,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 08 || Random Bit',
+      'name': 'Animation 08 - Random Bit',
       'channelCount': 4,
       'animationLength': 10,
       'description': 'Random bit pattern animation',
@@ -103,7 +103,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 09 || Swap Fill',
+      'name': 'Animation 09 - Swap Fill',
       'channelCount': 4,
       'animationLength': 8,
       'description': 'Swap and fill animation',
@@ -111,7 +111,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 10 || Every 2 Bit',
+      'name': 'Animation 10 - Every 2 Bit',
       'channelCount': 4,
       'animationLength': 12,
       'description': 'Every second bit animation',
@@ -119,7 +119,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 11 || Swap Fill LR',
+      'name': 'Animation 11 - Swap Fill LR',
       'channelCount': 4,
       'animationLength': 10,
       'description': 'Left-right swap fill animation',
@@ -127,7 +127,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 12 || Up Run',
+      'name': 'Animation 12 - Up Run',
       'channelCount': 4,
       'animationLength': 8,
       'description': 'Upward running animation',
@@ -135,7 +135,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 13 || Up Down Run',
+      'name': 'Animation 13 - Up Down Run',
       'channelCount': 4,
       'animationLength': 12,
       'description': 'Up-down running animation',
@@ -143,7 +143,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 14 || Blinking LR',
+      'name': 'Animation 14 - Blinking LR',
       'channelCount': 4,
       'animationLength': 6,
       'description': 'Left-right blinking animation',
@@ -151,7 +151,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 15 || Blinking UD',
+      'name': 'Animation 15 - Blinking UD',
       'channelCount': 4,
       'animationLength': 6,
       'description': 'Up-down blinking animation',
@@ -159,7 +159,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 16 || Random Corner',
+      'name': 'Animation 16 - Random Corner',
       'channelCount': 4,
       'animationLength': 10,
       'description': 'Random corner animation',
@@ -167,7 +167,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 17 || Fill Circle',
+      'name': 'Animation 17 - Fill Circle',
       'channelCount': 4,
       'animationLength': 15,
       'description': 'Circular fill animation',
@@ -175,7 +175,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 18 || X Pulse',
+      'name': 'Animation 18 - X Pulse',
       'channelCount': 4,
       'animationLength': 8,
       'description': 'X pattern pulsing animation',
@@ -183,7 +183,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 19 || X Blink',
+      'name': 'Animation 19 - X Blink',
       'channelCount': 4,
       'animationLength': 6,
       'description': 'X pattern blinking animation',
@@ -191,7 +191,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 20 || O Left Right',
+      'name': 'Animation 20 - O Left Right',
       'channelCount': 4,
       'animationLength': 10,
       'description': 'O pattern left-right animation',
@@ -199,7 +199,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 21 || O LR',
+      'name': 'Animation 21 - O LR',
       'channelCount': 4,
       'animationLength': 8,
       'description': 'O pattern left-right simplified',
@@ -207,7 +207,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 22 || O Out',
+      'name': 'Animation 22 - O Out',
       'channelCount': 4,
       'animationLength': 12,
       'description': 'O pattern outward animation',
@@ -215,7 +215,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 23 || Sweeper',
+      'name': 'Animation 23 - Sweeper',
       'channelCount': 4,
       'animationLength': 10,
       'description': 'Sweeping animation effect',
@@ -223,7 +223,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 24 || In Out',
+      'name': 'Animation 24 - In Out',
       'channelCount': 4,
       'animationLength': 8,
       'description': 'In-out animation pattern',
@@ -231,7 +231,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 25 || Bouncing',
+      'name': 'Animation 25 - Bouncing',
       'channelCount': 4,
       'animationLength': 12,
       'description': 'Bouncing animation effect',
@@ -239,7 +239,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 26 || Bouncing LR',
+      'name': 'Animation 26 - Bouncing LR',
       'channelCount': 4,
       'animationLength': 10,
       'description': 'Left-right bouncing animation',
@@ -247,7 +247,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 27 || Bouncing Blink',
+      'name': 'Animation 27 - Bouncing Blink',
       'channelCount': 4,
       'animationLength': 8,
       'description': 'Bouncing with blinking effect',
@@ -255,7 +255,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 28 || Fill in',
+      'name': 'Animation 28 - Fill in',
       'channelCount': 4,
       'animationLength': 10,
       'description': 'Fill in animation pattern',
@@ -263,7 +263,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 29 || X swap',
+      'name': 'Animation 29 - X swap',
       'channelCount': 4,
       'animationLength': 8,
       'description': 'X pattern swap animation',
@@ -271,7 +271,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 30 || Fill Right',
+      'name': 'Animation 30 - Fill Right',
       'channelCount': 4,
       'animationLength': 10,
       'description': 'Right fill animation',
@@ -279,7 +279,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'frameData': [],
     },
     {
-      'name': 'MaNo 31 || Fill Down',
+      'name': 'Animation 31 - Fill Down',
       'channelCount': 4,
       'animationLength': 10,
       'description': 'Downward fill animation',

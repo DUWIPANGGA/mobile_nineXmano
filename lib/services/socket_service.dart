@@ -18,7 +18,7 @@ class SocketService {
   // SINGLETON INSTANCE
   static final SocketService _instance = SocketService._internal();
   factory SocketService() => _instance;
-  SocketService._internal({this.host = '192.168.4.1', this.port = 11223});
+  SocketService._internal({this.host = '192.168.4.1', this.port = 32211});
 
   Stream<String> get messages => _messageController.stream;
   Stream<List<int>> get binaryData => _binaryController.stream;

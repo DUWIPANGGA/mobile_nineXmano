@@ -1085,40 +1085,40 @@ class _MappingPageState extends State<MappingPage> {
               // ),
 
               // Info Panel
-              if (_allAnimations.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.darkGrey,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: AppColors.neonGreen.withOpacity(0.3),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Mapping Summary',
-                        style: TextStyle(
-                          color: AppColors.neonGreen,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildMappingInfo('Button A', _selectedAnimationA),
-                      _buildMappingInfo('Button B', _selectedAnimationB),
-                      _buildMappingInfo('Button C', _selectedAnimationC),
-                      _buildMappingInfo('Button D', _selectedAnimationD),
-                      const SizedBox(height: 8),
-                      Divider(color: AppColors.neonGreen.withOpacity(0.3)),
-                      _buildConnectionInfo(),
-                    ],
-                  ),
-                ),
-              ],
+              // if (_allAnimations.isNotEmpty) ...[
+              //   const SizedBox(height: 16),
+              //   Container(
+              //     width: double.infinity,
+              //     padding: const EdgeInsets.all(12),
+              //     decoration: BoxDecoration(
+              //       color: AppColors.darkGrey,
+              //       borderRadius: BorderRadius.circular(8),
+              //       border: Border.all(
+              //         color: AppColors.neonGreen.withOpacity(0.3),
+              //       ),
+              //     ),
+              //     child: Column(
+              //       crossAxisAlignment: CrossAxisAlignment.start,
+              //       children: [
+              //         Text(
+              //           'Mapping Summary',
+              //           style: TextStyle(
+              //             color: AppColors.neonGreen,
+              //             fontWeight: FontWeight.bold,
+              //           ),
+              //         ),
+              //         const SizedBox(height: 8),
+              //         _buildMappingInfo('Button A', _selectedAnimationA),
+              //         _buildMappingInfo('Button B', _selectedAnimationB),
+              //         _buildMappingInfo('Button C', _selectedAnimationC),
+              //         _buildMappingInfo('Button D', _selectedAnimationD),
+              //         const SizedBox(height: 8),
+              //         Divider(color: AppColors.neonGreen.withOpacity(0.3)),
+              //         _buildConnectionInfo(),
+              //       ],
+              //     ),
+              //   ),
+              // ],
             ],
           ),
         ),

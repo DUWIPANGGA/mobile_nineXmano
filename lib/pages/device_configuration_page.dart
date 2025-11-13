@@ -14,25 +14,26 @@ class DeviceConfigurationPage extends StatefulWidget {
   const DeviceConfigurationPage({super.key, required this.socketService});
 
   @override
-  State<DeviceConfigurationPage> createState() => _DeviceConfigurationPageState();
+  State<DeviceConfigurationPage> createState() =>
+      _DeviceConfigurationPageState();
 }
 
 class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
   final PreferencesService _preferencesService = PreferencesService();
   final ConfigService _configService = ConfigService();
-  
+
   // State variables
   bool _isScanning = false;
   bool _isConnected = false;
   bool _isConnecting = false;
-  
+
   // Device Configuration variables
   int _selectedDeviceCount = 1;
   List<DeviceSection> _deviceSections = [];
   final List<TextEditingController> _emailControllers = [];
   final List<TextEditingController> _idControllers = [];
   final List<TextEditingController> _channelControllers = [];
-  
+
   List<String> _logMessages = [];
 
   // Stream subscriptions
@@ -55,7 +56,9 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
       _handleSocketMessage(message);
     });
 
-    _connectionSubscription = widget.socketService.connectionStatus.listen((connected) {
+    _connectionSubscription = widget.socketService.connectionStatus.listen((
+      connected,
+    ) {
       if (mounted) {
         setState(() {
           _isConnected = connected;
@@ -69,16 +72,23 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
   Future<void> _loadSavedDeviceSections() async {
     try {
       await _preferencesService.initialize();
-      final savedSections = await _preferencesService.getUserSetting(_deviceSectionsKey);
-      
+      final savedSections = await _preferencesService.getUserSetting(
+        _deviceSectionsKey,
+      );
+
       if (savedSections != null && savedSections is List) {
         setState(() {
-          for (int i = 0; i < savedSections.length && i < _deviceSections.length; i++) {
+          for (
+            int i = 0;
+            i < savedSections.length && i < _deviceSections.length;
+            i++
+          ) {
             final sectionData = savedSections[i] as Map<String, dynamic>;
             _emailControllers[i].text = sectionData['email'] ?? '';
             _idControllers[i].text = sectionData['id'] ?? '';
-            _channelControllers[i].text = sectionData['channelCount']?.toString() ?? '';
-            
+            _channelControllers[i].text =
+                sectionData['channelCount']?.toString() ?? '';
+
             _deviceSections[i] = DeviceSection(
               id: sectionData['id'] ?? '',
               email: sectionData['email'] ?? '',
@@ -108,7 +118,10 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
         };
       }).toList();
 
-      await _preferencesService.saveUserSetting(_deviceSectionsKey, sectionsToSave);
+      await _preferencesService.saveUserSetting(
+        _deviceSectionsKey,
+        sectionsToSave,
+      );
       _addLogMessage('💾 Device sections saved to preferences');
     } catch (e) {
       print('❌ Error saving device sections: $e');
@@ -121,6 +134,10 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
 
   void _updateDeviceSections() {
     setState(() {
+      // Hitung jumlah device eksternal
+      int externalDeviceCount = _selectedDeviceCount - 1;
+      if (externalDeviceCount < 0) externalDeviceCount = 0;
+
       // Clear existing controllers
       for (var controller in _emailControllers) {
         controller.dispose();
@@ -131,24 +148,26 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
       for (var controller in _channelControllers) {
         controller.dispose();
       }
-      
+
       _emailControllers.clear();
       _idControllers.clear();
       _channelControllers.clear();
       _deviceSections.clear();
 
-      // Create new sections based on dropdown value
-      for (int i = 0; i < _selectedDeviceCount; i++) {
+      // Buat sections HANYA untuk device eksternal
+      for (int i = 0; i < externalDeviceCount; i++) {
         _emailControllers.add(TextEditingController());
         _idControllers.add(TextEditingController());
         _channelControllers.add(TextEditingController());
-        
-        _deviceSections.add(DeviceSection(
-          id: (i + 1).toString(),
-          email: '',
-          channelCount: 0,
-          deviceCount: i + 1,
-        ));
+
+        _deviceSections.add(
+          DeviceSection(
+            id: '', // ID akan di-load dari preferences
+            email: '',
+            channelCount: 0,
+            deviceCount: i + 2, // Device count 2, 3, 4, 5
+          ),
+        );
       }
     });
   }
@@ -167,10 +186,10 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
     if (_isScanning) return;
 
     setState(() => _isScanning = true);
-    
+
     try {
       final result = await BarcodeScanner.scan();
-      
+
       if (result.type == ResultType.Barcode) {
         await _processScannedQRCodeForSection(result.rawContent, sectionIndex);
       } else {
@@ -185,21 +204,24 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
     }
   }
 
-  Future<void> _processScannedQRCodeForSection(String qrData, int sectionIndex) async {
-    _addLogMessage('📷 Scanned for section ${sectionIndex + 1}: $qrData');
-    
+  Future<void> _processScannedQRCodeForSection(
+    String qrData,
+    int sectionIndex,
+  ) async {
+    _addLogMessage('📷 Scanned for Modul ${sectionIndex + 1}: $qrData');
+
     try {
       final parts = qrData.split(',');
       if (parts.length >= 3) {
         final email = parts[0].trim();
         final id = parts[1].trim();
         final channel = int.tryParse(parts[2].trim()) ?? 0;
-        
+
         setState(() {
           _emailControllers[sectionIndex].text = email;
           _idControllers[sectionIndex].text = id;
           _channelControllers[sectionIndex].text = channel.toString();
-          
+
           _deviceSections[sectionIndex] = DeviceSection(
             id: id,
             email: email,
@@ -207,15 +229,16 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
             deviceCount: sectionIndex + 1,
           );
         });
-        
-        _addLogMessage('✅ Section ${sectionIndex + 1} updated: $email, $id, $channel channels');
-        
+
+        _addLogMessage(
+          '✅ Modul ${sectionIndex + 1} updated: $email, $id, $channel channels',
+        );
+
         // Simpan ke preferences
         await _saveDeviceSections();
-        
+
         // Otomatis kirim data ke socket setelah scan
         _sendDeviceDataToSocket(sectionIndex);
-        
       } else {
         _showSnackbar('Format QR Code tidak valid. Harus: email,id,channel');
       }
@@ -224,53 +247,63 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
     }
   }
 
-  // Method untuk kirim data device ke socket
   void _sendDeviceDataToSocket(int sectionIndex) {
+    // sectionIndex = 0, 1, 2...
     if (!widget.socketService.isConnected) {
       _showSnackbar('Tidak terhubung ke device');
       return;
     }
+
+    // --- PERUBAHAN ---
+    final deviceNumber = sectionIndex + 2; // index 0 adalah device ke-2
+    // --- SELESAI ---
 
     final email = _emailControllers[sectionIndex].text.trim();
     final id = _idControllers[sectionIndex].text.trim();
     final channel = _channelControllers[sectionIndex].text.trim();
 
     if (email.isEmpty || id.isEmpty || channel.isEmpty) {
-      _showSnackbar('Data section ${sectionIndex + 1} belum lengkap');
+      _showSnackbar('Data Modul $deviceNumber belum lengkap');
       return;
     }
 
     // Format: XD[jumlah device],[device count],[email],[mac],[channel]
-    // Untuk device external, kita kirim dengan MAC dari ID (asumsi ID adalah MAC)
-    final command = 'XD$_selectedDeviceCount,${sectionIndex + 1},$email,$id,$channel';
+    final command = 'XD$_selectedDeviceCount,$deviceNumber,$email,$id,$channel';
     widget.socketService.send(command);
-    
+
     _addLogMessage('📤 Sent to socket: $command');
-    _showSnackbar('Data section ${sectionIndex + 1} dikirim ke device');
+    _showSnackbar('Data Modul $deviceNumber dikirim ke device');
   }
 
   // Method untuk kirim data manual (tanpa scan)
   void _sendManualDataToSocket(int sectionIndex) {
+    // sectionIndex = 0, 1, 2...
     if (!widget.socketService.isConnected) {
       _showSnackbar('Tidak terhubung ke device');
       return;
     }
+
+    // --- PERUBAHAN ---
+    final deviceNumber = sectionIndex + 2; // index 0 adalah device ke-2
+    // --- SELESAI ---
 
     final email = _emailControllers[sectionIndex].text.trim();
     final id = _idControllers[sectionIndex].text.trim();
     final channel = _channelControllers[sectionIndex].text.trim();
 
     if (email.isEmpty || id.isEmpty || channel.isEmpty) {
-      _showSnackbar('Harap lengkapi data section ${sectionIndex + 1} terlebih dahulu');
+      _showSnackbar(
+        'Harap lengkapi data Modul $deviceNumber terlebih dahulu',
+      );
       return;
     }
 
     // Format: XD[jumlah device],[device count],[email],[mac],[channel]
-    final command = 'XD$_selectedDeviceCount,${sectionIndex + 1},$email,$id,$channel';
+    final command = 'XD$_selectedDeviceCount,$deviceNumber,$email,$id,$channel';
     widget.socketService.send(command);
-    
+
     _addLogMessage('📤 Manual send: $command');
-    _showSnackbar('Data section ${sectionIndex + 1} dikirim manual ke device');
+    _showSnackbar('Data Modul $deviceNumber dikirim manual ke device');
   }
 
   void _setupMyDevice() async {
@@ -287,10 +320,13 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
 
     // Kirim command XD untuk setup device sendiri
     // Format: XD[jumlah device],[device count],[email],[mac],[channel]
-    final command = 'XD$_selectedDeviceCount,1,${config.email},${config.mac},${config.jumlahChannel}';
+    final command =
+        'XD$_selectedDeviceCount,1,${config.email},${config.mac},${config.jumlahChannel}';
     widget.socketService.send(command);
-    
-    _addLogMessage('🔧 Setup device saya: ${config.email} - ${config.mac} - ${config.jumlahChannel} channels');
+
+    _addLogMessage(
+      '🔧 Setup device saya: ${config.email} - ${config.mac} - ${config.jumlahChannel} channels',
+    );
     _showSnackbar('Device saya berhasil di-setup');
   }
 
@@ -421,11 +457,7 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
                 ),
               ),
               const SizedBox(width: 4),
-              Icon(
-                Icons.expand_more,
-                size: 12,
-                color: AppColors.successGreen,
-              ),
+              Icon(Icons.expand_more, size: 12, color: AppColors.successGreen),
             ],
           ),
         ),
@@ -460,7 +492,7 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
     );
   }
 
-   Widget _buildDeviceConfigurationSection() {
+  Widget _buildDeviceConfigurationSection() {
     return Card(
       color: AppColors.darkGrey,
       child: Padding(
@@ -476,23 +508,38 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
               ),
             ),
             const SizedBox(height: 12),
-            
+
             // Dropdown untuk jumlah device
             _buildDeviceCountDropdown(),
             const SizedBox(height: 16),
-            
-            // List device sections
-            ..._deviceSections.asMap().entries.map((entry) {
-              final index = entry.key;
-              final section = entry.value;
-              
-              return _buildDeviceSectionCard(section, index);
-            }),
-            
-            const SizedBox(height: 16),
-            
-            // Tombol Device Saya
-            _buildSetupMyDeviceButton(),
+
+            // --- PERUBAHAN ---
+            // Tampilkan card "My Device" (Modul 1)
+            _buildMyDeviceSectionCard(),
+
+            // Tampilkan device eksternal jika _selectedDeviceCount > 1
+            if (_selectedDeviceCount > 1) ...[
+              const SizedBox(height: 16),
+              const Text(
+                'EXTERNAL DEVICES',
+                style: TextStyle(
+                  color: AppColors.neonGreen,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // List device sections (Modul 2, 3, ...)
+              ..._deviceSections.asMap().entries.map((entry) {
+                final index = entry.key; // 0, 1, 2...
+                final section = entry.value;
+                // index 0 -> deviceNumber 2
+                final deviceNumber = index + 2;
+
+                return _buildDeviceSectionCard(section, index, deviceNumber);
+              }),
+            ],
+            // --- SELESAI ---
           ],
         ),
       ),
@@ -510,13 +557,15 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
         DropdownButton<int>(
           value: _selectedDeviceCount,
           items: List.generate(5, (index) => index + 1)
-              .map((count) => DropdownMenuItem(
-                    value: count,
-                    child: Text(
-                      '$count',
-                      style: const TextStyle(color: AppColors.primaryBlack),
-                    ),
-                  ))
+              .map(
+                (count) => DropdownMenuItem(
+                  value: count,
+                  child: Text(
+                    '$count',
+                    style: const TextStyle(color: AppColors.primaryBlack),
+                  ),
+                ),
+              )
               .toList(),
           onChanged: _onDeviceCountChanged,
           dropdownColor: AppColors.neonGreen,
@@ -525,7 +574,99 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
     );
   }
 
-  Widget _buildDeviceSectionCard(DeviceSection section, int index) {
+  Widget _buildReadOnlyTextField({
+    required String label,
+    required String value,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: TextField(
+        controller: TextEditingController(text: value),
+        readOnly: true,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: const TextStyle(color: AppColors.pureWhite),
+          border: const OutlineInputBorder(),
+          // Ganti border jadi abu-abu biar kelihatan "disabled"
+          enabledBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: AppColors.pureWhite.withOpacity(0.3)),
+          ),
+          filled: true,
+          fillColor: AppColors.primaryBlack.withOpacity(0.5),
+        ),
+        style: TextStyle(color: AppColors.pureWhite.withOpacity(0.7)),
+      ),
+    );
+  }
+
+  Widget _buildMyDeviceSectionCard() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.primaryBlack,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.neonGreen.withOpacity(0.3)),
+      ),
+      child: FutureBuilder(
+        // Kita pakai FutureBuilder untuk ambil config HP ini
+        future: _preferencesService.getDeviceConfig(),
+        builder: (context, snapshot) {
+          String email = 'Loading...';
+          String id = 'Loading...';
+          String channel = 'Loading...';
+
+          if (snapshot.connectionState == ConnectionState.done &&
+              snapshot.hasData) {
+            final config = snapshot.data;
+            email = config?.email ?? 'Not Set';
+            id = config?.mac ?? 'Not Set';
+            channel = config?.jumlahChannel.toString() ?? '0';
+          } else if (snapshot.hasError) {
+            email = 'Error';
+            id = 'Error';
+            channel = 'Error';
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Modul 1 (My Device)',
+                    style: TextStyle(
+                      color: AppColors.neonGreen,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  // Tombol Setup (Kirim data "My Device")
+                  _buildSmallButton(
+                    'SETUP',
+                    _setupMyDevice, // Memanggil fungsi yang sudah ada
+                    enabled: widget.socketService.isConnected,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              // Input fields read-only
+              _buildReadOnlyTextField(label: 'ID Device (MAC)', value: id),
+              _buildReadOnlyTextField(label: 'Email', value: email),
+              _buildReadOnlyTextField(label: 'Jumlah Channel', value: channel),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildDeviceSectionCard(
+    DeviceSection section,
+    int index,
+    int deviceNumber,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
@@ -541,7 +682,7 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Section ${section.deviceCount}',
+                'Modul $deviceNumber',
                 style: const TextStyle(
                   color: AppColors.neonGreen,
                   fontWeight: FontWeight.bold,
@@ -550,13 +691,15 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
               // Tombol Kirim Manual
               _buildSmallButton(
                 'KIRIM',
+
                 () => _sendManualDataToSocket(index),
+
                 enabled: widget.socketService.isConnected,
               ),
             ],
           ),
           const SizedBox(height: 8),
-          
+
           // Input fields
           TextField(
             controller: _idControllers[index],
@@ -572,7 +715,7 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
             onChanged: (_) => _saveDeviceSections(), // Auto-save ketika diubah
           ),
           const SizedBox(height: 8),
-          
+
           TextField(
             controller: _emailControllers[index],
             decoration: const InputDecoration(
@@ -587,23 +730,23 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
             onChanged: (_) => _saveDeviceSections(), // Auto-save ketika diubah
           ),
           const SizedBox(height: 8),
-          
+
           TextField(
-            controller: _channelControllers[index],
-            decoration: const InputDecoration(
-              labelText: 'Jumlah Channel',
-              labelStyle: TextStyle(color: AppColors.pureWhite),
-              border: OutlineInputBorder(),
-              enabledBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: AppColors.neonGreen),
-              ),
-            ),
-            keyboardType: TextInputType.number,
-            style: const TextStyle(color: AppColors.pureWhite),
-            onChanged: (_) => _saveDeviceSections(), // Auto-save ketika diubah
-          ),
+  controller: _channelControllers[index],
+  decoration: const InputDecoration(
+    labelText: 'Jumlah Channel',
+    labelStyle: TextStyle(color: AppColors.pureWhite),
+    border: OutlineInputBorder(), // Border default
+    enabledBorder: OutlineInputBorder( // Border saat field aktif
+      borderSide: BorderSide(color: AppColors.neonGreen),
+    ),
+  ),
+  keyboardType: TextInputType.number, // Memastikan input hanya angka
+  style: const TextStyle(color: AppColors.pureWhite),
+  onChanged: (_) => _saveDeviceSections(), // Auto-save ketika diubah
+),
           const SizedBox(height: 12),
-          
+
           // Tombol Scan
           _buildScanButton(index),
         ],
@@ -619,11 +762,9 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.neonGreen,
           foregroundColor: AppColors.primaryBlack,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         ),
-        icon: _isScanning 
+        icon: _isScanning
             ? SizedBox(
                 width: 16,
                 height: 16,
@@ -635,16 +776,13 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
             : const Icon(Icons.qr_code_scanner, size: 18),
         label: Text(
           _isScanning ? 'SCANNING...' : 'SCAN QR CODE',
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
         ),
       ),
     );
   }
 
-   Widget _buildSetupMyDeviceButton() {
+  Widget _buildSetupMyDeviceButton() {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
@@ -657,16 +795,17 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
         icon: const Icon(Icons.device_hub),
         label: const Text(
           'SETUP DEVICE SAYA',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
     );
   }
 
-  Widget _buildSmallButton(String text, VoidCallback onPressed, {bool enabled = true}) {
+  Widget _buildSmallButton(
+    String text,
+    VoidCallback onPressed, {
+    bool enabled = true,
+  }) {
     return Container(
       height: 30,
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -686,7 +825,9 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
         child: Text(
           text,
           style: TextStyle(
-            color: enabled ? AppColors.primaryBlack : AppColors.pureWhite.withOpacity(0.5),
+            color: enabled
+                ? AppColors.primaryBlack
+                : AppColors.pureWhite.withOpacity(0.5),
             fontSize: 10,
             fontWeight: FontWeight.bold,
           ),
@@ -695,23 +836,22 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
     );
   }
 
-  Widget _buildRemoteButton(String label, {VoidCallback? onPressed, bool isAuto = false}) {
+  Widget _buildRemoteButton(
+    String label, {
+    VoidCallback? onPressed,
+    bool isAuto = false,
+  }) {
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: isAuto ? AppColors.warningYellow : AppColors.neonGreen,
         foregroundColor: AppColors.primaryBlack,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         padding: const EdgeInsets.all(8),
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-        ),
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -740,7 +880,7 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
               ],
             ),
             const SizedBox(height: 12),
-            
+
             Container(
               height: 120,
               padding: const EdgeInsets.all(8),
@@ -780,8 +920,6 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
     );
   }
 
-  
-
   void _showConnectionMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -804,14 +942,16 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: AppColors.primaryBlack,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: _isConnected ? AppColors.successGreen : AppColors.errorRed,
+                    color: _isConnected
+                        ? AppColors.successGreen
+                        : AppColors.errorRed,
                   ),
                 ),
                 child: Row(
@@ -820,18 +960,20 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
                       width: 12,
                       height: 12,
                       decoration: BoxDecoration(
-                        color: _isConnected ? AppColors.successGreen : AppColors.errorRed,
+                        color: _isConnected
+                            ? AppColors.successGreen
+                            : AppColors.errorRed,
                         shape: BoxShape.circle,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        _isConnected 
-                            ? 'Connected to Device' 
-                            : 'Disconnected',
+                        _isConnected ? 'Connected to Device' : 'Disconnected',
                         style: TextStyle(
-                          color: _isConnected ? AppColors.successGreen : AppColors.errorRed,
+                          color: _isConnected
+                              ? AppColors.successGreen
+                              : AppColors.errorRed,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -839,9 +981,9 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               if (_isConnected) ...[
                 _buildConnectionAction(
                   icon: Icons.refresh,
@@ -866,7 +1008,7 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
                   },
                   isDestructive: true,
                 ),
-              ] 
+              ],
               // else [
               //   _buildConnectionAction(
               //     icon: Icons.wifi,
@@ -906,10 +1048,13 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
     );
   }
 
-   void _addLogMessage(String message) {
-    final timestamp = DateTime.now().toIso8601String().split('T')[1].split('.')[0];
+  void _addLogMessage(String message) {
+    final timestamp = DateTime.now()
+        .toIso8601String()
+        .split('T')[1]
+        .split('.')[0];
     final logMessage = '[$timestamp] $message';
-    
+
     setState(() {
       _logMessages.add(logMessage);
       if (_logMessages.length > 50) {
@@ -922,15 +1067,11 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: AppColors.neonGreen,
-        content: Text(
-          message,
-          style: TextStyle(color: AppColors.primaryBlack),
-        ),
+        content: Text(message, style: TextStyle(color: AppColors.primaryBlack)),
         duration: const Duration(seconds: 2),
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -955,7 +1096,7 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
   void dispose() {
     _messageSubscription?.cancel();
     _connectionSubscription?.cancel();
-    
+
     // Dispose semua controller untuk device sections
     for (var controller in _emailControllers) {
       controller.dispose();
@@ -966,12 +1107,12 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
     for (var controller in _channelControllers) {
       controller.dispose();
     }
-    
+
     super.dispose();
   }
 }
 
-// Model untuk device section
+// Model untuk device Modul
 class DeviceSection {
   final String id;
   final String email;

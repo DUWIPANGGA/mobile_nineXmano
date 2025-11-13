@@ -74,39 +74,40 @@ class _TriggerPageState extends State<TriggerPage> {
   }
 
   // Update trigger settings berdasarkan konfigurasi device - PERBAIKI
-  void _updateTriggerSettingsFromConfig(ConfigModel config) {
+  // Update trigger settings berdasarkan konfigurasi device - PERBAIKI
+void _updateTriggerSettingsFromConfig(ConfigModel config) {
     print('🔄 Updating trigger settings from config...');
 
     // Debug mode values
-    print('   - Quick Trigger Mode: ${config.quickTrigger}');
+    print('  - Quick Trigger Mode: ${config.quickTrigger}');
     print(
-      '   - Trigger1 Mode: ${config.trigger1Mode} (${config.trigger1Mode == 1 ? 'STATIS' : 'KEDIP'})',
+      '  - Trigger1 Mode: ${config.trigger1Mode} (${config.trigger1Mode == 1 ? 'KEDIP' : 'STATIS'})',
     );
     print(
-      '   - Trigger2 Mode: ${config.trigger2Mode} (${config.trigger2Mode == 1 ? 'STATIS' : 'KEDIP'})',
+      '  - Trigger2 Mode: ${config.trigger2Mode} (${config.trigger2Mode == 1 ? 'KEDIP' : 'STATIS'})',
     );
     print(
-      '   - Trigger3 Mode: ${config.trigger3Mode} (${config.trigger3Mode == 1 ? 'STATIS' : 'KEDIP'})',
+      '  - Trigger3 Mode: ${config.trigger3Mode} (${config.trigger3Mode == 1 ? 'KEDIP' : 'STATIS'})',
     );
 
     setState(() {
       // Konversi trigger mode ke string representation
       _selectedQuick = _convertTriggerModeToString(config.quickTrigger);
 
-      // Untuk MAP triggers, kita simpan mode sebagai string tapi value tetap 1/0
+      // --- LOGIC PERBAIKAN: 1 = DINAMIS (KEDIP) ---
       _selectedLowBeam = config.trigger1Mode == 1
-          ? 'MAP STATIS'
-          : 'MAP DINAMIS';
+          ? 'MAP DINAMIS' // Jika 1, itu DINAMIS/KEDIP
+          : 'MAP STATIS'; // Jika 0, itu STATIS
       _selectedHighBeam = config.trigger2Mode == 1
-          ? 'MAP STATIS'
-          : 'MAP DINAMIS';
+          ? 'MAP DINAMIS'
+          : 'MAP STATIS';
       _selectedFogLamp = config.trigger3Mode == 1
-          ? 'MAP STATIS'
-          : 'MAP DINAMIS';
+          ? 'MAP DINAMIS'
+          : 'MAP STATIS';
     });
 
     _saveTriggerSettings();
-  }
+}
 
   // Konversi trigger mode integer ke string
   String _convertTriggerModeToString(int mode) {
@@ -602,67 +603,73 @@ class _TriggerPageState extends State<TriggerPage> {
     print('🔄 Updated local config for $triggerLabel: $mapData');
   }
 // Method baru untuk handle toggle changes dari UI - PERBAIKI
-void _handleMapToggleChange(String triggerLabel, bool isStatic) {
-  print('🎯 Toggle clicked: $triggerLabel -> ${isStatic ? 1 : 0}');
+// Method baru untuk handle toggle changes dari UI - PERBAIKI
+void _handleMapToggleChange(String triggerLabel, bool isDynamic) {
+  // Catatan: isDynamic = true jika switch di KANAN (KEDIP/DINAMIS = 1)
+ print('🎯 Toggle clicked: $triggerLabel -> ${isDynamic ? 1 : 0}');
+ 
+ if (!widget.socketService.isConnected) {
+  print('❌ Not connected, toggle ignored');
+  return;
+ }
+
+ try {
+  print('🔄 Handling MAP toggle change for $triggerLabel: ${isDynamic ? 1 : 0}');
   
-  if (!widget.socketService.isConnected) {
-    print('❌ Not connected, toggle ignored');
-    return;
+  // Nilai yang dikirim: isDynamic ? 1 : 0
+  final modeValue = isDynamic ? 1 : 0; 
+
+  // Update device config dengan nilai baru
+  if (_deviceConfig != null) {
+   setState(() {
+    _deviceConfig = _deviceConfig!.copyWith(
+     trigger1Mode: triggerLabel == 'LOW BEAM' 
+       ? modeValue 
+       : _deviceConfig!.trigger1Mode,
+     trigger2Mode: triggerLabel == 'HIGH BEAM' 
+       ? modeValue 
+       : _deviceConfig!.trigger2Mode,
+     trigger3Mode: triggerLabel == 'FOG LAMP' 
+       ? modeValue 
+       : _deviceConfig!.trigger3Mode,
+    );
+   });
+   
+   print('📊 Updated device config:');
+   print('  - Trigger1 Mode: ${_deviceConfig!.trigger1Mode}');
+   print('  - Trigger2 Mode: ${_deviceConfig!.trigger2Mode}');
+   print('  - Trigger3 Mode: ${_deviceConfig!.trigger3Mode}');
   }
 
-  try {
-    print('🔄 Handling MAP toggle change for $triggerLabel: ${isStatic ? 1 : 0}');
-    
-    // Update device config dengan nilai baru
-    if (_deviceConfig != null) {
-      setState(() {
-        _deviceConfig = _deviceConfig!.copyWith(
-          trigger1Mode: triggerLabel == 'LOW BEAM' 
-              ? (isStatic ? 1 : 0) 
-              : _deviceConfig!.trigger1Mode,
-          trigger2Mode: triggerLabel == 'HIGH BEAM' 
-              ? (isStatic ? 1 : 0) 
-              : _deviceConfig!.trigger2Mode,
-          trigger3Mode: triggerLabel == 'FOG LAMP' 
-              ? (isStatic ? 1 : 0) 
-              : _deviceConfig!.trigger3Mode,
-        );
-      });
-      
-      print('📊 Updated device config:');
-      print('   - Trigger1 Mode: ${_deviceConfig!.trigger1Mode}');
-      print('   - Trigger2 Mode: ${_deviceConfig!.trigger2Mode}');
-      print('   - Trigger3 Mode: ${_deviceConfig!.trigger3Mode}');
-    }
+  // Update local state untuk UI
+  setState(() {
+   switch (triggerLabel) {
+    case 'LOW BEAM':
+     _selectedLowBeam = isDynamic ? 'MAP DINAMIS' : 'MAP STATIS'; // Perbaikan Label
+     break;
+    case 'HIGH BEAM':
+     _selectedHighBeam = isDynamic ? 'MAP DINAMIS' : 'MAP STATIS'; // Perbaikan Label
+     break;
+    case 'FOG LAMP':
+     _selectedFogLamp = isDynamic ? 'MAP DINAMIS' : 'MAP STATIS'; // Perbaikan Label
+     break;
+   }
+  });
 
-    // Update local state untuk UI
-    setState(() {
-      switch (triggerLabel) {
-        case 'LOW BEAM':
-          _selectedLowBeam = isStatic ? 'MAP STATIS' : 'MAP DINAMIS';
-          break;
-        case 'HIGH BEAM':
-          _selectedHighBeam = isStatic ? 'MAP STATIS' : 'MAP DINAMIS';
-          break;
-        case 'FOG LAMP':
-          _selectedFogLamp = isStatic ? 'MAP STATIS' : 'MAP DINAMIS';
-          break;
-      }
-    });
+  // Save settings
+  _saveTriggerSettings();
 
-    // Save settings
-    _saveTriggerSettings();
+  // Send to device
+  // Karena 1=DINAMIS/KEDIP, kita kirim MD (Dynamic) jika true
+  final isStatic = !isDynamic; // 0 = STATIS
+  _sendMapToggleCommand(triggerLabel, isStatic); // Perlu dibalik di sini!
 
-    // Send to device
-    _sendMapToggleCommand(triggerLabel, isStatic);
+  print('✅ Toggle change completed successfully');
 
-    print('✅ Toggle change completed successfully');
-
-  } catch (e) {
-    print('❌ Error handling MAP toggle change: $e');
-  }
+ } catch (e) {
+  print('❌ Error handling MAP toggle change: $e');
+ }
 }
-// Tambahkan method untuk save device config
 Future<void> _saveDeviceConfig() async {
   if (_deviceConfig == null) return;
   
@@ -867,7 +874,7 @@ Future<void> _saveDeviceConfig() async {
                     else ...[
                       // Setting QUICK
                       _buildQuickItem(
-                        label: 'QUICK',
+                        label: 'CALL',
                         selectedValue: _selectedQuick,
                         onChanged: (value) {
                           if (!isConnected) return;
@@ -1045,21 +1052,20 @@ Future<void> _saveDeviceConfig() async {
     );
   }
 
-  // Di TriggerPage - PERBAIKI _buildTriggerItem
-// Di TriggerPage - PERBAIKI _buildTriggerItem dengan debug
-Widget _buildTriggerItem({
+ Widget _buildTriggerItem({
   required String label,
   required String? selectedValue,
   required Function(String?) onChanged,
-  required int value // value sekarang adalah 1 atau 0
+  required int value // value sekarang adalah 1 atau 0 (1 = KEDIP, 0 = STATIS)
 }) {
+  // PENTING: Gunakan isDynamic untuk merepresentasikan logika 1 = KEDIP
   final isConnected = widget.socketService.isConnected;
 
-  // Konversi nilai 1/0 ke boolean untuk Switch
-  bool isStatic = value == 1;
+  // Konversi nilai 1/0 ke boolean untuk Switch: TRUE jika KEDIP (1)
+  bool isDynamic = value == 1;
 
   // DEBUG: Print current value
-  print('🔧 Building $label - Value: $value, isStatic: $isStatic');
+  print('🔧 Building $label - Value: $value, isDynamic: $isDynamic');
 
   return Container(
     margin: const EdgeInsets.only(bottom: 16),
@@ -1082,7 +1088,8 @@ Widget _buildTriggerItem({
             // Label trigger
             Expanded(
               child: Text(
-                '$label (${isStatic ? 'STATIS' : 'KEDIP'})',
+                // Label sekarang mengikuti state data yang benar (1=KEDIP, 0=STATIS)
+                '$label (${isDynamic ? 'KEDIP' : 'STATIS'})', 
                 style: TextStyle(
                   color: isConnected
                       ? AppColors.pureWhite
@@ -1136,17 +1143,18 @@ Widget _buildTriggerItem({
 
               const SizedBox(width: 16),
 
-              // Label KEDIP
+              // Label STATIS (Kiri)
               Text(
-                'KEDIP',
+                'STATIS',
                 style: TextStyle(
-                  color: !isStatic // KEDIP aktif ketika bukan STATIS
+                  // STATIS aktif jika BUKAN isDynamic
+                  color: !isDynamic
                       ? (isConnected
-                            ? AppColors.neonGreen
-                            : AppColors.neonGreen.withOpacity(0.3))
+                              ? AppColors.neonGreen
+                              : AppColors.neonGreen.withOpacity(0.3))
                       : AppColors.pureWhite.withOpacity(
-                          isConnected ? 0.5 : 0.3,
-                        ),
+                            isConnected ? 0.5 : 0.3,
+                          ),
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                 ),
@@ -1154,11 +1162,12 @@ Widget _buildTriggerItem({
 
               const SizedBox(width: 8),
 
-              // Toggle Switch - PERBAIKI onChanged di sini
+              // Toggle Switch
               Transform.scale(
                 scale: 0.8,
                 child: Switch(
-                  value: isStatic,
+                  // Value Switch: ON jika isDynamic (KEDIP/1)
+                  value: isDynamic,
                   activeColor: isConnected
                       ? AppColors.neonGreen
                       : AppColors.neonGreen.withOpacity(0.3),
@@ -1174,8 +1183,9 @@ Widget _buildTriggerItem({
                   onChanged: isConnected
                       ? (newValue) {
                           print('🎯 Switch $label clicked: $newValue');
-                          // PERBAIKAN: Panggil handleMapToggleChange
-                          _handleMapToggleChange(label, newValue);
+                          // newValue (boolean) mewakili status BARU: TRUE jika KEDIP (1)
+                          // Panggil _handleMapToggleChange dengan status DINAMIS BARU
+                          _handleMapToggleChange(label, newValue); 
                         }
                       : null,
                 ),
@@ -1183,17 +1193,18 @@ Widget _buildTriggerItem({
 
               const SizedBox(width: 8),
 
-              // Label STATIS
+              // Label KEDIP (Kanan)
               Text(
-                'STATIS',
+                'KEDIP',
                 style: TextStyle(
-                  color: isStatic // STATIS aktif ketika true
+                  // KEDIP aktif jika isDynamic
+                  color: isDynamic
                       ? (isConnected
-                            ? AppColors.neonGreen
-                            : AppColors.neonGreen.withOpacity(0.3))
+                              ? AppColors.neonGreen
+                              : AppColors.neonGreen.withOpacity(0.3))
                       : AppColors.pureWhite.withOpacity(
-                          isConnected ? 0.5 : 0.3,
-                        ),
+                            isConnected ? 0.5 : 0.3,
+                          ),
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                 ),
@@ -1205,7 +1216,8 @@ Widget _buildTriggerItem({
         // Status info
         const SizedBox(height: 8),
         Text(
-          isStatic ? 'Mode: STATIS (1)' : 'Mode: KEDIP (0)',
+          // Status Mode: Disesuaikan dengan isDynamic
+          isDynamic ? 'Mode: KEDIP (1)' : 'Mode: STATIS (0)',
           style: TextStyle(
             color: AppColors.neonGreen.withOpacity(isConnected ? 0.7 : 0.3),
             fontSize: 11,
