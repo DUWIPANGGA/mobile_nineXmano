@@ -21,7 +21,10 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _welcomeModeEnabled = true;
   int _selectedDuration = 3;
   int _selectedChannel = 8;
+  int _selectedAnimationIndex = 0;
+
 int _maxChannels = 8; // Default max channels berdasarkan license
+  ConfigModel? config;
 
   final PreferencesService _preferencesService = PreferencesService();
 
@@ -39,19 +42,19 @@ int _maxChannels = 8; // Default max channels berdasarkan license
   };
   static const List<Map<String, dynamic>> _defaultAnimationsData = [
     {
-      'name': 'Animation 01 - AUTO',
-      'channelCount': 4,
-      'animationLength': 10,
-      'description': 'Automatic animation sequence',
-      'delayData': '100',
+      'name': 'None',
+      'channelCount': 0,
+      'animationLength': 0,
+      'description': 'tidak ada animasi',
+      'delayData': '0',
       'frameData': [],
     },
     {
-      'name': 'Animation 02 - AUTO ALL BUILTIN',
-      'channelCount': 4,
-      'animationLength': 15,
-      'description': 'All built-in automatic animations',
-      'delayData': '150',
+      'name': 'None',
+      'channelCount': 0,
+      'animationLength': 0,
+      'description': 'tidak ada animasi',
+      'delayData': '0',
       'frameData': [],
     },
     {
@@ -296,7 +299,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
   String _currentEmail = '';
   String _currentSSID = '';
   String _currentPassword = '';
-  ConfigModel? config;
+  // ConfigModel? config;
   bool _isCalibrating = false;
   String _currentCalibrationStep = 'A'; // A, B, C, D
   StreamSubscription<String>? _calibrationSubscription;
@@ -315,31 +318,38 @@ int _maxChannels = 8; // Default max channels berdasarkan license
   }
 
   Future<void> _initializeApp() async {
-    try {
-      // Load config terlebih dahulu
-      config = await _preferencesService.getDeviceConfig();
-      print('✅ Config loaded: ${config?.devID ?? "No config"}');
+  try {
+    // Load config terlebih dahulu
+    config = await _preferencesService.getDeviceConfig();
+    print('✅ Config loaded: ${config?.devID ?? "No config"}');
+_selectedDuration = config?.durasiWelcome??1;
+    // Set selected welcome animation dari config
+    final animIndex = config?.animWelcome ?? 0;
+    
+    // Validasi agar index tidak out of bounds
+    final safeIndex = animIndex.clamp(0, _defaultAnimationsData.length - 1);
+    
+    _selectedWelcomeAnimation = _defaultAnimationsData[safeIndex]['name'] as String;
+    _selectedAnimationIndex = safeIndex;
 
-      // Set default welcome animation
-      _selectedWelcomeAnimation = _defaultAnimationsData[5]['name'] as String;
+    print("Animasi yang dipilih: $_selectedWelcomeAnimation, UI Index: $safeIndex, Device ID: ${safeIndex + 1}");
 
-      // Initialize data dengan config yang sudah diload
-      _initializeData();
-      _setupSocketListeners();
-
-      setState(() {}); // Trigger rebuild setelah semua data siap
-    } catch (e) {
-      print('❌ Error initializing app: $e');
-      // Fallback initialization
-      _initializeData();
-      _setupSocketListeners();
-    }
-
-    // Request config data saat page dibuka
-    if (widget.socketService.isConnected) {
-      widget.socketService.requestConfig();
-    }
+    // Initialize data dengan config yang sudah diload
+    _initializeData();
+    _setupSocketListeners();
+    
+    setState(() {});
+  } catch (e) {
+    print('❌ Error initializing app: $e');
+    _initializeData();
+    _setupSocketListeners();
   }
+
+  // Request config data saat page dibuka
+  if (widget.socketService.isConnected) {
+    widget.socketService.requestConfig();
+  }
+}
 
   void _initializeData() {
     // Default values dengan null safety
@@ -390,113 +400,117 @@ int _maxChannels = 8; // Default max channels berdasarkan license
     }
   }
 
-  Widget _buildWelcomeAnimationDropdown() {
-    return Container(
-      width: 150,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: AppColors.darkGrey,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.neonGreen),
-      ),
-      child: DropdownButton<String>(
-        menuWidth: 250,
-        value: _selectedWelcomeAnimation,
-        isExpanded: true,
-        dropdownColor: AppColors.darkGrey,
-        style: const TextStyle(color: AppColors.pureWhite, fontSize: 12),
-        underline: const SizedBox(),
-        icon: Icon(Icons.arrow_drop_down, color: AppColors.neonGreen, size: 20),
-        hint: Text(
-          'Pilih Animasi Welcome',
-          style: TextStyle(
-            color: AppColors.pureWhite.withOpacity(0.7),
-            fontSize: 12,
-          ),
+Widget _buildWelcomeAnimationDropdown() {
+  return Container(
+    width: 150,
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+    decoration: BoxDecoration(
+      color: AppColors.darkGrey,
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: AppColors.neonGreen),
+    ),
+    child: DropdownButton<String>(
+      menuWidth: 250,
+      value: _selectedWelcomeAnimation, // ← Pastikan ini sesuai dengan state
+      isExpanded: true,
+      dropdownColor: AppColors.darkGrey,
+      style: const TextStyle(color: AppColors.pureWhite, fontSize: 12),
+      underline: const SizedBox(),
+      icon: Icon(Icons.arrow_drop_down, color: AppColors.neonGreen, size: 20),
+      hint: Text(
+        'Pilih Animasi Welcome',
+        style: TextStyle(
+          color: AppColors.pureWhite.withOpacity(0.7),
+          fontSize: 12,
         ),
-        items: _buildWelcomeAnimationItems(),
-        onChanged: (String? newValue) {
+      ),
+      items: _buildWelcomeAnimationItems(),
+      onChanged: (String? newValue) {
+        if (newValue != null) {
+          print('🔄 Dropdown changed to: $newValue'); // Debug
           setState(() {
             _selectedWelcomeAnimation = newValue;
           });
-        },
+          // Optional: langsung update preview tanpa tekan tombol KIRIM
+          print('✅ State updated: $_selectedWelcomeAnimation');
+        }
+      },
+    ),
+  );
+}
+List<DropdownMenuItem<String>> _buildWelcomeAnimationItems() {
+  return _defaultAnimationsData.asMap().entries.map((entry) {
+    final index = entry.key; // 0-based index dari array
+    final animationData = entry.value;
+    final animationName = animationData['name'] as String;
+    final deviceId = index + 1; // Convert ke 1-based untuk display
+
+    // print('📋 Building dropdown item: $animationName, Index: $index, DeviceID: $deviceId'); // Debug
+
+    return DropdownMenuItem<String>(
+      value: animationName,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  animationName,
+                  style: const TextStyle(
+                    color: AppColors.pureWhite,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 4,
+                  vertical: 1,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.blue),
+                ),
+                child: Text(
+                  'ID: ${deviceId.toString().padLeft(2, '0')}', // Pastikan ini deviceId, bukan index
+                  style: TextStyle(
+                    color: Colors.blue,
+                    fontSize: 8,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Text(
+            '${animationData['channelCount']}C • ${animationData['animationLength']}L',
+            style: TextStyle(
+              color: AppColors.pureWhite.withOpacity(0.7),
+              fontSize: 10,
+            ),
+          ),
+        ],
       ),
     );
-  }
+  }).toList();
+}
+int _getAnimationIndex(String animationName) {
+  return _defaultAnimationsData.indexWhere(
+    (anim) => anim['name'] == animationName,
+  );
+}
 
-  List<DropdownMenuItem<String>> _buildWelcomeAnimationItems() {
-    // Extract hanya nama animasi dari data
-    final animationNames = _defaultAnimationsData
-        .map<String>((anim) => anim['name'] as String)
-        .toList();
+// Method untuk mendapatkan ID device (1-based) dari nama animasi  
+int _getDeviceAnimationId(String animationName) {
+  return _getAnimationIndex(animationName) + 1;
+}
 
-    return animationNames.map((String animationName) {
-      // Cari data lengkap animasi
-      final animationData = _defaultAnimationsData.firstWhere(
-        (anim) => anim['name'] == animationName,
-      );
-
-      return DropdownMenuItem<String>(
-        value: animationName,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    animationName,
-                    style: const TextStyle(
-                      color: AppColors.pureWhite,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 1,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: Colors.blue),
-                  ),
-                  child: Text(
-                    'ID: ${_getAnimationIndex(animationName).toString().padLeft(2, '0')}',
-                    style: TextStyle(
-                      color: Colors.blue,
-                      fontSize: 8,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            Text(
-              '${animationData['channelCount']}C • ${animationData['animationLength']}L',
-              style: TextStyle(
-                color: AppColors.pureWhite.withOpacity(0.7),
-                fontSize: 10,
-              ),
-            ),
-          ],
-        ),
-      );
-    }).toList();
-  }
-
-  // Helper untuk mendapatkan index animasi
-  int _getAnimationIndex(String animationName) {
-    return _defaultAnimationsData.indexWhere(
-          (anim) => anim['name'] == animationName,
-        ) +
-        1;
-  }
 
   Widget _buildSpeedInputGrid() {
     return GridView.builder(
@@ -893,23 +907,40 @@ Color _getLicenseColor(String licenseLevel) {
     }
   }
 
-  void _updateWelcomeSettings() {
-    if (_selectedWelcomeAnimation == null) {
-      _showSnackbar('Pilih animasi welcome terlebih dahulu');
-      return;
-    }
-
-    final animationIndex = _getAnimationIndex(_selectedWelcomeAnimation!);
-
-    // Kirim welcome animation settings
-    widget.socketService.setWelcomeAnimation(animationIndex, _selectedDuration);
-
-    _showSnackbar(
-      'Welcome mode: ${_welcomeModeEnabled ? "Aktif" : "Nonaktif"} - Animasi: $_selectedWelcomeAnimation (ID: ${animationIndex.toString().padLeft(2, '0')}) - Durasi: $_selectedDuration detik',
-    );
+void _updateWelcomeSettings() {
+  if (_selectedWelcomeAnimation == null) {
+    _showSnackbar('Pilih animasi welcome terlebih dahulu');
+    return;
   }
 
-  // Helper method untuk mendapatkan index animasi
+  final animationIndex = _getAnimationIndex(_selectedWelcomeAnimation!);
+  final deviceAnimationId = _getDeviceAnimationId(_selectedWelcomeAnimation!);
+  
+  // Validasi index
+  if (animationIndex < 0 || animationIndex >= _defaultAnimationsData.length) {
+    _showSnackbar('Animasi tidak valid');
+    return;
+  }
+
+  // Kirim ke device via socket - gunakan deviceAnimationId (1-based)
+  widget.socketService.setWelcomeAnimation(deviceAnimationId, _selectedDuration);
+
+  // Update config lokal - gunakan animationIndex (0-based untuk storage)
+  setState(() {
+    if (config != null) {
+      config = config!.copyWith(animWelcome: animationIndex);
+    }
+  });
+
+  // Simpan ke preferences
+  if (config != null) {
+    _preferencesService.saveDeviceConfig(config!);
+  }
+
+  _showSnackbar(
+    'Welcome animation diubah ke: $_selectedWelcomeAnimation (ID: ${deviceAnimationId.toString().padLeft(2, '0')})',
+  );
+}
   int _getWelcomeAnimationIndex(String animationName) {
     // Mapping nama animasi ke index
     final animationMap = {
@@ -1329,14 +1360,6 @@ Color _getLicenseColor(String licenseLevel) {
             Text(
               '$duration',
               style: const TextStyle(color: AppColors.pureWhite, fontSize: 12),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              'detik',
-              style: TextStyle(
-                color: AppColors.pureWhite.withOpacity(0.7),
-                fontSize: 10,
-              ),
             ),
           ],
         ),

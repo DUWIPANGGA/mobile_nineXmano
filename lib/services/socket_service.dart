@@ -19,12 +19,14 @@ class SocketService {
   static final SocketService _instance = SocketService._internal();
   factory SocketService() => _instance;
   SocketService._internal({this.host = '192.168.4.1', this.port = 32211});
+  // SocketService._internal({this.host = '192.168.4.1', this.port = 11223});
 
   Stream<String> get messages => _messageController.stream;
   Stream<List<int>> get binaryData => _binaryController.stream;
   Stream<bool> get connectionStatus => _connectionController.stream;
 
   bool get isConnected => _isConnected;
+Function(bool isConnected)? onConnectionChanged;
 
   // ========== CONNECTION MANAGEMENT ==========
 
@@ -39,7 +41,7 @@ class SocketService {
       _isConnected = true;
       _connectionController.add(true);
       print('✅ Connected to server.');
-
+requestConfig();
       _socket!.listen(
         (data) {
           _handleIncomingData(data);
@@ -89,7 +91,7 @@ void addConsumer() {
   // ========== INCOMING DATA HANDLER ==========
 
   void _handleIncomingData(List<int> data) {
-    print('📥 Received ${data.length} bytes of data');
+    // print('📥 Received ${data.length} bytes of data');
 
     // Coba decode sebagai UTF-8 text dulu
     try {
@@ -205,11 +207,11 @@ void addConsumer() {
     final timestamp = DateTime.now().toIso8601String();
     final cleanMessage = message.trim();
 
-    print('╔═══════════════════════════════════════════════════');
-    print('║ 📥 INCOMING MESSAGE [${timestamp.split('T')[1].split('.')[0]}]');
-    print('║ Raw: "$cleanMessage"');
-    print('║ Length: ${cleanMessage.length} characters');
-    print('╠═══════════════════════════════════════════════════');
+    // print('╔═══════════════════════════════════════════════════');
+    // print('║ 📥 INCOMING MESSAGE [${timestamp.split('T')[1].split('.')[0]}]');
+    // print('║ Raw: "$cleanMessage"');
+    // print('║ Length: ${cleanMessage.length} characters');
+    // print('╠═══════════════════════════════════════════════════');
 
     if (cleanMessage.startsWith('config,')) {
       print('║ 🔧 TYPE: CONFIG DATA');
@@ -240,7 +242,7 @@ void addConsumer() {
       _handleUnknownMessage(cleanMessage);
     }
 
-    print('╚═══════════════════════════════════════════════════');
+    // print('╚═══════════════════════════════════════════════════');
   }
 
   // FIXED: _handleConfigResponse dengan logic yang benar
@@ -390,8 +392,8 @@ void addConsumer() {
   void setEmail(String email) => _send('CA$email');
 
   /// Set jumlah channel (2 digit)
-  void setChannel(int channel) =>
-      _send('CB${channel.toString().padLeft(2, '0')}');
+  void setChannel(int channel) {
+      _send('CB${channel.toString().padLeft(2, '0')}');requestConfig();}
 
   /// Set delays (masing-masing 3 digit)
   void setDelays(int delay1, int delay2, int delay3, int delay4) {
@@ -401,6 +403,7 @@ void addConsumer() {
   /// Set WiFi config
   void setWifi(String ssid, String password) {
     _send('CW${_pad2(ssid.length)}${_pad2(password.length)}$ssid$password');
+    requestConfig();
   }
 
   // ========== OUTGOING MESSAGES - ANIMATION DATA ==========
@@ -516,6 +519,7 @@ void sendTriggerToggle(String triggerCode, int value) {
   /// Set welcome animation
   void setWelcomeAnimation(int animNumber, int duration) {
     _send('W${_pad3(animNumber)}${_pad3(duration)}');
+    requestConfig();
   }
 
   // ========== OUTGOING MESSAGES - MITRA ID ==========

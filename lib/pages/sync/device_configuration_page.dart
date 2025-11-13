@@ -49,6 +49,19 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
     _initializeDeviceSections();
     _setupSocketListeners();
     _loadSavedDeviceSections();
+        // widget.socketService.send("XM10");
+        if (widget.socketService.isConnected) {
+        debugPrint("✅ Connected, sending XM10");
+        widget.socketService.send("XM10");
+      } 
+widget.socketService.onConnectionChanged = (isConnected) {
+      if (isConnected) {
+        debugPrint("✅ Connected, sending XM10");
+        widget.socketService.send("XM10");
+      } else {
+        debugPrint("❌ Disconnected");
+      }
+    };
   }
 
   void _setupSocketListeners() {

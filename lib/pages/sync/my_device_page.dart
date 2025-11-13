@@ -3,10 +3,13 @@ import 'package:iTen/constants/app_colors.dart';
 import 'package:iTen/models/config_model.dart';
 import 'package:iTen/services/config_service.dart';
 import 'package:iTen/services/preferences_service.dart';
+import 'package:iTen/services/socket_service.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 class MyDevicePage extends StatefulWidget {
-  const MyDevicePage({super.key});
+  final SocketService socketService;
+
+  const MyDevicePage({super.key, required this.socketService});
 
   @override
   State<MyDevicePage> createState() => _MyDevicePageState();
@@ -15,7 +18,7 @@ class MyDevicePage extends StatefulWidget {
 class _MyDevicePageState extends State<MyDevicePage> {
   final PreferencesService _preferencesService = PreferencesService();
   final ConfigService _configService = ConfigService();
-  
+
   bool _isLoading = true;
   ConfigModel? _deviceConfig;
 
@@ -23,13 +26,25 @@ class _MyDevicePageState extends State<MyDevicePage> {
   void initState() {
     super.initState();
     _loadDeviceData();
+    if (widget.socketService.isConnected) {
+        debugPrint("✅ Connected, sending XM11");
+        widget.socketService.send("XM11");
+      } 
+    widget.socketService.onConnectionChanged = (isConnected) {
+      if (isConnected) {
+        debugPrint("✅ Connected, sending XM11");
+        widget.socketService.send("XM11");
+      } else {
+        debugPrint("❌ Disconnected");
+      }
+    };
   }
 
   Future<void> _loadDeviceData() async {
     try {
       await _configService.initialize();
       final config = await _preferencesService.getDeviceConfig();
-      
+
       setState(() {
         _deviceConfig = config;
         _isLoading = false;
@@ -52,16 +67,11 @@ class _MyDevicePageState extends State<MyDevicePage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(
-            color: AppColors.neonGreen,
-          ),
+          CircularProgressIndicator(color: AppColors.neonGreen),
           const SizedBox(height: 16),
           Text(
             'Memuat data device...',
-            style: TextStyle(
-              color: AppColors.pureWhite,
-              fontSize: 16,
-            ),
+            style: TextStyle(color: AppColors.pureWhite, fontSize: 16),
           ),
         ],
       ),
@@ -73,11 +83,7 @@ class _MyDevicePageState extends State<MyDevicePage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.error_outline,
-            color: AppColors.errorRed,
-            size: 64,
-          ),
+          Icon(Icons.error_outline, color: AppColors.errorRed, size: 64),
           const SizedBox(height: 16),
           Text(
             'Device config tidak ditemukan',
@@ -128,14 +134,11 @@ class _MyDevicePageState extends State<MyDevicePage> {
             const SizedBox(height: 16),
             Text(
               'Scan QR Code ini untuk sinkronisasi dengan device lain:',
-              style: TextStyle(
-                color: AppColors.pureWhite,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: AppColors.pureWhite, fontSize: 14),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            
+
             // QR Code Container
             Container(
               padding: const EdgeInsets.all(16),
@@ -195,7 +198,7 @@ class _MyDevicePageState extends State<MyDevicePage> {
               ),
             ),
             const SizedBox(height: 20),
-            
+
             // Device ID
             _buildInfoRow(
               icon: Icons.badge,
@@ -203,7 +206,7 @@ class _MyDevicePageState extends State<MyDevicePage> {
               value: _deviceConfig?.devID ?? '-',
             ),
             const SizedBox(height: 16),
-            
+
             // MAC Address
             _buildInfoRow(
               icon: Icons.network_wifi,
@@ -211,7 +214,7 @@ class _MyDevicePageState extends State<MyDevicePage> {
               value: _deviceConfig?.mac ?? '-',
             ),
             const SizedBox(height: 16),
-            
+
             // Email
             _buildInfoRow(
               icon: Icons.email,
@@ -219,7 +222,7 @@ class _MyDevicePageState extends State<MyDevicePage> {
               value: _deviceConfig?.email ?? '-',
             ),
             const SizedBox(height: 16),
-            
+
             // Firmware
             _buildInfoRow(
               icon: Icons.memory,
@@ -227,7 +230,7 @@ class _MyDevicePageState extends State<MyDevicePage> {
               value: _deviceConfig?.firmware ?? '-',
             ),
             const SizedBox(height: 16),
-            
+
             // Jumlah Channel
             _buildInfoRow(
               icon: Icons.tune,
@@ -235,7 +238,7 @@ class _MyDevicePageState extends State<MyDevicePage> {
               value: '${_deviceConfig?.jumlahChannel ?? 0}',
             ),
             const SizedBox(height: 16),
-            
+
             // Type License
             _buildInfoRow(
               icon: Icons.verified_user,
@@ -243,7 +246,6 @@ class _MyDevicePageState extends State<MyDevicePage> {
               value: '${_deviceConfig?.typeLicense ?? 0}',
             ),
             const SizedBox(height: 16),
-
           ],
         ),
       ),
@@ -258,11 +260,7 @@ class _MyDevicePageState extends State<MyDevicePage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          color: AppColors.neonGreen,
-          size: 20,
-        ),
+        Icon(icon, color: AppColors.neonGreen, size: 20),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -308,26 +306,23 @@ class _MyDevicePageState extends State<MyDevicePage> {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             // WiFi Info
-            _buildAdvancedInfoItem(
-              'WiFi SSID',
-              _deviceConfig?.ssid ?? '-',
-            ),
+            _buildAdvancedInfoItem('WiFi SSID', _deviceConfig?.ssid ?? '-'),
             const SizedBox(height: 12),
-            
+
             _buildAdvancedInfoItem(
               'Welcome Animation',
               '${_deviceConfig?.animWelcome ?? 0}',
             ),
             const SizedBox(height: 12),
-            
+
             _buildAdvancedInfoItem(
               'Welcome Duration',
               '${_deviceConfig?.durasiWelcome ?? 0} detik',
             ),
             const SizedBox(height: 12),
-            
+
             _buildAdvancedInfoItem(
               'Quick Trigger',
               '${_deviceConfig?.quickTrigger ?? 0}',
@@ -390,9 +385,7 @@ class _MyDevicePageState extends State<MyDevicePage> {
                 icon: const Icon(Icons.share),
                 label: const Text(
                   'Share QR Code',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -409,9 +402,7 @@ class _MyDevicePageState extends State<MyDevicePage> {
                 icon: const Icon(Icons.refresh),
                 label: const Text(
                   'Refresh',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -425,25 +416,25 @@ class _MyDevicePageState extends State<MyDevicePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.primaryBlack,
-      
+
       body: _isLoading
           ? _buildLoadingState()
           : _deviceConfig == null
-              ? _buildErrorState()
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      _buildQRCodeSection(),
-                      const SizedBox(height: 16),
-                      _buildDeviceInfoSection(),
-                      const SizedBox(height: 16),
-                      _buildAdvancedInfoSection(),
-                      const SizedBox(height: 16),
-                      // _buildActionButtons(),
-                    ],
-                  ),
-                ),
+          ? _buildErrorState()
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  _buildQRCodeSection(),
+                  const SizedBox(height: 16),
+                  _buildDeviceInfoSection(),
+                  const SizedBox(height: 16),
+                  _buildAdvancedInfoSection(),
+                  const SizedBox(height: 16),
+                  // _buildActionButtons(),
+                ],
+              ),
+            ),
     );
   }
 }

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:iTen/constants/app_colors.dart';
-import 'package:iTen/pages/control_page.dart';
-import 'package:iTen/pages/device_configuration_page.dart';
-import 'package:iTen/pages/my_device_page.dart';
+import 'package:iTen/pages/sync/control_page.dart';
+import 'package:iTen/pages/sync/device_configuration_page.dart';
+import 'package:iTen/pages/sync/my_device_page.dart';
 import 'package:iTen/services/socket_service.dart';
 
 class SyncPage extends StatefulWidget {
@@ -52,7 +52,7 @@ class _SyncDashboardPageState extends State<SyncPage> {
 
   void _initializePages() {
     _pages = [
-      MyDevicePage(),
+      MyDevicePage(socketService: _socketService),
       DeviceConfigurationPage(socketService: _socketService),
       ControlPage(socketService: _socketService),
     ];

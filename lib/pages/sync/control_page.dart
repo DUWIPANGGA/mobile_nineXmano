@@ -34,6 +34,19 @@ class _ControlPageState extends State<ControlPage> {
     super.initState();
     _speedController.text = _speedRun.toString();
     _setupSocketListeners();
+    if (widget.socketService.isConnected) {
+        debugPrint("✅ Connected, sending XM10");
+        widget.socketService.send("XM10");
+      } 
+    widget.socketService.onConnectionChanged = (isConnected) {
+      if (isConnected) {
+        debugPrint("✅ Connected, sending XM10");
+        widget.socketService.send("XM10");
+      } else {
+        debugPrint("❌ Disconnected");
+      }
+    };
+        // widget.socketService.send("XM10");
   }
 
   void _setupSocketListeners() {

@@ -37,7 +37,6 @@ class _MappingPageState extends State<MappingPage> {
   bool _isSending = false;
 
   @override
-  @override
   void initState() {
     super.initState();
 
