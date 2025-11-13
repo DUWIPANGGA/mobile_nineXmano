@@ -328,12 +328,6 @@ class _ConfigMonitorWidgetState extends State<ConfigMonitorWidget> {
                   const SizedBox(height: 16),
 
                   _buildStatusRow(
-                    'Device Connection',
-                    _isConnected ? 'CONNECTED' : 'DISCONNECTED',
-                    _isConnected ? AppColors.neonGreen : Colors.red,
-                    Icons.link,
-                  ),
-                  _buildStatusRow(
                     'Config Status',
                     _configStatus,
                     _getStatusColor(_configStatus),
@@ -571,7 +565,7 @@ class _ConfigMonitorWidgetState extends State<ConfigMonitorWidget> {
                   Icons.device_hub,
                   [
                     _buildDetailRow('Device ID', _config!.devID),
-                    _buildDetailRow('Mitra ID', _config!.mitraID),
+                    // _buildDetailRow('Mitra ID', _config!.mitraID),
                     _buildDetailRow(
                       'Welcome Animation',
                       _config!.animWelcome.toString(),
@@ -596,58 +590,6 @@ class _ConfigMonitorWidgetState extends State<ConfigMonitorWidget> {
                   ],
                 ),
 
-                const SizedBox(height: 20),
-
-                // Raw Data Preview
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: AppColors.darkGrey,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.neonGreen.withOpacity(0.3)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.code, color: AppColors.neonGreen, size: 20),
-                          const SizedBox(width: 8),
-                          Text(
-                            'RAW DATA PREVIEW',
-                            style: TextStyle(
-                              color: AppColors.neonGreen,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryBlack,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: AppColors.neonGreen.withOpacity(0.2),
-                          ),
-                        ),
-                        child: SelectableText(
-                          _config.toString().length > 200
-                              ? '${_config.toString().substring(0, 200)}...'
-                              : _config.toString(),
-                          style: TextStyle(
-                            color: AppColors.pureWhite,
-                            fontSize: 10,
-                            fontFamily: 'Monospace',
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ] else ...[
                 // No Data State
                 Container(

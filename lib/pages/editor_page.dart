@@ -2,8 +2,10 @@
 import 'package:flutter/material.dart';
 import 'package:iTen/constants/app_colors.dart';
 import 'package:iTen/models/animation_model.dart';
+import 'package:iTen/models/config_model.dart';
 import 'package:iTen/services/animation_service.dart';
 import 'package:iTen/services/matrix_pattern_service.dart';
+import 'package:iTen/services/preferences_service.dart';
 
 class EditorPage extends StatefulWidget {
   final AnimationModel? initialAnimation;
@@ -18,12 +20,14 @@ class EditorPage extends StatefulWidget {
 class _EditorPageState extends State<EditorPage> {
   final AnimationService _animationService = AnimationService();
   final MatrixPatternService _patternService = MatrixPatternService();
+  final PreferencesService _preferencesService = PreferencesService();
+  late ConfigModel? config;
 
   // Data animasi
-  late int _channelCount;
-  late int _animationLength;
+  int _channelCount=0;
+  int _animationLength=0;
   late String _description;
-  late String _delayData;
+  String _delayData="4";
   late List<String> _frameData;
   List<String> _frameDataHex = List<String>.filled(11, '');
   List<String> _listAnim = List<String>.filled(11, '');
@@ -43,27 +47,32 @@ class _EditorPageState extends State<EditorPage> {
   @override
   void initState() {
     super.initState();
-    _initializeFromExistingOrNew();
     _loadUserPreferences();
+    _preferencesService.getDeviceConfig().then((configValue) {
+      setState(() {
+        config = configValue;
+    _initializeFromExistingOrNew();
+      });
+    });
   }
 
   void _initializeFromExistingOrNew() {
-    if (widget.initialAnimation != null) {
-      final anim = widget.initialAnimation!;
-      _channelCount = anim.channelCount;
-      _animationLength = anim.animationLength;
-      _description = anim.description;
-      _delayData = anim.delayData;
-      _frameData = List.from(anim.frameData);
+    // if (widget.initialAnimation != null) {
+    //   final anim = widget.initialAnimation!;
+    //   _channelCount = anim.channelCount;
+    //   _animationLength = anim.animationLength;
+    //   _description = anim.description;
+    //   _delayData = anim.delayData;
+    //   _frameData = List.from(anim.frameData);
 
-      // Initialize _listAnim dari frameData yang ada
-      _initializeListAnimFromFrameData();
+    //   // Initialize _listAnim dari frameData yang ada
+    //   _initializeListAnimFromFrameData();
 
-      _nameController.text = anim.name;
-      _descController.text = anim.description;
-      _channelController.text = anim.channelCount.toString();
-    } else {
-      _channelCount = 80; // Default 80 channel
+    //   _nameController.text = anim.name;
+    //   _descController.text = anim.description;
+    //   _channelController.text = (config?.jumlahChannel ?? 8).toString();
+    // } else {
+      _channelCount = config?.jumlahChannel ?? 8;
       _animationLength = 1;
       _description = '';
       _delayData = '4';
@@ -75,7 +84,7 @@ class _EditorPageState extends State<EditorPage> {
       _nameController.text = '';
       _descController.text = '';
       _channelController.text = _channelCount.toString();
-    }
+    // }
   }
 
   void _initializeListAnimFromFrameData() {
@@ -112,7 +121,7 @@ class _EditorPageState extends State<EditorPage> {
 
   void _loadUserPreferences() async {
     await _animationService.initialize();
-    final lastChannel = await _animationService.getLastSelectedChannel();
+    final lastChannel = config?.jumlahChannel ?? 8;
     setState(() {
       _channelCount = lastChannel;
       _channelController.text = lastChannel.toString();

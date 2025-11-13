@@ -1,19 +1,22 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:iTen/constants/app_colors.dart';
 import 'package:iTen/routes/routes.dart';
 import 'package:iTen/services/firebase_data_service.dart';
-
-import 'firebase_options.dart';
+import 'package:iTen/services/preferences_service.dart';
 
 void main() async {
     WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  // await Firebase.initializeApp(
+  //   options: DefaultFirebaseOptions.currentPlatform,
+  // );
     FirebaseDataService().initialize(); // ADD THIS
-
+try {
+    await PreferencesService().initialize();
+    print('✅ PreferencesService initialized in main');
+  } catch (e) {
+    print('❌ Failed to initialize PreferencesService in main: $e');
+  }
   runApp(const MainApp());
 }
 

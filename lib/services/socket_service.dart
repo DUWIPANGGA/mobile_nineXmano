@@ -9,16 +9,20 @@ class SocketService {
   final int port;
   Socket? _socket;
   bool _isConnected = false;
-
+ int _consumerCount = 0;
+  final _consumerController = StreamController<bool>.broadcast();
   final _messageController = StreamController<String>.broadcast();
   final _binaryController = StreamController<List<int>>.broadcast();
   final _connectionController = StreamController<bool>.broadcast();
 
+  // SINGLETON INSTANCE
+  static final SocketService _instance = SocketService._internal();
+  factory SocketService() => _instance;
+  SocketService._internal({this.host = '192.168.4.1', this.port = 11223});
+
   Stream<String> get messages => _messageController.stream;
   Stream<List<int>> get binaryData => _binaryController.stream;
   Stream<bool> get connectionStatus => _connectionController.stream;
-
-  SocketService({this.host = '192.168.4.1', this.port = 11223});
 
   bool get isConnected => _isConnected;
 
@@ -53,9 +57,23 @@ class SocketService {
       print('❌ Connection failed: $e');
       _isConnected = false;
       _connectionController.add(false);
+      rethrow;
     }
   }
-
+void addConsumer() {
+    _consumerCount++;
+    print('🔄 SocketService consumers: $_consumerCount');
+  }
+  
+  void removeConsumer() {
+    _consumerCount--;
+    print('🔄 SocketService consumers: $_consumerCount');
+    
+    if (_consumerCount <= 0) {
+      _consumerCount = 0;
+      _disconnect();
+    }
+  }
   void disconnect() {
     _disconnect();
   }
@@ -84,6 +102,28 @@ class SocketService {
       print('🔢 Data is binary, cannot decode as UTF-8');
       _binaryController.add(data);
       _handleBinaryData(data);
+    }
+  }
+
+  // FIXED: Handle config message dengan proper error handling
+  void _handleConfigMessage(String message) async {
+    try {
+      print('🔄 [SOCKET] Processing config message...');
+      
+      // Use singleton instance
+      final configService = ConfigService();
+      final config = await configService.parseAndSaveConfig(message);
+      
+      if (config != null) {
+        _messageController.add('CONFIG_UPDATED:Success');
+        print('✅ [SOCKET] Config processed and saved successfully');
+      } else {
+        _messageController.add('CONFIG_ERROR:Invalid config data');
+        print('❌ [SOCKET] Config parsing returned null');
+      }
+    } catch (e) {
+      print('❌ [SOCKET] Failed to process config: $e');
+      _messageController.add('CONFIG_ERROR:${e.toString()}');
     }
   }
 
@@ -203,7 +243,7 @@ class SocketService {
     print('╚═══════════════════════════════════════════════════');
   }
 
-  // Di SocketService - Perbaikan _handleConfigResponse
+  // FIXED: _handleConfigResponse dengan logic yang benar
   void _handleConfigResponse(String message) {
     print('🔧 Processing config data from device...');
 
@@ -211,38 +251,38 @@ class SocketService {
       // Validasi message
       if (message.isEmpty || !message.startsWith('config,')) {
         print('❌ Invalid config message format');
+        _messageController.add('CONFIG_ERROR:Invalid format');
         return;
       }
-      if (message.startsWith('config,')) {
-        _processConfigData(message);
-      }
-      if (message.startsWith('info,')) {
-        _processConfigData(message);
-        print(message.substring(6, message.length));
-      }
+
       print('📨 Raw config data received: ${message.length} characters');
       print(
         '   First 100 chars: ${message.substring(0, message.length < 100 ? message.length : 100)}...',
       );
 
-      // Process config data
+      // Process config data langsung
+      _processConfigData(message);
+      
     } catch (e) {
       print('❌ Error in _handleConfigResponse: $e');
-      print('   Stack trace: ${e.toString()}');
+      _messageController.add('CONFIG_ERROR:${e.toString()}');
     }
   }
 
-  // Pisahkan logic processing ke method terpisah
+  // FIXED: _processConfigData dengan proper async handling
   void _processConfigData(String message) async {
     try {
+      print('🔄 [PROCESSOR] Starting config data processing...');
+      
+      // Use singleton instance
       final configService = ConfigService();
       final config = await configService.parseAndSaveConfig(message);
 
       if (config != null) {
-        print('✅ Config processed and saved to preferences successfully');
+        print('✅ [PROCESSOR] Config processed and saved to preferences successfully');
 
         // Print config details
-        print('📋 Saved Config Details:');
+        print('📋 [PROCESSOR] Saved Config Details:');
         print('   - Firmware: ${config.firmware}');
         print('   - MAC: ${config.mac}');
         print('   - Channels: ${config.jumlahChannel}');
@@ -253,11 +293,11 @@ class SocketService {
         // Kirim event bahwa config telah diperbarui
         _messageController.add('CONFIG_UPDATED:${config.devID}');
       } else {
-        print('⚠️ Failed to process and save config data');
+        print('⚠️ [PROCESSOR] Failed to process and save config data');
         _messageController.add('CONFIG_ERROR:Failed to save config');
       }
     } catch (e) {
-      print('❌ Error processing config data: $e');
+      print('❌ [PROCESSOR] Error processing config data: $e');
       _messageController.add('CONFIG_ERROR:$e');
     }
   }
@@ -285,19 +325,23 @@ class SocketService {
   void _handleInfoMessage(String message) {
     final info = message.substring(5);
     print('║ 💬 Info: "$info"');
+    _messageController.add('INFO:$info');
   }
 
   void _handleErrorMessage(String message) {
     final error = message.substring(6);
     print('║ 🚨 Error: "$error"');
+    _messageController.add('ERROR:$error');
   }
 
   void _handleOkResponse(String message) {
     print('║ ✅ Operation completed successfully');
+    _messageController.add('OK');
   }
 
   void _handleReadyResponse(String message) {
     print('║ 🟢 Device is ready for commands');
+    _messageController.add('READY');
   }
 
   void _handleUnknownMessage(String message) {
@@ -313,48 +357,50 @@ class SocketService {
         print('║     [${i + 1}] "${parts[i]}" (${parts[i].length} chars)');
       }
     }
+    
+    _messageController.add('UNKNOWN:$message');
   }
 
   // ========== OUTGOING MESSAGES - REMOTE CONTROL ==========
 
   /// Remote Control - Tombol A-D
-  void remoteA() => send('RA');
-  void remoteB() => send('RB');
-  void remoteC() => send('RC');
-  void remoteD() => send('RD');
+  void remoteA() => _send('RA');
+  void remoteB() => _send('RB');
+  void remoteC() => _send('RC');
+  void remoteD() => _send('RD');
 
   /// Auto Mode
-  void autoABCD() => send('RE');
-  void autoAllBuiltin() => send('RG');
-  void turnOff() => send('RF');
+  void autoABCD() => _send('RE');
+  void autoAllBuiltin() => _send('RG');
+  void turnOff() => _send('RF');
 
   /// Builtin Animations (3-31)
   void builtinAnimation(int number) {
     if (number >= 3 && number <= 31) {
-      send('RH${number.toString().padLeft(2, '0')}');
+      _send('RH${number.toString().padLeft(2, '0')}');
     }
   }
 
   // ========== OUTGOING MESSAGES - CONFIGURATION ==========
 
   /// Request config device
-  void requestConfig() => send('CC');
+  void requestConfig() => _send('CC');
 
   /// Set email
-  void setEmail(String email) => send('CA$email');
+  void setEmail(String email) => _send('CA$email');
 
   /// Set jumlah channel (2 digit)
   void setChannel(int channel) =>
-      send('CB${channel.toString().padLeft(2, '0')}');
+      _send('CB${channel.toString().padLeft(2, '0')}');
 
   /// Set delays (masing-masing 3 digit)
   void setDelays(int delay1, int delay2, int delay3, int delay4) {
-    send('CD${_pad3(delay1)}${_pad3(delay2)}${_pad3(delay3)}${_pad3(delay4)}');
+    _send('CD${_pad3(delay1)}${_pad3(delay2)}${_pad3(delay3)}${_pad3(delay4)}');
   }
 
   /// Set WiFi config
   void setWifi(String ssid, String password) {
-    send('CW${_pad2(ssid.length)}${_pad2(password.length)}$ssid$password');
+    _send('CW${_pad2(ssid.length)}${_pad2(password.length)}$ssid$password');
   }
 
   // ========== OUTGOING MESSAGES - ANIMATION DATA ==========
@@ -367,7 +413,7 @@ class SocketService {
     required String hexData, // data dalam hex
   }) {
     final dataLength = hexData.length ~/ 2;
-    send(
+    _send(
       'M$remoteIndex$channel${_pad5(frameIndex)}${_pad4(dataLength)}$hexData',
     );
   }
@@ -379,7 +425,7 @@ class SocketService {
     required int frameIndex, // 5 digit
     required String delayData,
   }) {
-    send(
+    _send(
       'M$remoteIndex$delayType${_pad5(frameIndex)}${_pad3(delayData.length)}$delayData',
     );
   }
@@ -388,102 +434,109 @@ class SocketService {
 
   /// Set builtin animation untuk remote tertentu
   void setBuiltinAnimation(int remoteIndex, int animNumber) {
-    send('B$remoteIndex${animNumber.toString().padLeft(2, '0')}');
+    _send('B$remoteIndex${animNumber.toString().padLeft(2, '0')}');
   }
 
   // ========== OUTGOING MESSAGES - LICENSE ==========
 
   /// Aktivasi lisensi
   void activateLicense(String serialNumber) {
-    send('LA${_pad4(serialNumber.length)}$serialNumber');
+    _send('LA${_pad4(serialNumber.length)}$serialNumber');
   }
 
   // ========== OUTGOING MESSAGES - CALIBRATION ==========
 
   /// Enable/disable kalibrasi mode
-  void setCalibrationMode(bool enable) => send('KM${enable ? 1 : 0}');
+  void setCalibrationMode(bool enable) => _send('KM${enable ? 1 : 0}');
 
   /// Set kalibrasi remote
   void setCalibration(int remoteNum, int buttonID) =>
-      send('KR$remoteNum$buttonID');
+      _send('KR$remoteNum$buttonID');
 
   // ========== OUTGOING MESSAGES - TRIGGER SETTINGS ==========
 
   /// Set trigger data
   void setTrigger(int triggerNum, List<int> data) {
     final csvData = data.map((e) => e.toString()).join(',');
-    send('S$triggerNum${_pad3(csvData.length)}$csvData');
+    _send('S$triggerNum${_pad3(csvData.length)}$csvData');
   }
 
   /// Set trigger mode
-  void setTriggerLow(int value) => send('SL$value');
-  void setTriggerHigh(int value) => send('SH$value');
-  void setTriggerFog(int value) => send('SF$value');
-  void setQuickTrigger(int value) => send('SQ$value');
-// Di SocketService class - tambahkan method ini
+  void setTriggerLow(int value) => _send('SL$value');
+  void setTriggerHigh(int value) => _send('SH$value');
+  void setTriggerFog(int value) => _send('SF$value');
+  void setQuickTrigger(int value) => _send('SQ$value');
 
-/// Kirim trigger toggle (0 atau 1)
-void sendTriggerToggle(String triggerCode, bool isActive) {
-  final value = isActive ? 1 : 0;
-  send('$triggerCode$value');
-  print('🔘 Trigger Toggle: $triggerCode$value');
-}
-
-/// Kirim mapping data (10 frame + 1 channel)
-void sendMappingData(String mappingCode, List<int> frameData, int channel) {
-  // Validasi frame data harus 10 elements
-  final paddedFrameData = List<int>.from(frameData);
-  
-  // Pad dengan 0 jika kurang dari 10 frame
-  while (paddedFrameData.length < 10) {
-    paddedFrameData.add(0);
+  /// Kirim trigger toggle (0 atau 1)
+// Di SocketService
+void sendTriggerToggle(String triggerCode, int value) {
+  // value should be 1 or 0
+  if (value != 0 && value != 1) {
+    print('⚠️ Invalid toggle value: $value, should be 0 or 1');
+    value = 0; // default to KEDIP
   }
   
-  // Pastikan tidak lebih dari 10 frame
-  if (paddedFrameData.length > 10) {
-    paddedFrameData.removeRange(10, paddedFrameData.length);
-  }
-  
-  // Format: [code][frame1],[frame2],...,[frame10],[channel]
-  final frameString = paddedFrameData.take(10).join(',');
-  final data = '$frameString,$channel';
-  
-  send('$mappingCode$data');
-  print('🗺️ Mapping Data: $mappingCode$data');
-  print('   - Frames: ${paddedFrameData.length} (padded to 10)');
-  print('   - Channel: $channel');
+  final command = '${triggerCode}${value}';
+  send(command);
+  print('📤 Sent toggle command: $command');
 }
 
-/// Kirim mapping data dengan List<int> untuk frames
-void sendMappingDataWithList(String mappingCode, List<int> frames, int channel) {
-  sendMappingData(mappingCode, frames, channel);
-}
+  /// Kirim mapping data (10 frame + 1 channel)
+  void sendMappingData(String mappingCode, List<int> frameData, int channel) {
+    // Validasi frame data harus 10 elements
+    final paddedFrameData = List<int>.from(frameData);
+    
+    // Pad dengan 0 jika kurang dari 10 frame
+    while (paddedFrameData.length < 10) {
+      paddedFrameData.add(0);
+    }
+    
+    // Pastikan tidak lebih dari 10 frame
+    if (paddedFrameData.length > 10) {
+      paddedFrameData.removeRange(10, paddedFrameData.length);
+    }
+    
+    // Format: [code][frame1],[frame2],...,[frame10],[channel]
+    final frameString = paddedFrameData.take(10).join(',');
+    final data = '$frameString,$channel';
+    
+    _send('$mappingCode$data');
+    print('🗺️ Mapping Data: $mappingCode$data');
+    print('   - Frames: ${paddedFrameData.length} (padded to 10)');
+    print('   - Channel: $channel');
+  }
+
+  /// Kirim mapping data dengan List<int> untuk frames
+  void sendMappingDataWithList(String mappingCode, List<int> frames, int channel) {
+    sendMappingData(mappingCode, frames, channel);
+  }
+
   // ========== OUTGOING MESSAGES - WELCOME ANIMATION ==========
 
   /// Set welcome animation
   void setWelcomeAnimation(int animNumber, int duration) {
-    send('W${_pad3(animNumber)}${_pad3(duration)}');
+    _send('W${_pad3(animNumber)}${_pad3(duration)}');
   }
 
   // ========== OUTGOING MESSAGES - MITRA ID ==========
 
   /// Set mitra ID
   void setMitraID(String mitraID) {
-    send('Y${_pad3(mitraID.length)}$mitraID');
+    _send('Y${_pad3(mitraID.length)}$mitraID');
   }
 
   // ========== OUTGOING MESSAGES - RESET ==========
 
   /// Reset device ke factory default
-  void resetDevice() => send('Z');
+  void resetDevice() => _send('Z');
 
   // ========== OUTGOING MESSAGES - MANO SHOW MODE ==========
 
   /// Request config show
-  void requestConfigShow() => send('XC');
+  void requestConfigShow() => _send('XC');
 
   /// Remote control show mode
-  void remoteShow(String command) => send('XR$command');
+  void remoteShow(String command) => _send('XR$command');
 
   /// Setup device show
   void setupDeviceShow(
@@ -493,14 +546,14 @@ void sendMappingDataWithList(String mappingCode, List<int> frames, int channel) 
     String mac,
     int jumlahChannel,
   ) {
-    send('XD$jumlahDevice,$index,$email,$mac,$jumlahChannel');
+    _send('XD$jumlahDevice,$index,$email,$mac,$jumlahChannel');
   }
 
   /// Test mode show
-  void setTestModeShow(bool enable) => send('XM${enable ? 1 : 0}');
+  void setTestModeShow(bool enable) => _send('XM${enable ? 1 : 0}');
 
   /// Set speed run show
-  void setSpeedRun(int speed) => send('XS${_pad3(speed)}');
+  void setSpeedRun(int speed) => _send('XS${_pad3(speed)}');
 
   // ========== UTILITY METHODS ==========
 
@@ -516,6 +569,7 @@ void sendMappingDataWithList(String mappingCode, List<int> frames, int channel) 
       print('📤 Sent: $message');
     } else {
       print('❌ Cannot send, not connected.');
+      throw Exception('Socket not connected');
     }
   }
 
@@ -524,10 +578,17 @@ void sendMappingDataWithList(String mappingCode, List<int> frames, int channel) 
     send(message);
   }
 
+  @override
   void dispose() {
-    _disconnect();
-    _messageController.close();
-    _binaryController.close();
-    _connectionController.close();
+    removeConsumer();
+    
+    // Only actually dispose if no consumers left
+    if (_consumerCount <= 0) {
+      _messageController.close();
+      _binaryController.close();
+      _connectionController.close();
+      _socket?.destroy();
+      print('🔌 SocketService fully disposed');
+    }
   }
 }

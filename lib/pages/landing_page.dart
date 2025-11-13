@@ -422,7 +422,7 @@ class _LandingPageState extends State<LandingPage> {
                       Icon(Icons.touch_app, size: 20),
                       SizedBox(width: 8),
                       Text(
-                        'NORMAL',
+                        'Menu Utama',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -471,7 +471,7 @@ class _LandingPageState extends State<LandingPage> {
                       Icon(Icons.dashboard, size: 20),
                       SizedBox(width: 8),
                       Text(
-                        'SHOW',
+                        'Singkronasi',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

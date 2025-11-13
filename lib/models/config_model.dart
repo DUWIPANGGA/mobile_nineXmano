@@ -57,15 +57,66 @@ class ConfigModel {
   });
 
   // Factory constructor untuk parse dari string Arduino
-  factory ConfigModel.fromArduinoString(String data) {
-    final parts = data.split(',');
+  // models/config_model.dart - FIXED VERSION
+// In models/config_model.dart - FIXED VERSION
+// models/config_model.dart - PERBAIKAN PARSING TRIGGER DATA
+factory ConfigModel.fromArduinoString(String data) {
+  final parts = data.split(',');
 
-    // Validasi panjang data
-    if (parts.length < 43) {
-      throw FormatException('Invalid config data length: ${parts.length}');
+  print('🔍 [PARSER] Parsing config data with ${parts.length} parts');
+  
+  // Debug: Print all parts for analysis
+  for (int i = 0; i < parts.length; i++) {
+    print('   [$i] "${parts[i]}"');
+  }
+
+  // Validate minimum length based on your data structure
+  if (parts.length < 54) {
+    throw FormatException(
+      'Invalid config data length: ${parts.length}. Expected at least 54 parts. Data: $data'
+    );
+  }
+
+  try {
+    // PERBAIKAN: Parse trigger data arrays (10 elements each) dengan index yang benar
+    final trigger1Data = List.generate(10, (index) {
+      final value = int.tryParse(parts[20 + index]) ?? 0;
+      return value;
+    });
+    
+    final trigger2Data = List.generate(10, (index) {
+      final value = int.tryParse(parts[30 + index]) ?? 0;
+      return value;
+    });
+    
+    final trigger3Data = List.generate(10, (index) {
+      final value = int.tryParse(parts[40 + index]) ?? 0;
+      return value;
+    });
+
+    // PERBAIKAN: Debug trigger data dengan lebih detail
+    print('🎯 [PARSER] Trigger1 Data (indices 20-29):');
+    for (int i = 20; i <= 29; i++) {
+      print('   - Index $i: "${parts[i]}" -> ${int.tryParse(parts[i]) ?? 0}');
+    }
+    
+    print('🎯 [PARSER] Trigger2 Data (indices 30-39):');
+    for (int i = 30; i <= 39; i++) {
+      print('   - Index $i: "${parts[i]}" -> ${int.tryParse(parts[i]) ?? 0}');
+    }
+    
+    print('🎯 [PARSER] Trigger3 Data (indices 40-49):');
+    for (int i = 40; i <= 49; i++) {
+      print('   - Index $i: "${parts[i]}" -> ${int.tryParse(parts[i]) ?? 0}');
     }
 
-    return ConfigModel(
+    print('🎯 [PARSER] Trigger Modes:');
+    print('   - Trigger1 Mode (index 50): "${parts[50]}" -> ${int.tryParse(parts[50]) ?? 0}');
+    print('   - Trigger2 Mode (index 51): "${parts[51]}" -> ${int.tryParse(parts[51]) ?? 0}');
+    print('   - Trigger3 Mode (index 52): "${parts[52]}" -> ${int.tryParse(parts[52]) ?? 0}');
+    print('   - Quick Trigger (index 53): "${parts[53]}" -> ${int.tryParse(parts[53]) ?? 0}');
+
+    final config = ConfigModel(
       firmware: parts[1],
       mac: parts[2],
       typeLicense: int.tryParse(parts[3]) ?? 0,
@@ -85,26 +136,48 @@ class ConfigModel {
       mitraID: parts[17],
       animWelcome: int.tryParse(parts[18]) ?? 0,
       durasiWelcome: (int.tryParse(parts[19]) ?? 1) - 1, // Convert back to 0-based
-      trigger1Data: _parseTriggerData(parts, 20, 10),
-      trigger2Data: _parseTriggerData(parts, 30, 10),
-      trigger3Data: _parseTriggerData(parts, 40, 10),
-      trigger1Mode: int.tryParse(parts[40]) ?? 0,
-      trigger2Mode: int.tryParse(parts[41]) ?? 0,
-      trigger3Mode: int.tryParse(parts[42]) ?? 0,
-      quickTrigger: (int.tryParse(parts[43]) ?? 1) - 1, // Convert back to 0-based
+      trigger1Data: trigger1Data,
+      trigger2Data: trigger2Data,
+      trigger3Data: trigger3Data,
+      trigger1Mode: int.tryParse(parts[50]) ?? 0, // Fixed index
+      trigger2Mode: int.tryParse(parts[51]) ?? 0, // Fixed index
+      trigger3Mode: int.tryParse(parts[52]) ?? 0, // Fixed index
+      quickTrigger: (int.tryParse(parts[53]) ?? 1), // Fixed index
     );
-  }
 
-  // Helper untuk parse trigger data
-  static List<int> _parseTriggerData(List<String> parts, int startIndex, int length) {
+    print('✅ [PARSER] Config parsed successfully: ${config.summary}');
+    
+    // PERBAIKAN: Print trigger data yang sudah di-parse
+    print('🎯 [PARSER] Parsed Trigger Data:');
+    print('   - Trigger1: ${parts[50]}');
+    print('   - Trigger2: ${parts[51]}');
+    print('   - Trigger3: ${parts[52]}');
+    
+    return config;
+    
+  } catch (e, stackTrace) {
+    print('❌ [PARSER] Error parsing config data: $e');
+    print('📋 [PARSER] Stack trace: $stackTrace');
+    rethrow;
+  }
+}
+  // Helper untuk parse trigger data - ENHANCED VERSION
+static List<int> _parseTriggerData(List<String> parts, int startIndex, int length) {
+  try {
     return List.generate(length, (index) {
       final partIndex = startIndex + index;
       if (partIndex < parts.length) {
-        return int.tryParse(parts[partIndex]) ?? 0;
+        final value = int.tryParse(parts[partIndex]) ?? 0;
+        // Validate trigger data range (typically 0-255 for bytes)
+        return value.clamp(0, 255);
       }
       return 0;
     });
+  } catch (e) {
+    print('❌ [PARSER] Error parsing trigger data at index $startIndex: $e');
+    return List.filled(length, 0);
   }
+}
 
   // Convert ke Map untuk disimpan di preferences
   Map<String, dynamic> toMap() {
@@ -233,10 +306,7 @@ class ConfigModel {
   // Validasi data
   bool get isValid {
     return firmware.isNotEmpty &&
-        mac.isNotEmpty &&
-        jumlahChannel > 0 &&
-        email.isNotEmpty;
-  }
+        mac.isNotEmpty;}
 
   // Summary info
   String get summary {

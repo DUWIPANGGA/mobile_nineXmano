@@ -81,35 +81,62 @@ class ConfigService {
   }
 
   // Parse dan simpan config dari string Arduino
-  Future<ConfigModel?> parseAndSaveConfig(String arduinoData) async {
-    try {
-      print('🔧 Parsing Arduino config data...');
-      print('   - Raw data length: ${arduinoData.length}');
-      print(
-        '   - First 100 chars: ${arduinoData.substring(0, arduinoData.length < 100 ? arduinoData.length : 100)}...',
-      );
+  // In services/config_service.dart - ENHANCED VERSION
+Future<ConfigModel?> parseAndSaveConfig(String arduinoData) async {
+  try {
+    print('🔧 [CONFIG SERVICE] Parsing Arduino config data...');
+    print('   - Raw data: $arduinoData');
+    print('   - Data length: ${arduinoData.length} characters');
+    print('   - Starts with config: ${arduinoData.startsWith('config,')}');
 
-      final config = ConfigModel.fromArduinoString(arduinoData);
+    // Validate the data format first
+    if (!arduinoData.startsWith('config,')) {
+      throw FormatException('Invalid data format. Must start with "config,"');
+    }
 
-      if (config.isValid) {
-        final saved = await saveConfig(config);
-        if (saved) {
-          print('✅ Config parsed and saved to preferences successfully');
-          print('📋 Config summary: ${config.summary}');
-          return config;
-        } else {
-          print('⚠️ Failed to save config to preferences');
-          return null;
-        }
+    // Count commas to estimate number of fields
+    final commaCount = ','.allMatches(arduinoData).length;
+    print('   - Number of fields: ${commaCount + 1}');
+
+    final config = ConfigModel.fromArduinoString(arduinoData);
+
+    print('📋 [CONFIG SERVICE] Config validation:');
+    print('   - Is valid: ${config.isValid}');
+    print('   - Firmware: ${config.firmware}');
+    print('   - MAC: ${config.mac}');
+    print('   - Channels: ${config.jumlahChannel}');
+    print('   - Email: ${config.email}');
+
+    if (config.isValid) {
+      final saved = await saveConfig(config);
+      if (saved) {
+        print('✅ [CONFIG SERVICE] Config parsed and saved successfully!');
+        print('🎉 [CONFIG SERVICE] ${config.summary}');
+        
+        // Print detailed trigger information
+        print('⚡ [CONFIG SERVICE] Trigger Summary:');
+        print('   - Trigger1: ${config.trigger1Data} (Mode: ${config.trigger1Mode})');
+        print('   - Trigger2: ${config.trigger2Data} (Mode: ${config.trigger2Mode})');
+        print('   - Trigger3: ${config.trigger3Data} (Mode: ${config.trigger3Mode})');
+        print('   - Quick Trigger: ${config.quickTrigger}');
+        
+        return config;
       } else {
-        print('⚠️ Config data is invalid');
+        print('⚠️ [CONFIG SERVICE] Failed to save config to preferences');
         return null;
       }
-    } catch (e) {
-      print('❌ Error parsing Arduino config: $e');
+    } else {
+      print('❌ [CONFIG SERVICE] Config data is invalid');
+      print('💡 [CONFIG SERVICE] Debug info: ${config.debugInfo}');
       return null;
     }
+  } catch (e, stackTrace) {
+    print('❌ [CONFIG SERVICE] Error parsing Arduino config: $e');
+    print('📋 [CONFIG SERVICE] Stack trace: $stackTrace');
+    print('💡 [CONFIG SERVICE] Problematic data: $arduinoData');
+    return null;
   }
+}
 
   // Get default config
   ConfigModel getDefaultConfig() {

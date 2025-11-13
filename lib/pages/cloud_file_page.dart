@@ -18,6 +18,10 @@ class _CloudFilePageState extends State<CloudFilePage> {
   
   // Data dari preferences
   ListAnimationModel _userAnimations = ListAnimationModel.empty('USER');
+    ListAnimationModel _filteredAnimations = ListAnimationModel.empty('FILTERED');
+  int _channelFilter = 016; // Filter channel count 16
+  int _startIndex = 1; // Mulai dari index 2
+  int _endIndex = 3;   // Sampai index 3
   bool _isLoading = true;
   String _errorMessage = '';
 
@@ -27,67 +31,101 @@ class _CloudFilePageState extends State<CloudFilePage> {
     _loadAnimationsFromPreferences();
   }
 
-  // Load data dari preferences
-  Future<void> _loadAnimationsFromPreferences() async {
-    try {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = '';
-      });
-
-      final animations = await _firebaseService.getUserAnimationsWithCache();
+  ListAnimationModel _applyFilters(ListAnimationModel animations) {
+  final filteredList = <AnimationModel>[];
+  
+  for (int i = 0; i < animations.length; i++) {
+    // Filter berdasarkan index range (pastikan index valid)
+    // if (i >= _startIndex - 1 && i <= _endIndex - 1 && i < animations.length) {
+      final animation = animations[i];
+        print(
+          "${animation.channelCount} == $_channelFilter"
+        );
       
-      setState(() {
-        _userAnimations = animations;
-        _isLoading = false;
-      });
-
-      print('✅ Loaded ${_userAnimations.length} animations from preferences');
-
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Error loading animations: $e';
-        _isLoading = false;
-      });
-      print('❌ Error loading animations from preferences: $e');
-    }
+      // Filter berdasarkan channel count
+      if (animation.channelCount == _channelFilter) {
+        filteredList.add(animation);
+      }
+    // }
   }
+  
+  return ListAnimationModel.fromList(
+    filteredList, 
+    'Filtered (Index $_startIndex-$_endIndex, Channel $_channelFilter)'
+  );
+}
+  // Load data dari preferences
+  // Load data dari preferences
+Future<void> _loadAnimationsFromPreferences() async {
+  try {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+
+    final animations = await _firebaseService.getUserAnimationsWithCache();
+    final filtered = _applyFilters(animations); // Apply filter
+
+    setState(() {
+      _userAnimations = animations;
+      _filteredAnimations = filtered; // Tambahkan ini
+      _isLoading = false;
+    });
+
+    print('✅ Loaded ${_userAnimations.length} animations from preferences');
+    print('✅ Filtered to ${_filteredAnimations.length} animations');
+
+  } catch (e) {
+    setState(() {
+      _errorMessage = 'Error loading animations: $e';
+      _isLoading = false;
+    });
+    print('❌ Error loading animations from preferences: $e');
+  }
+}
 
   Future<void> _refreshData() async {
-    try {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = '';
-      });
+  try {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
 
-      // Force refresh dari Firebase
-      await _firebaseService.forceRefreshApiData();
-      
-      // Load ulang dari preferences
-      await _loadAnimationsFromPreferences();
+    // Force refresh dari Firebase
+    await _firebaseService.forceRefreshApiData();
+    
+    // Load ulang dari preferences
+    final animations = await _firebaseService.getUserAnimationsWithCache();
+    final filtered = _applyFilters(animations);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: AppColors.neonGreen,
-          content: const Text(
-            'Data refreshed from cloud!',
-            style: TextStyle(
-              color: AppColors.primaryBlack,
-              fontWeight: FontWeight.bold,
-            ),
+    setState(() {
+      _userAnimations = animations;
+      _filteredAnimations = filtered; // Update filtered data
+      _isLoading = false;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: AppColors.neonGreen,
+        content: const Text(
+          'Data refreshed from cloud!',
+          style: TextStyle(
+            color: AppColors.primaryBlack,
+            fontWeight: FontWeight.bold,
           ),
-          duration: const Duration(seconds: 2),
         ),
-      );
+        duration: const Duration(seconds: 2),
+      ),
+    );
 
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Error refreshing data: $e';
-        _isLoading = false;
-      });
-      print('❌ Error refreshing data: $e');
-    }
+  } catch (e) {
+    setState(() {
+      _errorMessage = 'Error refreshing data: $e';
+      _isLoading = false;
+    });
+    print('❌ Error refreshing data: $e');
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -133,7 +171,7 @@ class _CloudFilePageState extends State<CloudFilePage> {
                     ),
                   ),
                   child: Text(
-                    '${_userAnimations.length} files',
+                    '${_filteredAnimations.length} files',
                     style: TextStyle(
                       color: AppColors.pureWhite,
                       fontSize: 12,
@@ -249,7 +287,7 @@ class _CloudFilePageState extends State<CloudFilePage> {
             )
 
           // Empty State
-          else if (_userAnimations.isEmpty)
+          else if (_filteredAnimations.isEmpty)
             Expanded(
               child: Center(
                 child: Column(
@@ -285,9 +323,9 @@ class _CloudFilePageState extends State<CloudFilePage> {
           else
             Expanded(
               child: ListView.builder(
-                itemCount: _userAnimations.length,
+                itemCount: _filteredAnimations.length,
                 itemBuilder: (context, index) {
-                  final animation = _userAnimations[index];
+                  final animation = _filteredAnimations[index];
                   final isSelected = _selectedFiles.contains(index);
                   
                   return Container(
@@ -413,9 +451,9 @@ class _CloudFilePageState extends State<CloudFilePage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           // Last Sync info (jika ada)
-                          if (_userAnimations.lastSync != null)
+                          if (_filteredAnimations.lastSync != null)
                             Text(
-                              _formatDate(_userAnimations.lastSync),
+                              _formatDate(_filteredAnimations.lastSync),
                               style: TextStyle(
                                 color: AppColors.pureWhite.withOpacity(0.6),
                                 fontSize: 10,
@@ -480,7 +518,7 @@ class _CloudFilePageState extends State<CloudFilePage> {
     if (_selectedFiles.isEmpty) return;
     
     // Simulasi download file
-    final selectedAnimations = _selectedFiles.map((index) => _userAnimations[index]).toList();
+    final selectedAnimations = _selectedFiles.map((index) => _filteredAnimations[index]).toList();
     final selectedNames = selectedAnimations.map((anim) => anim.name).toList();
     
     ScaffoldMessenger.of(context).showSnackBar(

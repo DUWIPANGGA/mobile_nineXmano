@@ -19,7 +19,7 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   int _currentIndex = 0;
-  final SocketService _socketService = SocketService();
+  late SocketService _socketService;
   bool _isConnecting = false;
   bool _isConnected = false;
 
@@ -40,8 +40,11 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void initState() {
     super.initState();
+  _socketService = SocketService();
+    _socketService.addConsumer();
     _initializePages();
     _setupSocketListeners();
+    
   }
 
   void _initializePages() {
@@ -352,7 +355,7 @@ class _DashboardPageState extends State<DashboardPage> {
           // Header dengan logo NINE X MANO dan connection button
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            padding: const EdgeInsets.only(top: 40,bottom: 20, right: 20,left: 20),
             decoration: BoxDecoration(
               color: AppColors.darkGrey,
               border: Border(
@@ -543,7 +546,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   void dispose() {
-    _socketService.dispose();
+_socketService.removeConsumer();
     super.dispose();
   }
 }

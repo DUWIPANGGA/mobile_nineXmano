@@ -40,7 +40,7 @@ class AppRoutes {
     settings: (context) => SettingsPage(socketService: SocketService()),
     databaseViewer: (context) => const DatabaseViewerPage(),
     monitor: (context) => ConfigMonitorWidget(socketService: SocketService()),
-    sync: (context) => SyncPage(socketService: SocketService()), // PAGE BARU
+    sync: (context) => SyncPage(), // PAGE BARU
   };
 
   // Helper method untuk navigasi

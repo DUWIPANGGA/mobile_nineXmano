@@ -20,6 +20,9 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   bool _welcomeModeEnabled = true;
   int _selectedDuration = 3;
+  int _selectedChannel = 8;
+int _maxChannels = 8; // Default max channels berdasarkan license
+
   final PreferencesService _preferencesService = PreferencesService();
 
   final TextEditingController _emailController = TextEditingController();
@@ -344,7 +347,7 @@ class _SettingsPageState extends State<SettingsPage> {
     _ssidController.text = config?.ssid ?? 'MaNo';
     _passwordController.text = config?.password ?? '11223344';
     _serialController.text = config?.devID ?? "Serial Number Kamu";
-    _activationController.text = 'Kode Aktivasi';
+    _activationController.text = '';
     _mitraIdController.text = config?.mitraID ?? '';
 
     print('📊 Initialized data with config: ${config != null ? "Yes" : "No"}');
@@ -578,7 +581,229 @@ class _SettingsPageState extends State<SettingsPage> {
       },
     );
   }
+void _handleConfigResponse(String message) {
+  final parts = message.split(',');
+  if (parts.length >= 20) {
+    setState(() {
+      _firmwareVersion = parts[1];
+      _deviceId = parts[16];
+      _licenseLevel = parts[3];
+      _deviceChannel = parts[4];
+      _currentEmail = parts[5];
+      _currentSSID = parts[6];
+      _currentPassword = parts[7];
 
+      // Parse license level dan set max channels
+      final licenseLevel = int.tryParse(_licenseLevel) ?? 1;
+      _maxChannels = _getMaxChannelsByLicense(licenseLevel);
+      
+      // Set selected channel dari device channel
+      _selectedChannel = int.tryParse(_deviceChannel) ?? _maxChannels;
+      
+      // Jika channel dari device melebihi max channels, set ke max channels
+      if (_selectedChannel > _maxChannels) {
+        _selectedChannel = _maxChannels;
+      }
+
+      // Update controllers dengan data aktual
+      _emailController.text = _currentEmail;
+      _ssidController.text = _currentSSID;
+      _passwordController.text = _currentPassword;
+
+      // Update delay values jika ada di config
+      if (parts.length >= 12) {
+        try {
+          final delay1 = int.tryParse(parts[8]) ?? 500;
+          final delay2 = int.tryParse(parts[9]) ?? 200;
+          final delay3 = int.tryParse(parts[10]) ?? 100;
+          final delay4 = int.tryParse(parts[11]) ?? 50;
+
+          _speedControllers['LAMBAT']!.text = delay1.toString();
+          _speedControllers['SEDANG']!.text = delay2.toString();
+          _speedControllers['CEPAT']!.text = delay3.toString();
+          _speedControllers['CEPAAT']!.text = delay4.toString();
+
+          _speedValues['LAMBAT'] = delay1;
+          _speedValues['SEDANG'] = delay2;
+          _speedValues['CEPAT'] = delay3;
+          _speedValues['CEPAAT'] = delay4;
+        } catch (e) {
+          print('Error parsing delay values: $e');
+        }
+      }
+    });
+  }
+}
+
+// Method untuk mendapatkan max channels berdasarkan license
+int _getMaxChannelsByLicense(int licenseLevel) {
+  switch (licenseLevel) {
+    case 1:
+      return 8;
+    case 2:
+      return 16;
+    case 3:
+      return 32;
+    case 4:
+      return 64;
+    case 5:
+      return 80;
+    default:
+      return 8; // Default fallback
+  }
+}
+
+// Method untuk update channel
+void _updateChannel() {
+  if (_selectedChannel > 0) {
+    widget.socketService.setChannel(_selectedChannel);
+    _showSnackbar('Channel diubah ke: $_selectedChannel');
+    
+    // Update juga _deviceChannel untuk display
+    setState(() {
+      _deviceChannel = _selectedChannel.toString();
+    });
+  }
+}
+
+// Widget untuk dropdown channel
+Widget _buildChannelDropdown() {
+  // Generate list channel berdasarkan max channels
+  final availableChannels = List.generate(_maxChannels, (index) => index + 1);
+  
+  return Container(
+    width: 100,
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+    decoration: BoxDecoration(
+      color: AppColors.darkGrey,
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: AppColors.neonGreen),
+    ),
+    child: DropdownButton<int>(
+      value: _selectedChannel,
+      isExpanded: true,
+      dropdownColor: AppColors.darkGrey,
+      style: const TextStyle(color: AppColors.pureWhite, fontSize: 12),
+      underline: const SizedBox(),
+      icon: Icon(Icons.arrow_drop_down, color: AppColors.neonGreen, size: 20),
+      items: availableChannels.map((int channel) {
+        return DropdownMenuItem<int>(
+          value: channel,
+          child: Text(
+            '$channel',
+            style: const TextStyle(color: AppColors.pureWhite, fontSize: 12),
+          ),
+        );
+      }).toList(),
+      onChanged: (int? newValue) {
+        if (newValue != null) {
+          setState(() {
+            _selectedChannel = newValue;
+          });
+        }
+      },
+    ),
+  );
+}
+
+// Widget untuk menampilkan info license dan channel restrictions
+Widget _buildLicenseInfo() {
+  String licenseInfo = '';
+  String channelInfo = '';
+  
+  switch (_licenseLevel) {
+    case '1':
+      licenseInfo = 'BASIC';
+      channelInfo = 'Max 8 Channels';
+      break;
+    case '2':
+      licenseInfo = 'STANDARD';
+      channelInfo = 'Max 16 Channels';
+      break;
+    case '3':
+      licenseInfo = 'PRO';
+      channelInfo = 'Max 32 Channels';
+      break;
+    case '4':
+      licenseInfo = 'ENTERPRISE';
+      channelInfo = 'Max 64 Channels';
+      break;
+    case '5':
+      licenseInfo = 'ULTIMATE';
+      channelInfo = 'Max 80 Channels';
+      break;
+    default:
+      licenseInfo = 'UNKNOWN';
+      channelInfo = 'Max 8 Channels';
+  }
+  
+  return Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: AppColors.primaryBlack,
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: AppColors.neonGreen.withOpacity(0.3)),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'License: $licenseInfo',
+              style: const TextStyle(
+                color: AppColors.pureWhite,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              channelInfo,
+              style: TextStyle(
+                color: AppColors.pureWhite.withOpacity(0.7),
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: _getLicenseColor(_licenseLevel),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            'Level $_licenseLevel',
+            style: const TextStyle(
+              color: AppColors.primaryBlack,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+// Helper untuk mendapatkan warna berdasarkan license level
+Color _getLicenseColor(String licenseLevel) {
+  switch (licenseLevel) {
+    case '1':
+      return Colors.blue;
+    case '2':
+      return Colors.green;
+    case '3':
+      return Colors.orange;
+    case '4':
+      return Colors.purple;
+    case '5':
+      return Colors.red;
+    default:
+      return Colors.grey;
+  }
+}
   // Method untuk apply speed settings
   void _updateSpeedSettings() {
     final delays = <int>[];
@@ -640,48 +865,7 @@ class _SettingsPageState extends State<SettingsPage> {
     // Contoh: jika ada data delay dari device, update controllers
   }
 
-  // Update _handleConfigResponse untuk load delay values
-  void _handleConfigResponse(String message) {
-    final parts = message.split(',');
-    if (parts.length >= 20) {
-      setState(() {
-        _firmwareVersion = parts[1];
-        _deviceId = parts[16];
-        _licenseLevel = parts[3];
-        _deviceChannel = parts[4];
-        _currentEmail = parts[5];
-        _currentSSID = parts[6];
-        _currentPassword = parts[7];
-
-        // Update controllers dengan data aktual
-        _emailController.text = _currentEmail;
-        _ssidController.text = _currentSSID;
-        _passwordController.text = _currentPassword;
-
-        // Update delay values jika ada di config
-        if (parts.length >= 12) {
-          try {
-            final delay1 = int.tryParse(parts[8]) ?? 500;
-            final delay2 = int.tryParse(parts[9]) ?? 200;
-            final delay3 = int.tryParse(parts[10]) ?? 100;
-            final delay4 = int.tryParse(parts[11]) ?? 50;
-
-            _speedControllers['LAMBAT']!.text = delay1.toString();
-            _speedControllers['SEDANG']!.text = delay2.toString();
-            _speedControllers['CEPAT']!.text = delay3.toString();
-            _speedControllers['CEPAAT']!.text = delay4.toString();
-
-            _speedValues['LAMBAT'] = delay1;
-            _speedValues['SEDANG'] = delay2;
-            _speedValues['CEPAT'] = delay3;
-            _speedValues['CEPAAT'] = delay4;
-          } catch (e) {
-            print('Error parsing delay values: $e');
-          }
-        }
-      });
-    }
-  }
+  
 
   void _setupSocketListeners() {
     widget.socketService.messages.listen((message) {
@@ -740,13 +924,6 @@ class _SettingsPageState extends State<SettingsPage> {
     return animationMap[animationName] ?? 1;
   }
 
-  void _updateChannel() {
-    if (_deviceChannel.isNotEmpty) {
-      final channel = int.tryParse(_deviceChannel) ?? 8;
-      widget.socketService.setChannel(channel);
-      _showSnackbar('Channel diubah ke: $channel');
-    }
-  }
 
   void _updateWiFi() {
     if (_ssidController.text.isNotEmpty &&
@@ -1218,8 +1395,8 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SizedBox(height: 16),
 
                 // Info animasi yang dipilih
-                if (_selectedWelcomeAnimation != null)
-                  _buildWelcomeAnimationInfo(),
+                // if (_selectedWelcomeAnimation != null)
+                //   _buildWelcomeAnimationInfo(),
 
                 const SizedBox(height: 20),
                 _buildActionButton(
@@ -1235,21 +1412,32 @@ class _SettingsPageState extends State<SettingsPage> {
             const SizedBox(height: 24),
 
             // Firmware Info Section
-            _buildSection(
-              title: 'Versi Firmware : $_firmwareVersion',
-              children: [
-                _buildInfoRow('Versi Aplikasi', '1.0.6'),
-                _buildInfoRow('Device ID', _deviceId),
-                _buildInfoRow('Level Lisensi', _licenseLevel),
-                _buildInfoRow('Device Channel', _deviceChannel),
-                const SizedBox(height: 16),
-                _buildActionButton(
-                  text: 'UBAH',
-                  onPressed: _updateChannel,
-                  enabled: widget.socketService.isConnected,
-                ),
-              ],
-            ),
+            // Firmware Info Section - DIUBAH
+_buildSection(
+  title: 'Versi Firmware : $_firmwareVersion',
+  children: [
+    // Tampilkan info license
+    _buildLicenseInfo(),
+    const SizedBox(height: 16),
+    
+    _buildInfoRow('Versi Aplikasi', '1.0.6'),
+    _buildInfoRow('Device ID', _deviceId),
+    _buildInfoRow('Level Lisensi', _licenseLevel),
+    
+    // Ganti Device Channel dari text biasa menjadi dropdown
+    _buildSettingRow(
+      title: 'Device Channel',
+      child: _buildChannelDropdown(),
+    ),
+    
+    const SizedBox(height: 16),
+    _buildActionButton(
+      text: 'UBAH CHANNEL',
+      onPressed: _updateChannel,
+      enabled: widget.socketService.isConnected,
+    ),
+  ],
+),
 
             const SizedBox(height: 24),
 

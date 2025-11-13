@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:iTen/constants/app_colors.dart';
 import 'package:iTen/models/animation_model.dart';
+import 'package:iTen/models/config_model.dart';
 import 'package:iTen/pages/map_editor_modal.dart';
+import 'package:iTen/services/config_service.dart';
 import 'package:iTen/services/firebase_data_service.dart';
+import 'package:iTen/services/preferences_service.dart';
 import 'package:iTen/services/socket_service.dart';
 
 class TriggerPage extends StatefulWidget {
@@ -16,6 +19,8 @@ class TriggerPage extends StatefulWidget {
 
 class _TriggerPageState extends State<TriggerPage> {
   final FirebaseDataService _firebaseService = FirebaseDataService();
+  final ConfigService _configService = ConfigService();
+  final PreferencesService _preferencesService = PreferencesService();
 
   // Dropdown values untuk setiap trigger
   String? _selectedQuick;
@@ -27,57 +32,98 @@ class _TriggerPageState extends State<TriggerPage> {
   List<AnimationModel> _userAnimations = [];
   bool _isLoading = true;
   String _errorMessage = '';
-
+  ConfigModel? _deviceConfig;
+  bool _isLoadingConfig = false;
   @override
   void initState() {
     super.initState();
     _loadUserAnimations();
     _loadSavedTriggerSettings();
+    _loadDeviceConfig();
   }
 
-  // Handler untuk fallback ke index 1 jika selection tidak ada
-  String _getSafeSelection(
-    String? selectedValue,
-    List<String> availableOptions,
-  ) {
-    if (selectedValue == null || selectedValue.isEmpty) {
-      return availableOptions.isNotEmpty ? availableOptions[0] : 'MATI';
-    }
+  Future<void> _loadDeviceConfig() async {
+    try {
+      setState(() {
+        _isLoadingConfig = true;
+      });
 
-    // Cek jika selectedValue ada di availableOptions
-    if (availableOptions.contains(selectedValue)) {
-      return selectedValue;
-    }
+      final config = await _preferencesService.getDeviceConfig();
 
-    // Fallback ke index 1 (atau index 0 jika hanya ada 1 option)
-    return availableOptions.length > 1
-        ? availableOptions[1]
-        : availableOptions[0];
+      if (config != null) {
+        setState(() {
+          _deviceConfig = config;
+        });
+
+        // Update trigger settings berdasarkan konfigurasi device
+        _updateTriggerSettingsFromConfig(config);
+
+        print('✅ Loaded device config: ${config.summary}');
+        print('🎯 Trigger Data from Device:');
+        print('   - Trigger1: ${config.trigger1Data}');
+        print('   - Trigger2: ${config.trigger2Data}');
+        print('   - Trigger3: ${config.trigger3Data}');
+      }
+    } catch (e) {
+      print('❌ Error loading device config: $e');
+    } finally {
+      setState(() {
+        _isLoadingConfig = false;
+      });
+    }
   }
 
-  // Handler khusus untuk trigger settings dengan fallback
-  void _handleTriggerSelection(String? newValue, Function(String?) onChanged) {
-    if (newValue == null) return;
+  // Update trigger settings berdasarkan konfigurasi device - PERBAIKI
+  void _updateTriggerSettingsFromConfig(ConfigModel config) {
+    print('🔄 Updating trigger settings from config...');
 
-    // Default fallback options berdasarkan trigger type
-    final List<String> fallbackOptions = [
-      'MATI',
-      'REMOTE A',
-      'REMOTE B',
-      'REMOTE C',
-      'REMOTE D',
-      'MAP STATIS',
-      'MAP DINAMIS',
-    ];
+    // Debug mode values
+    print('   - Quick Trigger Mode: ${config.quickTrigger}');
+    print(
+      '   - Trigger1 Mode: ${config.trigger1Mode} (${config.trigger1Mode == 1 ? 'STATIS' : 'KEDIP'})',
+    );
+    print(
+      '   - Trigger2 Mode: ${config.trigger2Mode} (${config.trigger2Mode == 1 ? 'STATIS' : 'KEDIP'})',
+    );
+    print(
+      '   - Trigger3 Mode: ${config.trigger3Mode} (${config.trigger3Mode == 1 ? 'STATIS' : 'KEDIP'})',
+    );
 
-    // Jika value tidak valid, fallback ke index 1
-    final safeValue = fallbackOptions.contains(newValue)
-        ? newValue
-        : (fallbackOptions.length > 1
-              ? fallbackOptions[1]
-              : fallbackOptions[0]);
+    setState(() {
+      // Konversi trigger mode ke string representation
+      _selectedQuick = _convertTriggerModeToString(config.quickTrigger);
 
-    onChanged(safeValue);
+      // Untuk MAP triggers, kita simpan mode sebagai string tapi value tetap 1/0
+      _selectedLowBeam = config.trigger1Mode == 1
+          ? 'MAP STATIS'
+          : 'MAP DINAMIS';
+      _selectedHighBeam = config.trigger2Mode == 1
+          ? 'MAP STATIS'
+          : 'MAP DINAMIS';
+      _selectedFogLamp = config.trigger3Mode == 1
+          ? 'MAP STATIS'
+          : 'MAP DINAMIS';
+    });
+
+    _saveTriggerSettings();
+  }
+
+  // Konversi trigger mode integer ke string
+  String _convertTriggerModeToString(int mode) {
+    switch (mode) {
+      case 0:
+        return 'MATI';
+      case 1:
+        return 'REMOTE A';
+      case 2:
+        return 'REMOTE B';
+      case 3:
+        return 'REMOTE C';
+      case 4:
+        return 'REMOTE D';
+      default:
+        return 'MATI';
+    }
   }
 
   // Handler untuk kirim data dengan fallback protection
@@ -463,17 +509,20 @@ class _TriggerPageState extends State<TriggerPage> {
 
   // Helper methods
   int _getTriggerIndex(String triggerType) {
+    print("triggerType is $triggerType");
     switch (triggerType) {
-      case 'QUICK':
+      case 'MATI':
+        return 0;
+      case 'REMOTE A':
         return 1;
-      case 'LOW':
+      case 'REMOTE B':
         return 2;
-      case 'HIGH':
+      case 'REMOTE C':
         return 3;
-      case 'FOG':
+      case 'REMOTE D':
         return 4;
       default:
-        return -1;
+        return 1;
     }
   }
 
@@ -500,22 +549,130 @@ class _TriggerPageState extends State<TriggerPage> {
     );
   }
 
-  // Method untuk membuka modal editor MAP
+  // Method untuk membuka modal editor MAP dengan data dari device
+  // Di dalam TriggerPage - pastikan mapping yang benar
   void _openMapEditor(String triggerLabel) {
     if (!widget.socketService.isConnected) {
       _showSnackbar('Harap connect ke device terlebih dahulu!', isError: true);
       return;
     }
 
+    // PERBAIKAN: Debug log untuk verifikasi
+    print('🔧 Opening MAP Editor with current device config:');
+    print('   - Trigger Label: $triggerLabel');
+    print('   - Device Config: ${_deviceConfig?.summary}');
+
+    if (_deviceConfig != null) {
+      print('   - Available Trigger Data:');
+      print('     * LOW BEAM (Trigger1): ${_deviceConfig!.trigger1Data}');
+      print('     * HIGH BEAM (Trigger2): ${_deviceConfig!.trigger2Data}');
+      print('     * FOG LAMP (Trigger3): ${_deviceConfig!.trigger3Data}');
+    }
+
     MapEditorModal.show(
       context: context,
       triggerLabel: triggerLabel,
       socketService: widget.socketService,
+      configData: _deviceConfig,
       onMapDataCreated: (mapData) {
         _sendMapDataToDevice(triggerLabel, mapData);
+        _updateLocalConfigWithMapData(triggerLabel, mapData);
       },
     );
   }
+
+  // Update config lokal dengan data MAP baru
+  void _updateLocalConfigWithMapData(String triggerLabel, List<int> mapData) {
+    if (_deviceConfig == null) return;
+
+    setState(() {
+      _deviceConfig = _deviceConfig!.copyWith(
+        trigger1Data: triggerLabel == 'LOW BEAM'
+            ? mapData
+            : _deviceConfig!.trigger1Data,
+        trigger2Data: triggerLabel == 'HIGH BEAM'
+            ? mapData
+            : _deviceConfig!.trigger2Data,
+        trigger3Data: triggerLabel == 'FOG LAMP'
+            ? mapData
+            : _deviceConfig!.trigger3Data,
+      );
+    });
+
+    print('🔄 Updated local config for $triggerLabel: $mapData');
+  }
+// Method baru untuk handle toggle changes dari UI - PERBAIKI
+void _handleMapToggleChange(String triggerLabel, bool isStatic) {
+  print('🎯 Toggle clicked: $triggerLabel -> ${isStatic ? 1 : 0}');
+  
+  if (!widget.socketService.isConnected) {
+    print('❌ Not connected, toggle ignored');
+    return;
+  }
+
+  try {
+    print('🔄 Handling MAP toggle change for $triggerLabel: ${isStatic ? 1 : 0}');
+    
+    // Update device config dengan nilai baru
+    if (_deviceConfig != null) {
+      setState(() {
+        _deviceConfig = _deviceConfig!.copyWith(
+          trigger1Mode: triggerLabel == 'LOW BEAM' 
+              ? (isStatic ? 1 : 0) 
+              : _deviceConfig!.trigger1Mode,
+          trigger2Mode: triggerLabel == 'HIGH BEAM' 
+              ? (isStatic ? 1 : 0) 
+              : _deviceConfig!.trigger2Mode,
+          trigger3Mode: triggerLabel == 'FOG LAMP' 
+              ? (isStatic ? 1 : 0) 
+              : _deviceConfig!.trigger3Mode,
+        );
+      });
+      
+      print('📊 Updated device config:');
+      print('   - Trigger1 Mode: ${_deviceConfig!.trigger1Mode}');
+      print('   - Trigger2 Mode: ${_deviceConfig!.trigger2Mode}');
+      print('   - Trigger3 Mode: ${_deviceConfig!.trigger3Mode}');
+    }
+
+    // Update local state untuk UI
+    setState(() {
+      switch (triggerLabel) {
+        case 'LOW BEAM':
+          _selectedLowBeam = isStatic ? 'MAP STATIS' : 'MAP DINAMIS';
+          break;
+        case 'HIGH BEAM':
+          _selectedHighBeam = isStatic ? 'MAP STATIS' : 'MAP DINAMIS';
+          break;
+        case 'FOG LAMP':
+          _selectedFogLamp = isStatic ? 'MAP STATIS' : 'MAP DINAMIS';
+          break;
+      }
+    });
+
+    // Save settings
+    _saveTriggerSettings();
+
+    // Send to device
+    _sendMapToggleCommand(triggerLabel, isStatic);
+
+    print('✅ Toggle change completed successfully');
+
+  } catch (e) {
+    print('❌ Error handling MAP toggle change: $e');
+  }
+}
+// Tambahkan method untuk save device config
+Future<void> _saveDeviceConfig() async {
+  if (_deviceConfig == null) return;
+  
+  try {
+    await _preferencesService.saveDeviceConfig(_deviceConfig!);
+    print('💾 Saved device config to preferences');
+  } catch (e) {
+    print('❌ Error saving device config: $e');
+  }
+}
 
   // Method untuk mengirim data MAP ke device
   void _sendMapDataToDevice(String triggerLabel, List<int> mapData) {
@@ -544,52 +701,70 @@ class _TriggerPageState extends State<TriggerPage> {
   int _getTriggerNumber(String triggerLabel) {
     switch (triggerLabel) {
       case 'QUICK':
-        return 1;
+        return 0;
       case 'LOW BEAM':
-        return 2;
-      case 'HIGH BEAM':
-        return 3;
-      case 'FOG LAMP':
-        return 4;
-      default:
         return 1;
+      case 'HIGH BEAM':
+        return 2;
+      case 'FOG LAMP':
+        return 3;
+      default:
+        return 0;
     }
   }
-// Di TriggerPage - tambahkan method untuk kirim semua settings
-Future<void> _sendAllTriggerSettings() async {
-  if (!widget.socketService.isConnected) {
-    _showSnackbar('Harap connect ke device terlebih dahulu!', isError: true);
-    return;
-  }
 
-  try {
-    print('🔄 Mengirim semua trigger settings...');
-
-    // Kirim QUICK setting (jika ada)
-    if (_selectedQuick != null && _selectedQuick != 'MATI') {
-      _sendQuickSetting('QUICK', _selectedQuick);
+  // Di TriggerPage - tambahkan method untuk kirim semua settings
+  Future<void> _sendAllTriggerSettings() async {
+    if (!widget.socketService.isConnected) {
+      _showSnackbar('Harap connect ke device terlebih dahulu!', isError: true);
+      return;
     }
 
-    // Kirim MAP toggle settings
-    _sendMapToggleIfActive('LOW BEAM', _selectedLowBeam);
-    _sendMapToggleIfActive('HIGH BEAM', _selectedHighBeam); 
-    _sendMapToggleIfActive('FOG LAMP', _selectedFogLamp);
+    try {
+      print('🔄 Mengirim semua trigger settings...');
 
-    _showSnackbar('Semua trigger settings berhasil dikirim!');
-    
-  } catch (e) {
-    _showSnackbar('Error mengirim trigger settings: $e', isError: true);
-    print('❌ Error sending all trigger settings: $e');
-  }
-}
+      // Kirim QUICK setting (jika ada)
+      if (_selectedQuick != null && _selectedQuick != 'MATI') {
+        _sendQuickSetting('QUICK', _selectedQuick);
+      }
 
-// Method untuk kirim MAP toggle jika aktif
-void _sendMapToggleIfActive(String triggerLabel, String? setting) {
-  if (setting == 'MAP STATIS' || setting == 'MAP DINAMIS') {
-    final isStatic = setting == 'MAP STATIS';
-    _sendMapToggleCommand(triggerLabel, isStatic);
+      // Kirim MAP toggle settings
+      _sendMapToggleIfActive('LOW BEAM', _selectedLowBeam);
+      _sendMapToggleIfActive('HIGH BEAM', _selectedHighBeam);
+      _sendMapToggleIfActive('FOG LAMP', _selectedFogLamp);
+
+      _showSnackbar('Semua trigger settings berhasil dikirim!');
+    } catch (e) {
+      _showSnackbar('Error mengirim trigger settings: $e', isError: true);
+      print('❌ Error sending all trigger settings: $e');
+    }
   }
-}
+
+  // Method untuk kirim MAP toggle jika aktif
+  // Method untuk kirim MAP toggle jika aktif - PERBAIKI
+  void _sendMapToggleIfActive(String triggerLabel, String? setting) {
+    // Jika setting adalah mode MAP, kirim toggle berdasarkan current state
+    if (setting == 'MAP STATIS' || setting == 'MAP DINAMIS') {
+      // Dapatkan current state dari device config
+      int currentState = 0; // default KEDIP (0)
+
+      switch (triggerLabel) {
+        case 'LOW BEAM':
+          currentState = _deviceConfig?.trigger1Mode ?? 0;
+          break;
+        case 'HIGH BEAM':
+          currentState = _deviceConfig?.trigger2Mode ?? 0;
+          break;
+        case 'FOG LAMP':
+          currentState = _deviceConfig?.trigger3Mode ?? 0;
+          break;
+      }
+
+      // Konversi ke boolean: 1 = STATIS, 0 = KEDIP
+      final isStatic = currentState == 1;
+      _sendMapToggleCommand(triggerLabel, isStatic);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -704,7 +879,6 @@ void _sendMapToggleIfActive(String triggerLabel, String? setting) {
                             "REMOTE B",
                             "REMOTE C",
                             "REMOTE D",
-                            "MAP STATIS",
                           ]);
 
                           setState(() {
@@ -717,13 +891,15 @@ void _sendMapToggleIfActive(String triggerLabel, String? setting) {
                         },
                       ),
 
-                      // Setting LOW BEAM
+                      // Di build method - pastikan passing value yang benar
+                      // Di build method - PERBAIKI dengan menghapus onChanged yang redundant
                       _buildTriggerItem(
                         label: 'LOW BEAM',
                         selectedValue: _selectedLowBeam,
+                        value: _deviceConfig?.trigger1Mode ?? 0, // 1 atau 0
                         onChanged: (value) {
+                          // Ini untuk dropdown (jika ada), tapi untuk toggle kita gunakan handleMapToggleChange
                           if (!isConnected) return;
-
                           setState(() {
                             _selectedLowBeam = value;
                           });
@@ -731,13 +907,12 @@ void _sendMapToggleIfActive(String triggerLabel, String? setting) {
                         },
                       ),
 
-                      // Setting HIGH BEAM
                       _buildTriggerItem(
                         label: 'HIGH BEAM',
                         selectedValue: _selectedHighBeam,
+                        value: _deviceConfig?.trigger2Mode ?? 0, // 1 atau 0
                         onChanged: (value) {
                           if (!isConnected) return;
-
                           setState(() {
                             _selectedHighBeam = value;
                           });
@@ -745,13 +920,12 @@ void _sendMapToggleIfActive(String triggerLabel, String? setting) {
                         },
                       ),
 
-                      // Setting FOG LAMP
                       _buildTriggerItem(
                         label: 'FOG LAMP',
                         selectedValue: _selectedFogLamp,
+                        value: _deviceConfig?.trigger3Mode ?? 0, // 1 atau 0
                         onChanged: (value) {
                           if (!isConnected) return;
-
                           setState(() {
                             _selectedFogLamp = value;
                           });
@@ -830,40 +1004,40 @@ void _sendMapToggleIfActive(String triggerLabel, String? setting) {
               ),
 
               // Info Panel
-              if (_userAnimations.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.darkGrey,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: AppColors.neonGreen.withOpacity(0.3),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Trigger Summary',
-                        style: TextStyle(
-                          color: AppColors.neonGreen,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
+              // if (_userAnimations.isNotEmpty) ...[
+              //   const SizedBox(height: 16),
+              //   Container(
+              //     width: double.infinity,
+              //     padding: const EdgeInsets.all(12),
+              //     decoration: BoxDecoration(
+              //       color: AppColors.darkGrey,
+              //       borderRadius: BorderRadius.circular(8),
+              //       border: Border.all(
+              //         color: AppColors.neonGreen.withOpacity(0.3),
+              //       ),
+              //     ),
+              //     child: Column(
+              //       crossAxisAlignment: CrossAxisAlignment.start,
+              //       children: [
+              //         Text(
+              //           'Trigger Summary',
+              //           style: TextStyle(
+              //             color: AppColors.neonGreen,
+              //             fontWeight: FontWeight.bold,
+              //           ),
+              //         ),
+              //         const SizedBox(height: 8),
 
-                      _buildTriggerInfo('LOW BEAM', _selectedLowBeam),
-                      _buildTriggerInfo('HIGH BEAM', _selectedHighBeam),
-                      _buildTriggerInfo('FOG LAMP', _selectedFogLamp),
-                      const SizedBox(height: 8),
-                      Divider(color: AppColors.neonGreen.withOpacity(0.3)),
-                      _buildConnectionInfo(),
-                    ],
-                  ),
-                ),
-              ],
+              //         _buildTriggerInfo('LOW BEAM', _selectedLowBeam),
+              //         _buildTriggerInfo('HIGH BEAM', _selectedHighBeam),
+              //         _buildTriggerInfo('FOG LAMP', _selectedFogLamp),
+              //         const SizedBox(height: 8),
+              //         Divider(color: AppColors.neonGreen.withOpacity(0.3)),
+              //         _buildConnectionInfo(),
+              //       ],
+              //     ),
+              //   ),
+              // ],
             ],
           ),
         ),
@@ -871,131 +1045,21 @@ void _sendMapToggleIfActive(String triggerLabel, String? setting) {
     );
   }
 
-  Widget _buildDisconnectedWarning() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: AppColors.errorRed.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.errorRed),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.warning_amber, color: AppColors.errorRed, size: 24),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Device Tidak Terkoneksi',
-                  style: TextStyle(
-                    color: AppColors.errorRed,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Semua kontrol dinonaktifkan. Tap Connect di Dashboard untuk melanjutkan.',
-                  style: TextStyle(
-                    color: AppColors.errorRed.withOpacity(0.8),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildConnectionStatus() {
-    final isConnected = widget.socketService.isConnected;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.darkGrey,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isConnected ? AppColors.successGreen : AppColors.errorRed,
-          width: 2,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(
-              color: isConnected ? AppColors.successGreen : AppColors.errorRed,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              isConnected
-                  ? 'Terhubung - Siap mengirim trigger settings'
-                  : 'DISCONNECTED - Tap Connect di Dashboard',
-              style: TextStyle(
-                color: isConnected
-                    ? AppColors.successGreen
-                    : AppColors.errorRed,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-          ),
-          if (!isConnected)
-            Icon(Icons.warning_amber, color: AppColors.errorRed, size: 20),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildConnectionInfo() {
-    final isConnected = widget.socketService.isConnected;
-
-    return Row(
-      children: [
-        Icon(
-          Icons.info,
-          color: isConnected ? AppColors.neonGreen : AppColors.errorRed,
-          size: 16,
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            isConnected
-                ? 'Trigger settings akan dikirim ke device via socket connection'
-                : 'Connect ke device terlebih dahulu untuk mengirim trigger settings',
-            style: TextStyle(
-              color: isConnected ? AppColors.neonGreen : AppColors.errorRed,
-              fontSize: 12,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Di TriggerPage - ganti _buildTriggerItem dengan ini
+  // Di TriggerPage - PERBAIKI _buildTriggerItem
+// Di TriggerPage - PERBAIKI _buildTriggerItem dengan debug
 Widget _buildTriggerItem({
   required String label,
   required String? selectedValue,
   required Function(String?) onChanged,
+  required int value // value sekarang adalah 1 atau 0
 }) {
   final isConnected = widget.socketService.isConnected;
 
-  // Tentukan apakah mode MAP aktif dan jenisnya
-  bool isMapStatic = selectedValue == 'MAP STATIS';
-  bool isMapDynamic = selectedValue == 'MAP DINAMIS';
-  bool isMapActive = isMapStatic || isMapDynamic;
+  // Konversi nilai 1/0 ke boolean untuk Switch
+  bool isStatic = value == 1;
+
+  // DEBUG: Print current value
+  print('🔧 Building $label - Value: $value, isStatic: $isStatic');
 
   return Container(
     margin: const EdgeInsets.only(bottom: 16),
@@ -1018,7 +1082,7 @@ Widget _buildTriggerItem({
             // Label trigger
             Expanded(
               child: Text(
-                label,
+                '$label (${isStatic ? 'STATIS' : 'KEDIP'})',
                 style: TextStyle(
                   color: isConnected
                       ? AppColors.pureWhite
@@ -1076,7 +1140,7 @@ Widget _buildTriggerItem({
               Text(
                 'KEDIP',
                 style: TextStyle(
-                  color: isMapDynamic
+                  color: !isStatic // KEDIP aktif ketika bukan STATIS
                       ? (isConnected
                             ? AppColors.neonGreen
                             : AppColors.neonGreen.withOpacity(0.3))
@@ -1090,11 +1154,11 @@ Widget _buildTriggerItem({
 
               const SizedBox(width: 8),
 
-              // Toggle Switch - Kirim format [kode][0/1]
+              // Toggle Switch - PERBAIKI onChanged di sini
               Transform.scale(
                 scale: 0.8,
                 child: Switch(
-                  value: isMapStatic,
+                  value: isStatic,
                   activeColor: isConnected
                       ? AppColors.neonGreen
                       : AppColors.neonGreen.withOpacity(0.3),
@@ -1108,15 +1172,10 @@ Widget _buildTriggerItem({
                       ? AppColors.pureWhite.withOpacity(0.3)
                       : AppColors.pureWhite.withOpacity(0.1),
                   onChanged: isConnected
-                      ? (value) {
-                          // Toggle antara MAP STATIS dan MAP DINAMIS
-                          final newValue = value
-                              ? 'MAP STATIS'
-                              : 'MAP DINAMIS';
-                          onChanged(newValue);
-
-                          // Kirim toggle command ke device
-                          _sendMapToggleCommand(label, value);
+                      ? (newValue) {
+                          print('🎯 Switch $label clicked: $newValue');
+                          // PERBAIKAN: Panggil handleMapToggleChange
+                          _handleMapToggleChange(label, newValue);
                         }
                       : null,
                 ),
@@ -1128,7 +1187,7 @@ Widget _buildTriggerItem({
               Text(
                 'STATIS',
                 style: TextStyle(
-                  color: isMapStatic
+                  color: isStatic // STATIS aktif ketika true
                       ? (isConnected
                             ? AppColors.neonGreen
                             : AppColors.neonGreen.withOpacity(0.3))
@@ -1143,63 +1202,57 @@ Widget _buildTriggerItem({
           ),
         ),
 
-        // Info tambahan untuk mode MAP
+        // Status info
         const SizedBox(height: 8),
-        if (isMapActive)
-          Text(
-            isMapStatic
-                ? 'Mode MAP STATIS: Gambar tetap menyala'
-                : 'Mode MAP DINAMIS: Gambar berkedip',
-            style: TextStyle(
-              color: AppColors.neonGreen.withOpacity(isConnected ? 0.7 : 0.3),
-              fontSize: 11,
-            ),
-          ),
-        
-        // Status MAP aktif/nonaktif
-        const SizedBox(height: 4),
         Text(
-          isMapActive ? 'MAP AKTIF' : 'MAP NONAKTIF',
+          isStatic ? 'Mode: STATIS (1)' : 'Mode: KEDIP (0)',
           style: TextStyle(
-            color: isMapActive 
-                ? AppColors.neonGreen.withOpacity(isConnected ? 1.0 : 0.3)
-                : AppColors.pureWhite.withOpacity(isConnected ? 0.5 : 0.3),
+            color: AppColors.neonGreen.withOpacity(isConnected ? 0.7 : 0.3),
+            fontSize: 11,
+          ),
+        ),
+        
+        // Debug info
+        Text(
+          'Current Value: $value',
+          style: TextStyle(
+            color: AppColors.pureWhite.withOpacity(0.5),
             fontSize: 10,
-            fontWeight: FontWeight.bold,
           ),
         ),
       ],
     ),
   );
 }
+  // Method untuk kirim toggle command dengan nilai 1/0
+  void _sendMapToggleCommand(String triggerLabel, bool isStatic) {
+    if (!widget.socketService.isConnected) return;
 
-// Method untuk kirim toggle command [kode][0/1]
-void _sendMapToggleCommand(String triggerLabel, bool isStatic) {
-  if (!widget.socketService.isConnected) return;
+    try {
+      final triggerCode = _getMapToggleCode(triggerLabel);
+      final value = isStatic ? 1 : 0; // Convert boolean ke 1/0
 
-  try {
-    final triggerCode = _getMapToggleCode(triggerLabel);
-    widget.socketService.sendTriggerToggle(triggerCode, isStatic);
-    
-    print('🔘 Sent MAP toggle: $triggerCode${isStatic ? 1 : 0}');
-    _showSnackbar('$triggerLabel: ${isStatic ? 'STATIS' : 'KEDIP'}');
-  } catch (e) {
-    print('❌ Error sending MAP toggle: $e');
+      widget.socketService.sendTriggerToggle(triggerCode, value);
+
+      print('🔘 Sent MAP toggle: $triggerCode$value');
+      _showSnackbar('$triggerLabel: ${isStatic ? 'STATIS (1)' : 'KEDIP (0)'}');
+    } catch (e) {
+      print('❌ Error sending MAP toggle: $e');
+    }
   }
-}
 
-String _getMapToggleCode(String triggerLabel) {
-  switch (triggerLabel) {
-    case 'LOW BEAM':
-      return 'ML'; // Map Low Beam
-    case 'HIGH BEAM':
-      return 'MH'; // Map High Beam  
-    case 'FOG LAMP':
-      return 'MF'; // Map Fog Lamp
-    default:
-      return 'MX'; // Default Map
+  String _getMapToggleCode(String triggerLabel) {
+    switch (triggerLabel) {
+      case 'LOW BEAM':
+        return 'SL'; // Map Low Beam
+      case 'HIGH BEAM':
+        return 'SH'; // Map High Beam
+      case 'FOG LAMP':
+        return 'SF'; // Map Fog Lamp
+      default:
+        return 'SQ'; // Default Map
+    }
   }
-}
 
   // FIXED: Implementasi _buildQuickItem yang benar
   Widget _buildQuickItem({
@@ -1304,7 +1357,6 @@ String _getMapToggleCode(String triggerLabel) {
                 }).toList(),
                 onChanged: isConnected
                     ? (value) {
-                        // Kirim data langsung saat onChanged
                         onChanged(value);
                         _sendQuickSetting(label, value);
                       }
@@ -1324,10 +1376,10 @@ String _getMapToggleCode(String triggerLabel) {
     }
 
     try {
-      final triggerIndex = _getTriggerIndex(triggerLabel);
+      final triggerIndex = _getTriggerIndex(value);
       final modeCode = _getModeCode(value);
 
-      widget.socketService.send('S$triggerIndex$modeCode');
+      widget.socketService.send('SQ$triggerIndex');
       print('✅ Sent $triggerLabel trigger: $value');
 
       _showSnackbar('$triggerLabel diatur ke: $value');
@@ -1350,120 +1402,6 @@ String _getMapToggleCode(String triggerLabel) {
       default:
         return 'OFF';
     }
-  }
-
-  Widget _buildCustomAnimationItem(String animationName, bool isConnected) {
-    final animation = _userAnimations.firstWhere(
-      (anim) => anim.name == animationName,
-      orElse: () => AnimationModel(
-        name: '',
-        channelCount: 0,
-        animationLength: 0,
-        description: '',
-        delayData: '',
-        frameData: [],
-      ),
-    );
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          animationName,
-          style: TextStyle(
-            color: isConnected
-                ? AppColors.neonGreen
-                : AppColors.neonGreen.withOpacity(0.3),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(
-          '${animation.channelCount}C • ${animation.totalFrames}F',
-          style: TextStyle(
-            color: AppColors.pureWhite.withOpacity(isConnected ? 0.7 : 0.3),
-            fontSize: 10,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTriggerInfo(String triggerName, String? setting) {
-    final isConnected = widget.socketService.isConnected;
-    final isCustomAnimation = _isCustomAnimation(setting);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2.0),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 80,
-            child: Text(
-              '$triggerName:',
-              style: TextStyle(
-                color: AppColors.pureWhite.withOpacity(isConnected ? 0.7 : 0.3),
-                fontSize: 12,
-              ),
-            ),
-          ),
-          if (setting != null)
-            Expanded(
-              child: Row(
-                children: [
-                  Text(
-                    setting,
-                    style: TextStyle(
-                      color: isCustomAnimation
-                          ? (isConnected
-                                ? AppColors.neonGreen
-                                : AppColors.neonGreen.withOpacity(0.3))
-                          : AppColors.pureWhite.withOpacity(
-                              isConnected ? 1.0 : 0.3,
-                            ),
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (isCustomAnimation) ...[
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.neonGreen.withOpacity(
-                          isConnected ? 0.2 : 0.1,
-                        ),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        'CUSTOM',
-                        style: TextStyle(
-                          color: AppColors.neonGreen.withOpacity(
-                            isConnected ? 1.0 : 0.3,
-                          ),
-                          fontSize: 8,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            )
-          else
-            Text(
-              'Not set',
-              style: TextStyle(
-                color: AppColors.pureWhite.withOpacity(isConnected ? 0.5 : 0.3),
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-        ],
-      ),
-    );
   }
 
   void _resetTriggerSettings() {

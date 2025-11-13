@@ -1,8 +1,7 @@
 // map_editor_modal.dart
-import 'dart:ffi';
-
 import 'package:flutter/material.dart';
 import 'package:iTen/constants/app_colors.dart';
+import 'package:iTen/models/config_model.dart';
 import 'package:iTen/services/config_service.dart';
 import 'package:iTen/services/matrix_pattern_service.dart';
 import 'package:iTen/services/socket_service.dart';
@@ -11,19 +10,24 @@ class MapEditorModal extends StatefulWidget {
   final String triggerLabel;
   final SocketService socketService;
   final Function(List<int>) onMapDataCreated;
+  final List<int>? initialMapData;
+  final ConfigModel? configData; // Parameter untuk config dari luar
 
   const MapEditorModal({
     super.key,
     required this.triggerLabel,
     required this.socketService,
     required this.onMapDataCreated,
+    this.initialMapData,
+    this.configData, // Config dari TriggerPage
   });
 
-  // Method untuk show modal
   static void show({
     required BuildContext context,
     required String triggerLabel,
     required SocketService socketService,
+    List<int>? initialMapData,
+    ConfigModel? configData, // Tambahkan parameter configData
     required Function(List<int>) onMapDataCreated,
   }) {
     showModalBottomSheet(
@@ -33,6 +37,8 @@ class MapEditorModal extends StatefulWidget {
       builder: (context) => MapEditorModal(
         triggerLabel: triggerLabel,
         socketService: socketService,
+        initialMapData: initialMapData,
+        configData: configData, // Kirim configData ke modal
         onMapDataCreated: onMapDataCreated,
       ),
     );
@@ -45,15 +51,17 @@ class MapEditorModal extends StatefulWidget {
 class _MapEditorModalState extends State<MapEditorModal> {
   final MatrixPatternService _patternService = MatrixPatternService();
   final ConfigService _configService = ConfigService();
+  
   int _channelCount = 80;
   List<bool> _ledStates = List.filled(80, false);
   final TextEditingController _channelController = TextEditingController();
+  bool _isInitialized = false;
+  ConfigModel? _deviceConfig;
 
   @override
   void initState() {
     super.initState();
-    _loadDefaultChannelCount();
-    _channelController.text = _channelCount.toString();
+    _initializeFromExternalConfig();
     _channelController.addListener(_onChannelCountChanged);
   }
 
@@ -61,6 +69,168 @@ class _MapEditorModalState extends State<MapEditorModal> {
   void dispose() {
     _channelController.dispose();
     super.dispose();
+  }
+
+  // Method baru: Initialize dari config external
+  void _initializeFromExternalConfig() {
+    print('🗺️ Initializing MAP Editor from external config...');
+    
+    // Prioritaskan config dari parameter widget
+    if (widget.configData != null) {
+      print('📥 Received external config data');
+      _deviceConfig = widget.configData;
+      _initializeFromConfigModel();
+    } 
+    // Fallback ke initialMapData jika ada
+    else if (widget.initialMapData != null && widget.initialMapData!.isNotEmpty) {
+      print('📥 Using initial map data: ${widget.initialMapData}');
+      _parseDeviceMapData(widget.initialMapData!);
+    } 
+    // Final fallback ke default
+    else {
+      _loadDefaultChannelCount();
+    }
+    
+    _channelController.text = _channelCount.toString();
+    _isInitialized = true;
+  }
+
+  // Method baru: Initialize dari ConfigModel
+  // Di dalam _MapEditorModalState - perbaiki method _initializeFromConfigModel
+void _initializeFromConfigModel() {
+  if (_deviceConfig == null) return;
+
+  try {
+    print('🔧 Initializing from ConfigModel:');
+    print('   - Channel Count: ${_deviceConfig!.jumlahChannel}');
+    print('   - Trigger Label: ${widget.triggerLabel}');
+
+    // Set channel count dari config
+    final configChannelCount = _deviceConfig!.jumlahChannel;
+    if (configChannelCount > 0 && configChannelCount <= 80) {
+      _channelCount = configChannelCount;
+    }
+
+    // PERBAIKAN: Mapping trigger label yang benar
+    List<int> triggerData = [];
+    switch (widget.triggerLabel) {
+      case 'LOW BEAM':
+        triggerData = _deviceConfig!.trigger1Data;
+        print('   - Using Trigger1 Data for LOW BEAM: ${_deviceConfig!.trigger1Data}');
+        break;
+      case 'HIGH BEAM':
+        triggerData = _deviceConfig!.trigger2Data; // PERBAIKAN: dari trigger2Data
+        print('   - Using Trigger2 Data for HIGH BEAM: ${_deviceConfig!.trigger2Data}');
+        break;
+      case 'FOG LAMP':
+        triggerData = _deviceConfig!.trigger3Data; // PERBAIKAN: dari trigger3Data
+        print('   - Using Trigger3 Data for FOG LAMP: ${_deviceConfig!.trigger3Data}');
+        break;
+      default:
+        print('⚠️ Unknown trigger label: ${widget.triggerLabel}');
+        triggerData = List.filled(10, 0);
+    }
+
+    // Debug: Print semua trigger data untuk verifikasi
+    print('🔍 All Trigger Data for verification:');
+    print('   - Trigger1 (LOW BEAM): ${_deviceConfig!.trigger1Data}');
+    print('   - Trigger2 (HIGH BEAM): ${_deviceConfig!.trigger2Data}');
+    print('   - Trigger3 (FOG LAMP): ${_deviceConfig!.trigger3Data}');
+
+    // Parse trigger data ke LED states
+    if (triggerData.isNotEmpty) {
+      _parseTriggerDataFromConfig(triggerData);
+    } else {
+      _updateLEDStates(); // Fallback ke semua LED mati
+    }
+
+    print('✅ Successfully initialized from external config');
+    
+  } catch (e) {
+    print('❌ Error initializing from config: $e');
+    _loadDefaultChannelCount();
+  }
+}
+
+  // Method baru: Parse trigger data dari ConfigModel
+  void _parseTriggerDataFromConfig(List<int> triggerData) {
+    try {
+      print('🔍 Parsing trigger data from config: $triggerData');
+      
+      // Asumsi: triggerData berisi 10 frame data
+      if (triggerData.length >= 10) {
+        final frameData = triggerData.sublist(0, 10);
+        print('🎯 Frame data: $frameData');
+        print('🔢 Channel count: $_channelCount');
+        
+        _convertMapDataToLEDStates(frameData);
+      } else {
+        print('⚠️ Trigger data too short, expected 10, got ${triggerData.length}');
+        _updateLEDStates();
+      }
+    } catch (e) {
+      print('❌ Error parsing trigger data: $e');
+      _updateLEDStates();
+    }
+  }
+
+  void _parseDeviceMapData(List<int> deviceData) {
+    try {
+      print('🔍 Parsing device map data: $deviceData');
+      
+      if (deviceData.length >= 10) {
+        // Gunakan channel count dari config jika ada, otherwise dari data
+        final deviceChannelCount = _deviceConfig?.jumlahChannel ?? 8;
+        if (deviceChannelCount >= 1 && deviceChannelCount <= 80) {
+          _channelCount = deviceChannelCount;
+        }
+        
+        final frameData = deviceData.sublist(0, 10);
+        print('🎯 Frame data: $frameData');
+        print('🔢 Channel count: $_channelCount');
+        
+        _convertMapDataToLEDStates(frameData);
+      } else {
+        _loadDefaultChannelCount();
+        print('⚠️ Device data format invalid, using default');
+      }
+    } catch (e) {
+      print('❌ Error parsing device map data: $e');
+      _loadDefaultChannelCount();
+    }
+  }
+
+  void _convertMapDataToLEDStates(List<int> frameData) {
+    try {
+      List<bool> newLEDStates = List.filled(_channelCount, false);
+      int currentLED = 0;
+      
+      for (int frameIndex = 0; frameIndex < frameData.length; frameIndex++) {
+        final byteValue = frameData[frameIndex];
+        
+        for (int bit = 0; bit < 8; bit++) {
+          if (currentLED < _channelCount) {
+            final isLEDOn = (byteValue & (1 << bit)) != 0;
+            newLEDStates[currentLED] = isLEDOn;
+            currentLED++;
+          }
+        }
+        
+        if (currentLED >= _channelCount) break;
+      }
+      
+      setState(() {
+        _ledStates = newLEDStates;
+      });
+      
+      print('💡 Converted map data to LED states:');
+      print('   - Active LEDs: ${newLEDStates.where((state) => state).length}');
+      print('   - Total LEDs: $_channelCount');
+      
+    } catch (e) {
+      print('❌ Error converting map data to LED states: $e');
+      _updateLEDStates();
+    }
   }
 
   void _loadDefaultChannelCount() {
@@ -72,6 +242,8 @@ class _MapEditorModalState extends State<MapEditorModal> {
   }
 
   void _onChannelCountChanged() {
+    if (!_isInitialized) return;
+    
     final text = _channelController.text;
     if (text.isNotEmpty) {
       final newCount = int.tryParse(text) ?? _channelCount;
@@ -86,7 +258,15 @@ class _MapEditorModalState extends State<MapEditorModal> {
 
   void _updateLEDStates() {
     setState(() {
-      _ledStates = List.filled(_channelCount, false);
+      if (_channelCount < _ledStates.length) {
+        _ledStates = _ledStates.sublist(0, _channelCount);
+      } else {
+        final newLEDStates = List<bool>.from(_ledStates);
+        while (newLEDStates.length < _channelCount) {
+          newLEDStates.add(false);
+        }
+        _ledStates = newLEDStates;
+      }
     });
   }
 
@@ -119,12 +299,10 @@ class _MapEditorModalState extends State<MapEditorModal> {
       ),
       child: Column(
         children: [
-          // Header dengan drag handle
           Container(
             padding: const EdgeInsets.only(top: 12, bottom: 8),
             child: Column(
               children: [
-                // Drag Handle
                 Container(
                   width: 40,
                   height: 4,
@@ -134,18 +312,25 @@ class _MapEditorModalState extends State<MapEditorModal> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                // Title dan Close Button
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'MAP Editor - ${widget.triggerLabel}',
-                        style: TextStyle(
-                          color: AppColors.neonGreen,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'MAP Editor - ${widget.triggerLabel}',
+                              style: TextStyle(
+                                color: AppColors.neonGreen,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            
+                          ],
                         ),
                       ),
                       IconButton(
@@ -167,7 +352,6 @@ class _MapEditorModalState extends State<MapEditorModal> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 children: [
-                  // Channel Configuration
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
@@ -191,7 +375,6 @@ class _MapEditorModalState extends State<MapEditorModal> {
                         ),
                         const SizedBox(height: 8),
                         
-                        // Baris untuk jumlah channel
                         Row(
                           children: [
                             Expanded(
@@ -252,7 +435,6 @@ class _MapEditorModalState extends State<MapEditorModal> {
                         
                         const SizedBox(height: 8),
                         
-                        // Quick channel buttons
                         Row(
                           children: [
                             _buildQuickChannelButton(16),
@@ -270,7 +452,6 @@ class _MapEditorModalState extends State<MapEditorModal> {
 
                   const SizedBox(height: 12),
 
-                  // Status Info
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
@@ -322,15 +503,33 @@ class _MapEditorModalState extends State<MapEditorModal> {
                             ),
                           ],
                         ),
+                        Column(
+                          children: [
+                            Text(
+                              'CONFIG',
+                              style: TextStyle(
+                                color: AppColors.neonGreen.withOpacity(0.7),
+                                fontSize: 10,
+                              ),
+                            ),
+                            Icon(
+                              widget.configData != null ? Icons.check_circle : Icons.sync_problem,
+                              color: widget.configData != null ? AppColors.neonGreen : AppColors.errorRed,
+                              size: 16,
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
 
                   const SizedBox(height: 12),
 
-                  // Grid LED
                   Expanded(
                     child: Container(
+                        width: double.infinity,
+  alignment: Alignment.center, 
+
                       decoration: BoxDecoration(
                         color: AppColors.darkGrey,
                         borderRadius: BorderRadius.circular(12),
@@ -356,47 +555,13 @@ class _MapEditorModalState extends State<MapEditorModal> {
 
                   const SizedBox(height: 16),
 
-                  // Preview Data
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryBlack,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.neonGreen),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'PREVIEW DATA (11 VALUES):',
-                          style: TextStyle(
-                            color: AppColors.neonGreen,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _getPreviewData(),
-                          style: TextStyle(
-                            color: AppColors.pureWhite,
-                            fontSize: 10,
-                            fontFamily: 'Monospace',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
+                  
                   const SizedBox(height: 12),
 
-                  // Controls
                   SafeArea(
                     top: false,
                     child: Row(
                       children: [
-                        // Tombol Clear All
                         Expanded(
                           child: OutlinedButton.icon(
                             onPressed: _clearAllLEDs,
@@ -412,10 +577,6 @@ class _MapEditorModalState extends State<MapEditorModal> {
 
                         const SizedBox(width: 12),
 
-
-                        const SizedBox(width: 12),
-
-                        // Tombol Kirim ke Device
                         Expanded(
                           flex: 2,
                           child: ElevatedButton.icon(
@@ -565,12 +726,10 @@ class _MapEditorModalState extends State<MapEditorModal> {
     });
   }
 
-
   String _getPreviewData() {
     final mapData = _convertLEDStatesToMapData();
     final paddedData = _padMapDataTo10Frames(mapData);
     
-    // Format: [frame1, frame2, ..., frame10, channel]
     final result = [...paddedData, int.parse(_channelController.text)];
     
     return result.map((v) => v.toString().padLeft(3)).join(' ');
@@ -586,11 +745,9 @@ class _MapEditorModalState extends State<MapEditorModal> {
       final mapData = _convertLEDStatesToMapData();
       final paddedData = _padMapDataTo10Frames(mapData);
       
-      // Kirim menggunakan socket service
       final mappingCode = _getMappingCode(widget.triggerLabel);
       widget.socketService.sendMappingData(mappingCode, paddedData, int.parse(_channelController.text));
       
-      // Panggil callback
       widget.onMapDataCreated([...paddedData, int.parse(_channelController.text)]);
       
       _showSnackbar(
@@ -614,7 +771,6 @@ class _MapEditorModalState extends State<MapEditorModal> {
   List<int> _convertLEDStatesToMapData() {
     List<int> result = [];
     
-    // Convert LED states ke bytes (8 LED per byte)
     for (int i = 0; i < _channelCount; i += 8) {
       int byteValue = 0;
       for (int j = 0; j < 8; j++) {
@@ -632,12 +788,10 @@ class _MapEditorModalState extends State<MapEditorModal> {
   List<int> _padMapDataTo10Frames(List<int> frameData) {
     final List<int> padded = List<int>.from(frameData);
     
-    // Pad dengan 0 jika kurang dari 10 frame
     while (padded.length < 10) {
-      padded.add(000);
+      padded.add(0);
     }
     
-    // Pastikan tidak lebih dari 10 frame
     if (padded.length > 10) {
       padded.removeRange(10, padded.length);
     }
@@ -648,13 +802,13 @@ class _MapEditorModalState extends State<MapEditorModal> {
   String _getMappingCode(String triggerLabel) {
     switch (triggerLabel) {
       case 'LOW BEAM':
-        return 'DL'; // Data Low Beam Mapping
+        return 'DL';
       case 'HIGH BEAM':
-        return 'DH'; // Data High Beam Mapping
+        return 'DH';
       case 'FOG LAMP':
-        return 'DF'; // Data Fog Lamp Mapping
+        return 'DF';
       default:
-        return 'DM'; // Default Mapping
+        return 'DM';
     }
   }
 
