@@ -1005,204 +1005,252 @@ class _MyFilePageState extends State<MyFilePage> {
       ),
     );
   }
+Future<void> _performCloudSave(List<AnimationModel> files) async {
+  try {
+    setState(() {
+      _isLoading = true;
+    });
 
-  Future<void> _performCloudSave(List<AnimationModel> files) async {
-    try {
-      setState(() {
-        _isLoading = true;
-      });
-
-      // Show progress dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          backgroundColor: AppColors.darkGrey,
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(color: AppColors.neonGreen),
-              SizedBox(height: 16),
-              Text(
-                'Saving ${files.length} file(s) to cloud...',
-                style: TextStyle(color: AppColors.pureWhite),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 8),
-              FutureBuilder(
-                future: _firebaseService.getCloudEmail(),
-                builder: (context, snapshot) {
-                  final email = snapshot.data ?? 'CC';
-                  return Text(
-                    'Using identifier: $email',
-                    style: TextStyle(
-                      color: AppColors.pureWhite.withOpacity(0.7),
-                      fontSize: 12,
-                    ),
-                    textAlign: TextAlign.center,
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      );
-
-      // Save files to cloud
-      final results = await _firebaseService.saveMultipleAnimationsToCloud(
-        files,
-      );
-
-      // Close progress dialog
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
-
-      // Analyze results
-      final successfulSaves = results.values.where((success) => success).length;
-      final failedSaves = results.values.where((success) => !success).length;
-
-      // Show results
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          backgroundColor: AppColors.darkGrey,
-          title: Row(
-            children: [
-              Icon(
-                successfulSaves == files.length
-                    ? Icons.check_circle
-                    : Icons.warning,
-                color: successfulSaves == files.length
-                    ? AppColors.neonGreen
-                    : Colors.orange,
-              ),
-              SizedBox(width: 8),
-              Text(
-                'Cloud Save Complete',
-                style: TextStyle(
-                  color: AppColors.pureWhite,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Successfully saved: $successfulSaves/${files.length}',
-                style: TextStyle(
-                  color: successfulSaves == files.length
-                      ? AppColors.neonGreen
-                      : Colors.orange,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              if (failedSaves > 0) ...[
-                SizedBox(height: 8),
-                Text(
-                  'Failed: $failedSaves',
-                  style: TextStyle(color: Colors.red),
-                ),
-                SizedBox(height: 12),
-                Text(
-                  'Failed files:',
+    // Show progress dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.darkGrey,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: AppColors.neonGreen),
+            SizedBox(height: 16),
+            Text(
+              'Saving ${files.length} file(s) to cloud...',
+              style: TextStyle(color: AppColors.pureWhite),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 8),
+            FutureBuilder(
+              future: _firebaseService.getCloudEmail(),
+              builder: (context, snapshot) {
+                final email = snapshot.data ?? 'CC';
+                return Text(
+                  'Using identifier: $email',
                   style: TextStyle(
-                    color: AppColors.pureWhite.withOpacity(0.8),
+                    color: AppColors.pureWhite.withOpacity(0.7),
                     fontSize: 12,
                   ),
-                ),
-                ...results.entries
-                    .where((entry) => !entry.value)
-                    .map(
-                      (entry) => Text(
-                        '• ${entry.key}',
-                        style: TextStyle(color: Colors.red, fontSize: 12),
-                      ),
-                    ),
-              ],
-              SizedBox(height: 12),
-              FutureBuilder(
-                future: _firebaseService.getCloudEmail(),
-                builder: (context, snapshot) {
-                  final email = snapshot.data ?? 'CC';
-                  return Container(
-                    padding: EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryBlack,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Files stored with format:',
-                          style: TextStyle(
-                            color: AppColors.pureWhite.withOpacity(0.8),
-                            fontSize: 12,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          '[Channel] [Name] [$email]',
-                          style: TextStyle(
-                            color: AppColors.neonGreen,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                setState(() {
-                  _selectedFiles.clear();
-                  _selectedDefaultFiles.clear();
-                  _isLoading = false;
-                });
-
-                // Refresh Cloud Files page jika perlu
-                _refreshData();
+                  textAlign: TextAlign.center,
+                );
               },
-              child: Text('OK', style: TextStyle(color: AppColors.neonGreen)),
             ),
           ],
         ),
-      );
-    } catch (e) {
-      // Close progress dialog if open
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
+      ),
+    );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: Colors.red,
-          content: Text(
-            'Error saving to cloud: $e',
+    // Save files to cloud
+    final results = await _firebaseService.saveMultipleAnimationsToCloud(files);
+
+    // Close progress dialog
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
+
+    // Analyze results dengan detail
+    final successfulSaves = results.values.where((status) => status == 'success').length;
+    final duplicates = results.values.where((status) => status == 'duplicate').length;
+    final failures = results.values.where((status) => status == 'failed' || status == 'error').length;
+
+    // Show detailed results
+    _showCloudSaveResults(files, results, successfulSaves, duplicates, failures);
+
+  } catch (e) {
+    // Close progress dialog if open
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.red,
+        content: Text(
+          'Error saving to cloud: $e',
+          style: TextStyle(
+            color: AppColors.pureWhite,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+
+    setState(() {
+      _isLoading = false;
+    });
+  }
+}
+void _showCloudSaveResults(
+  List<AnimationModel> files,
+  Map<String, String> results,
+  int successfulSaves,
+  int duplicates,
+  int failures,
+) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      backgroundColor: AppColors.darkGrey,
+      title: Row(
+        children: [
+          Icon(
+            successfulSaves > 0 ? Icons.check_circle : Icons.warning,
+            color: successfulSaves > 0 ? AppColors.neonGreen : Colors.orange,
+          ),
+          SizedBox(width: 8),
+          Text(
+            'Cloud Save Complete',
             style: TextStyle(
               color: AppColors.pureWhite,
               fontWeight: FontWeight.bold,
             ),
           ),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Summary
+            Text(
+              'Summary:',
+              style: TextStyle(
+                color: AppColors.neonGreen,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 8),
+            _buildResultItem('✅ Successfully saved:', successfulSaves, Colors.green),
+            _buildResultItem('⚠️ Already in cloud:', duplicates, Colors.orange),
+            _buildResultItem('❌ Failed to save:', failures, Colors.red),
+            
+            SizedBox(height: 16),
+            
+            // Detailed list
+            if (duplicates > 0 || failures > 0) ...[
+              Text(
+                'Details:',
+                style: TextStyle(
+                  color: AppColors.neonGreen,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 8),
+              
+              // Duplicates
+              ...results.entries.where((entry) => entry.value == 'duplicate').map(
+                (entry) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2.0),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning, color: Colors.orange, size: 16),
+                      SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          '${entry.key} (already exists)',
+                          style: TextStyle(color: Colors.orange, fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              // Failures
+              ...results.entries.where((entry) => entry.value == 'failed' || entry.value == 'error').map(
+                (entry) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2.0),
+                  child: Row(
+                    children: [
+                      Icon(Icons.error, color: Colors.red, size: 16),
+                      SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          '${entry.key} (failed)',
+                          style: TextStyle(color: Colors.red, fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+            
+            SizedBox(height: 12),
+            FutureBuilder(
+              future: _firebaseService.getCloudEmail(),
+              builder: (context, snapshot) {
+                final email = snapshot.data ?? 'CC';
+                return Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryBlack,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Files stored with format:',
+                        style: TextStyle(
+                          color: AppColors.pureWhite.withOpacity(0.8),
+                          fontSize: 12,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        '[Channel] [Name] [$email]',
+                        style: TextStyle(
+                          color: AppColors.neonGreen,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
         ),
-      );
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context);
+            setState(() {
+              _selectedFiles.clear();
+              _selectedDefaultFiles.clear();
+              _isLoading = false;
+            });
+            _refreshData();
+          },
+          child: Text('OK', style: TextStyle(color: AppColors.neonGreen)),
+        ),
+      ],
+    ),
+  );
+}
 
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
+Widget _buildResultItem(String label, int count, Color color) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 2.0),
+    child: Row(
+      children: [
+        Expanded(child: Text(label, style: TextStyle(color: color, fontSize: 12))),
+        Text('$count', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
+      ],
+    ),
+  );
+}
   void _showConfigurationError() {
     showDialog(
       context: context,

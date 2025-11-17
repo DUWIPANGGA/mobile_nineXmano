@@ -1,3 +1,4 @@
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -22,8 +23,9 @@ class _SettingsPageState extends State<SettingsPage> {
   int _selectedDuration = 3;
   int _selectedChannel = 8;
   int _selectedAnimationIndex = 0;
+  String? _selectedWelcomeAnimation = 'None'; // INISIALISASI DEFAULT
 
-int _maxChannels = 8; // Default max channels berdasarkan license
+  int _maxChannels = 8;
   ConfigModel? config;
 
   final PreferencesService _preferencesService = PreferencesService();
@@ -40,7 +42,9 @@ int _maxChannels = 8; // Default max channels berdasarkan license
     'CEPAT': TextEditingController(text: '100'),
     'CEPAAT': TextEditingController(text: '50'),
   };
-  static const List<Map<String, dynamic>> _defaultAnimationsData = [
+
+  // --- PERBAIKAN: Tambahkan deviceId ke semua animasi ---
+  static final List<Map<String, dynamic>> _defaultAnimationsData = [
     {
       'name': 'None',
       'channelCount': 0,
@@ -48,6 +52,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'tidak ada animasi',
       'delayData': '0',
       'frameData': [],
+      'deviceId': 0,
     },
     {
       'name': 'None',
@@ -56,6 +61,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'tidak ada animasi',
       'delayData': '0',
       'frameData': [],
+      'deviceId': 1,
     },
     {
       'name': 'Animation 03 - Baling - Baling',
@@ -64,6 +70,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'Propeller rotation effect',
       'delayData': '80',
       'frameData': [],
+      'deviceId': 3,
     },
     {
       'name': 'Animation 04 - X Loop',
@@ -72,6 +79,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'X pattern looping animation',
       'delayData': '120',
       'frameData': [],
+      'deviceId': 4,
     },
     {
       'name': 'Animation 05 - X Run',
@@ -80,6 +88,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'X pattern running effect',
       'delayData': '100',
       'frameData': [],
+      'deviceId': 5,
     },
     {
       'name': 'Animation 06 - Baling Kedip',
@@ -88,6 +97,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'Blinking propeller effect',
       'delayData': '60',
       'frameData': [],
+      'deviceId': 6,
     },
     {
       'name': 'Animation 07 - Left Right',
@@ -96,6 +106,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'Left to right movement',
       'delayData': '80',
       'frameData': [],
+      'deviceId': 7,
     },
     {
       'name': 'Animation 08 - Random Bit',
@@ -104,6 +115,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'Random bit pattern animation',
       'delayData': '100',
       'frameData': [],
+      'deviceId': 8,
     },
     {
       'name': 'Animation 09 - Swap Fill',
@@ -112,6 +124,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'Swap and fill animation',
       'delayData': '80',
       'frameData': [],
+      'deviceId': 9,
     },
     {
       'name': 'Animation 10 - Every 2 Bit',
@@ -120,6 +133,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'Every second bit animation',
       'delayData': '120',
       'frameData': [],
+      'deviceId': 10,
     },
     {
       'name': 'Animation 11 - Swap Fill LR',
@@ -128,6 +142,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'Left-right swap fill animation',
       'delayData': '100',
       'frameData': [],
+      'deviceId': 11,
     },
     {
       'name': 'Animation 12 - Up Run',
@@ -136,6 +151,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'Upward running animation',
       'delayData': '80',
       'frameData': [],
+      'deviceId': 12,
     },
     {
       'name': 'Animation 13 - Up Down Run',
@@ -144,6 +160,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'Up-down running animation',
       'delayData': '120',
       'frameData': [],
+      'deviceId': 13,
     },
     {
       'name': 'Animation 14 - Blinking LR',
@@ -152,6 +169,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'Left-right blinking animation',
       'delayData': '60',
       'frameData': [],
+      'deviceId': 14,
     },
     {
       'name': 'Animation 15 - Blinking UD',
@@ -160,6 +178,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'Up-down blinking animation',
       'delayData': '60',
       'frameData': [],
+      'deviceId': 15,
     },
     {
       'name': 'Animation 16 - Random Corner',
@@ -168,6 +187,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'Random corner animation',
       'delayData': '100',
       'frameData': [],
+      'deviceId': 16,
     },
     {
       'name': 'Animation 17 - Fill Circle',
@@ -176,6 +196,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'Circular fill animation',
       'delayData': '150',
       'frameData': [],
+      'deviceId': 17,
     },
     {
       'name': 'Animation 18 - X Pulse',
@@ -184,6 +205,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'X pattern pulsing animation',
       'delayData': '80',
       'frameData': [],
+      'deviceId': 18,
     },
     {
       'name': 'Animation 19 - X Blink',
@@ -192,6 +214,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'X pattern blinking animation',
       'delayData': '60',
       'frameData': [],
+      'deviceId': 19,
     },
     {
       'name': 'Animation 20 - O Left Right',
@@ -200,6 +223,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'O pattern left-right animation',
       'delayData': '100',
       'frameData': [],
+      'deviceId': 20,
     },
     {
       'name': 'Animation 21 - O LR',
@@ -208,6 +232,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'O pattern left-right simplified',
       'delayData': '80',
       'frameData': [],
+      'deviceId': 21,
     },
     {
       'name': 'Animation 22 - O Out',
@@ -216,6 +241,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'O pattern outward animation',
       'delayData': '120',
       'frameData': [],
+      'deviceId': 22,
     },
     {
       'name': 'Animation 23 - Sweeper',
@@ -224,6 +250,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'Sweeping animation effect',
       'delayData': '100',
       'frameData': [],
+      'deviceId': 23,
     },
     {
       'name': 'Animation 24 - In Out',
@@ -232,6 +259,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'In-out animation pattern',
       'delayData': '80',
       'frameData': [],
+      'deviceId': 24,
     },
     {
       'name': 'Animation 25 - Bouncing',
@@ -240,6 +268,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'Bouncing animation effect',
       'delayData': '120',
       'frameData': [],
+      'deviceId': 25,
     },
     {
       'name': 'Animation 26 - Bouncing LR',
@@ -248,6 +277,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'Left-right bouncing animation',
       'delayData': '100',
       'frameData': [],
+      'deviceId': 26,
     },
     {
       'name': 'Animation 27 - Bouncing Blink',
@@ -256,6 +286,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'Bouncing with blinking effect',
       'delayData': '80',
       'frameData': [],
+      'deviceId': 27,
     },
     {
       'name': 'Animation 28 - Fill in',
@@ -264,6 +295,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'Fill in animation pattern',
       'delayData': '100',
       'frameData': [],
+      'deviceId': 28,
     },
     {
       'name': 'Animation 29 - X swap',
@@ -272,6 +304,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'X pattern swap animation',
       'delayData': '80',
       'frameData': [],
+      'deviceId': 29,
     },
     {
       'name': 'Animation 30 - Fill Right',
@@ -280,6 +313,7 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'Right fill animation',
       'delayData': '100',
       'frameData': [],
+      'deviceId': 30,
     },
     {
       'name': 'Animation 31 - Fill Down',
@@ -288,10 +322,10 @@ int _maxChannels = 8; // Default max channels berdasarkan license
       'description': 'Downward fill animation',
       'delayData': '100',
       'frameData': [],
+      'deviceId': 31,
     },
   ];
-  String? _selectedWelcomeAnimation;
-  // Data dari device (akan diupdate via socket)
+
   String _firmwareVersion = '-';
   String _deviceId = '';
   String _licenseLevel = '';
@@ -299,10 +333,13 @@ int _maxChannels = 8; // Default max channels berdasarkan license
   String _currentEmail = '';
   String _currentSSID = '';
   String _currentPassword = '';
-  // ConfigModel? config;
   bool _isCalibrating = false;
-  String _currentCalibrationStep = 'A'; // A, B, C, D
+  String _currentCalibrationStep = 'A';
+  
+  // --- PERBAIKAN: Tambahkan stream subscriptions ---
+  StreamSubscription<String>? _messageSubscription;
   StreamSubscription<String>? _calibrationSubscription;
+  
   final List<String> _speedOptions = ['LAMBAT', 'SEDANG', 'CEPAT', 'CEPAAT'];
   final Map<String, int> _speedValues = {
     'LAMBAT': 500,
@@ -315,44 +352,74 @@ int _maxChannels = 8; // Default max channels berdasarkan license
   void initState() {
     super.initState();
     _initializeApp();
+    _setupSocketListeners(); // Pindahkan ke sini
   }
 
-  Future<void> _initializeApp() async {
-  try {
-    // Load config terlebih dahulu
-    config = await _preferencesService.getDeviceConfig();
-    print('✅ Config loaded: ${config?.devID ?? "No config"}');
-_selectedDuration = config?.durasiWelcome??1;
-    // Set selected welcome animation dari config
-    final animIndex = config?.animWelcome ?? 0;
-    
-    // Validasi agar index tidak out of bounds
-    final safeIndex = animIndex.clamp(0, _defaultAnimationsData.length - 1);
-    
-    _selectedWelcomeAnimation = _defaultAnimationsData[safeIndex]['name'] as String;
-    _selectedAnimationIndex = safeIndex;
-
-    print("Animasi yang dipilih: $_selectedWelcomeAnimation, UI Index: $safeIndex, Device ID: ${safeIndex + 1}");
-
-    // Initialize data dengan config yang sudah diload
-    _initializeData();
-    _setupSocketListeners();
-    
-    setState(() {});
-  } catch (e) {
-    print('❌ Error initializing app: $e');
-    _initializeData();
-    _setupSocketListeners();
+  // --- PERBAIKAN: Helper methods dengan NULL SAFETY ---
+  String _safeGetString(Map<String, dynamic> map, String key) {
+    final value = map[key];
+    return value is String ? value : 'Unknown';
   }
 
-  // Request config data saat page dibuka
-  if (widget.socketService.isConnected) {
-    widget.socketService.requestConfig();
+  int _safeGetInt(Map<String, dynamic> map, String key) {
+    final value = map[key];
+    return value is int ? value : 0;
   }
-}
+
+   Future<void> _initializeApp() async {
+    try {
+      config = await _preferencesService.getDeviceConfig();
+      print('✅ Config loaded: ${config?.devID ?? "No config"}');
+      
+      _selectedDuration = config?.durasiWelcome ?? 1;
+      
+      // --- PERBAIKAN: Pastikan selalu ada value untuk dropdown ---
+      final animIndex = config?.animWelcome ?? 0;
+      final safeIndex = animIndex.clamp(0, _defaultAnimationsData.length - 1);
+      
+      if (_defaultAnimationsData.isNotEmpty) {
+        final animationData = _defaultAnimationsData[safeIndex];
+        _selectedWelcomeAnimation = _safeGetString(animationData, 'name');
+        _selectedAnimationIndex = safeIndex;
+        
+        print("🎯 Animasi yang dipilih: $_selectedWelcomeAnimation");
+        print("🎯 UI Index: $_selectedAnimationIndex");
+        print("🎯 Device ID: ${_safeGetInt(animationData, 'deviceId')}");
+      } else {
+        // Fallback jika data kosong
+        _selectedWelcomeAnimation = 'None';
+        _selectedAnimationIndex = 0;
+      }
+
+      _initializeData();
+      
+      setState(() {});
+    } catch (e) {
+      print('❌ Error initializing app: $e');
+      // --- PERBAIKAN: Pastikan ada fallback value ---
+      _selectedWelcomeAnimation = 'None';
+      _initializeData();
+      setState(() {});
+    }
+
+    if (widget.socketService.isConnected) {
+      widget.socketService.requestConfig();
+    }
+  }
+
+  // --- PERBAIKAN: Setup socket listeners dengan mounted check ---
+  void _setupSocketListeners() {
+    _messageSubscription?.cancel(); // Cancel existing
+
+    _messageSubscription = widget.socketService.messages.listen((message) {
+      if (!mounted) return; // CHECK MOUNTED sebelum handle
+      
+      print('SettingsPage received: $message');
+      _handleSocketMessage(message);
+    });
+  }
 
   void _initializeData() {
-    // Default values dengan null safety
     _emailController.text = config?.email ?? 'example@gmail.com';
     _ssidController.text = config?.ssid ?? 'MaNo';
     _passwordController.text = config?.password ?? '11223344';
@@ -384,13 +451,11 @@ _selectedDuration = config?.durasiWelcome??1;
         return;
       }
 
-      // Jika ada controller, update text field
       if (controller != null) {
         controller.text = pastedText;
         _showSnackbar('Teks berhasil dipaste: "$pastedText"');
         print('📋 Pasted to field: $pastedText');
       } else {
-        // Jika tidak ada controller, cukup show snackbar
         _showSnackbar('Teks dari clipboard: "$pastedText"');
         print('📋 Pasted text: $pastedText');
       }
@@ -399,8 +464,21 @@ _selectedDuration = config?.durasiWelcome??1;
       print('❌ Error pasting from clipboard: $e');
     }
   }
-
 Widget _buildWelcomeAnimationDropdown() {
+  // Pastikan _selectedWelcomeAnimation tidak null dan valid
+  final currentValue = _selectedWelcomeAnimation ?? 'None';
+  
+  // Cek apakah currentValue ada di items
+  final isValidValue = _defaultAnimationsData.any(
+    (anim) => _safeGetString(anim, 'name') == currentValue
+  );
+
+  // Jika tidak valid, set ke default
+  final displayValue = isValidValue ? currentValue : 'None';
+
+  print('🎯 Dropdown current value: "$displayValue"');
+  print('🎯 Valid value: $isValidValue');
+
   return Container(
     width: 150,
     padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -410,107 +488,168 @@ Widget _buildWelcomeAnimationDropdown() {
       border: Border.all(color: AppColors.neonGreen),
     ),
     child: DropdownButton<String>(
-      menuWidth: 250,
-      value: _selectedWelcomeAnimation, // ← Pastikan ini sesuai dengan state
+      value: displayValue,
       isExpanded: true,
       dropdownColor: AppColors.darkGrey,
-      style: const TextStyle(color: AppColors.pureWhite, fontSize: 12),
+      style: const TextStyle(
+        color: AppColors.pureWhite, // PASTIKAN WARNA PUTIH
+        fontSize: 12,
+        fontWeight: FontWeight.bold, // TAMBAH BOLD BIAR KELIHATAN
+      ),
       underline: const SizedBox(),
       icon: Icon(Icons.arrow_drop_down, color: AppColors.neonGreen, size: 20),
+      
+      // TAMBAHKAN HINT UNTUK DEBUG
       hint: Text(
-        'Pilih Animasi Welcome',
+        'Pilih Animasi',
         style: TextStyle(
-          color: AppColors.pureWhite.withOpacity(0.7),
+          color: Colors.red, // WARNA MERAH BIAR KELIHATAN
           fontSize: 12,
+          fontWeight: FontWeight.bold,
         ),
       ),
+      
+      // TAMBAHKAN SELECTED ITEM BUILDER
+      selectedItemBuilder: (BuildContext context) {
+        return _defaultAnimationsData.map<Widget>((animationData) {
+          final name = _safeGetString(animationData, 'name');
+          return Container(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              name,
+              style: const TextStyle(
+                color: Colors.white, // WARNA KUNING BIAR KELIHATAN
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                overflow: TextOverflow.ellipsis,
+              ),
+              maxLines: 1,
+            ),
+          );
+        }).toList();
+      },
+      
       items: _buildWelcomeAnimationItems(),
       onChanged: (String? newValue) {
         if (newValue != null) {
-          print('🔄 Dropdown changed to: $newValue'); // Debug
+          print('🔄 Dropdown changed to: "$newValue"');
+          
+          final newIndex = _getAnimationIndex(newValue);
+          
           setState(() {
             _selectedWelcomeAnimation = newValue;
+            _selectedAnimationIndex = newIndex;
           });
-          // Optional: langsung update preview tanpa tekan tombol KIRIM
-          print('✅ State updated: $_selectedWelcomeAnimation');
         }
       },
     ),
   );
 }
 List<DropdownMenuItem<String>> _buildWelcomeAnimationItems() {
-  return _defaultAnimationsData.asMap().entries.map((entry) {
-    final index = entry.key; // 0-based index dari array
-    final animationData = entry.value;
-    final animationName = animationData['name'] as String;
-    final deviceId = index + 1; // Convert ke 1-based untuk display
+  if (_defaultAnimationsData.isEmpty) {
+    // Return default item jika data kosong
+    return [
+      DropdownMenuItem<String>(
+        value: 'None',
+        child: Text(
+          'None',
+          style: const TextStyle(color: AppColors.pureWhite, fontSize: 12),
+          overflow: TextOverflow.ellipsis, // TAMBAHKAN INI
+        ),
+      )
+    ];
+  }
 
-    // print('📋 Building dropdown item: $animationName, Index: $index, DeviceID: $deviceId'); // Debug
+  return _defaultAnimationsData.map((animationData) {
+    final animationName = _safeGetString(animationData, 'name');
+    final deviceId = _safeGetInt(animationData, 'deviceId');
+    final channelCount = _safeGetInt(animationData, 'channelCount');
+    final animationLength = _safeGetInt(animationData, 'animationLength');
+    final delayData = _safeGetString(animationData, 'delayData');
 
     return DropdownMenuItem<String>(
       value: animationName,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  animationName,
-                  style: const TextStyle(
-                    color: AppColors.pureWhite,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 4,
-                  vertical: 1,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: Colors.blue),
-                ),
-                child: Text(
-                  'ID: ${deviceId.toString().padLeft(2, '0')}', // Pastikan ini deviceId, bukan index
-                  style: TextStyle(
-                    color: Colors.blue,
-                    fontSize: 8,
-                    fontWeight: FontWeight.bold,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    animationName,
+                    style: const TextStyle(
+                      color: AppColors.pureWhite,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis, // TAMBAHKAN INI
+                    maxLines: 1, // BATASI HANYA 1 BARIS
                   ),
                 ),
-              ),
-            ],
-          ),
-          Text(
-            '${animationData['channelCount']}C • ${animationData['animationLength']}L',
-            style: TextStyle(
-              color: AppColors.pureWhite.withOpacity(0.7),
-              fontSize: 10,
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.blue),
+                  ),
+                  child: Text(
+                    'ID: ${deviceId.toString().padLeft(2, '0')}',
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
+            if (channelCount > 0)
+              Text(
+                '${channelCount}C • ${animationLength}L • ${delayData}ms',
+                style: TextStyle(
+                  color: AppColors.pureWhite.withOpacity(0.7),
+                  fontSize: 9,
+                ),
+                overflow: TextOverflow.ellipsis, // TAMBAHKAN INI JUGA
+                maxLines: 1, // BATASI HANYA 1 BARIS
+              ),
+          ],
+        ),
       ),
     );
   }).toList();
 }
-int _getAnimationIndex(String animationName) {
-  return _defaultAnimationsData.indexWhere(
-    (anim) => anim['name'] == animationName,
-  );
+  int _getAnimationIndex(String animationName) {
+  try {
+    for (int i = 0; i < _defaultAnimationsData.length; i++) {
+      final currentName = _safeGetString(_defaultAnimationsData[i], 'name');
+      if (currentName == animationName) {
+        print('🎯 Found animation "$animationName" at index: $i');
+        return i;
+      }
+    }
+    print('❌ Animation "$animationName" not found, using index 0');
+    return 0; // Fallback ke index 0
+  } catch (e) {
+    print('❌ Error getting animation index: $e');
+    return 0;
+  }
 }
-
-// Method untuk mendapatkan ID device (1-based) dari nama animasi  
-int _getDeviceAnimationId(String animationName) {
-  return _getAnimationIndex(animationName) + 1;
-}
-
+  int _getDeviceAnimationId(String animationName) {
+    final index = _getAnimationIndex(animationName);
+    if (index >= 0 && index < _defaultAnimationsData.length) {
+      return _safeGetInt(_defaultAnimationsData[index], 'deviceId');
+    }
+    return 0;
+  }
 
   Widget _buildSpeedInputGrid() {
     return GridView.builder(
@@ -570,9 +709,7 @@ int _getDeviceAnimationId(String animationName) {
                     ),
                   ),
                   onChanged: (value) {
-                    // Validasi input number
                     if (value.isNotEmpty && int.tryParse(value) == null) {
-                      // Jika bukan angka, hapus karakter terakhir
                       controller.text = value.substring(0, value.length - 1);
                       controller.selection = TextSelection.fromPosition(
                         TextPosition(offset: controller.text.length),
@@ -595,236 +732,230 @@ int _getDeviceAnimationId(String animationName) {
       },
     );
   }
-void _handleConfigResponse(String message) {
-  final parts = message.split(',');
-  if (parts.length >= 20) {
-    setState(() {
-      _firmwareVersion = parts[1];
-      _deviceId = parts[16];
-      _licenseLevel = parts[3];
-      _deviceChannel = parts[4];
-      _currentEmail = parts[5];
-      _currentSSID = parts[6];
-      _currentPassword = parts[7];
 
-      // Parse license level dan set max channels
-      final licenseLevel = int.tryParse(_licenseLevel) ?? 1;
-      _maxChannels = _getMaxChannelsByLicense(licenseLevel);
-      
-      // Set selected channel dari device channel
-      _selectedChannel = int.tryParse(_deviceChannel) ?? _maxChannels;
-      
-      // Jika channel dari device melebihi max channels, set ke max channels
-      if (_selectedChannel > _maxChannels) {
-        _selectedChannel = _maxChannels;
+  void _handleConfigResponse(String message) {
+    if (!mounted) return; // Safety check
+
+    final parts = message.split(',');
+    if (parts.length >= 20) {
+      if (mounted) {
+        setState(() {
+          _firmwareVersion = parts[1];
+          _deviceId = parts[16];
+          _licenseLevel = parts[3];
+          _deviceChannel = parts[4];
+          _currentEmail = parts[5];
+          _currentSSID = parts[6];
+          _currentPassword = parts[7];
+
+          final licenseLevel = int.tryParse(_licenseLevel) ?? 1;
+          _maxChannels = _getMaxChannelsByLicense(licenseLevel);
+          
+          _selectedChannel = int.tryParse(_deviceChannel) ?? _maxChannels;
+          
+          if (_selectedChannel > _maxChannels) {
+            _selectedChannel = _maxChannels;
+          }
+
+          _emailController.text = _currentEmail;
+          _ssidController.text = _currentSSID;
+          _passwordController.text = _currentPassword;
+
+          if (parts.length >= 12) {
+            try {
+              final delay1 = int.tryParse(parts[8]) ?? 500;
+              final delay2 = int.tryParse(parts[9]) ?? 200;
+              final delay3 = int.tryParse(parts[10]) ?? 100;
+              final delay4 = int.tryParse(parts[11]) ?? 50;
+
+              _speedControllers['LAMBAT']!.text = delay1.toString();
+              _speedControllers['SEDANG']!.text = delay2.toString();
+              _speedControllers['CEPAT']!.text = delay3.toString();
+              _speedControllers['CEPAAT']!.text = delay4.toString();
+
+              _speedValues['LAMBAT'] = delay1;
+              _speedValues['SEDANG'] = delay2;
+              _speedValues['CEPAT'] = delay3;
+              _speedValues['CEPAAT'] = delay4;
+            } catch (e) {
+              print('Error parsing delay values: $e');
+            }
+          }
+        });
       }
+    }
+  }
 
-      // Update controllers dengan data aktual
-      _emailController.text = _currentEmail;
-      _ssidController.text = _currentSSID;
-      _passwordController.text = _currentPassword;
+  int _getMaxChannelsByLicense(int licenseLevel) {
+    switch (licenseLevel) {
+      case 1:
+        return 8;
+      case 2:
+        return 16;
+      case 3:
+        return 32;
+      case 4:
+        return 64;
+      case 5:
+        return 80;
+      default:
+        return 8;
+    }
+  }
 
-      // Update delay values jika ada di config
-      if (parts.length >= 12) {
-        try {
-          final delay1 = int.tryParse(parts[8]) ?? 500;
-          final delay2 = int.tryParse(parts[9]) ?? 200;
-          final delay3 = int.tryParse(parts[10]) ?? 100;
-          final delay4 = int.tryParse(parts[11]) ?? 50;
-
-          _speedControllers['LAMBAT']!.text = delay1.toString();
-          _speedControllers['SEDANG']!.text = delay2.toString();
-          _speedControllers['CEPAT']!.text = delay3.toString();
-          _speedControllers['CEPAAT']!.text = delay4.toString();
-
-          _speedValues['LAMBAT'] = delay1;
-          _speedValues['SEDANG'] = delay2;
-          _speedValues['CEPAT'] = delay3;
-          _speedValues['CEPAAT'] = delay4;
-        } catch (e) {
-          print('Error parsing delay values: $e');
-        }
+  void _updateChannel() {
+    if (_selectedChannel > 0) {
+      widget.socketService.setChannel(_selectedChannel);
+      _showSnackbar('Channel diubah ke: $_selectedChannel');
+      
+      if (mounted) {
+        setState(() {
+          _deviceChannel = _selectedChannel.toString();
+        });
       }
-    });
+    }
   }
-}
 
-// Method untuk mendapatkan max channels berdasarkan license
-int _getMaxChannelsByLicense(int licenseLevel) {
-  switch (licenseLevel) {
-    case 1:
-      return 8;
-    case 2:
-      return 16;
-    case 3:
-      return 32;
-    case 4:
-      return 64;
-    case 5:
-      return 80;
-    default:
-      return 8; // Default fallback
-  }
-}
-
-// Method untuk update channel
-void _updateChannel() {
-  if (_selectedChannel > 0) {
-    widget.socketService.setChannel(_selectedChannel);
-    _showSnackbar('Channel diubah ke: $_selectedChannel');
+  Widget _buildChannelDropdown() {
+    final availableChannels = List.generate(_maxChannels, (index) => index + 1);
     
-    // Update juga _deviceChannel untuk display
-    setState(() {
-      _deviceChannel = _selectedChannel.toString();
-    });
+    return Container(
+      width: 100,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: AppColors.darkGrey,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.neonGreen),
+      ),
+      child: DropdownButton<int>(
+        value: _selectedChannel,
+        isExpanded: true,
+        dropdownColor: AppColors.darkGrey,
+        style: const TextStyle(color: AppColors.pureWhite, fontSize: 12),
+        underline: const SizedBox(),
+        icon: Icon(Icons.arrow_drop_down, color: AppColors.neonGreen, size: 20),
+        items: availableChannels.map((int channel) {
+          return DropdownMenuItem<int>(
+            value: channel,
+            child: Text(
+              '$channel',
+              style: const TextStyle(color: AppColors.pureWhite, fontSize: 12),
+            ),
+          );
+        }).toList(),
+        onChanged: (int? newValue) {
+          if (newValue != null) {
+            setState(() {
+              _selectedChannel = newValue;
+            });
+          }
+        },
+      ),
+    );
   }
-}
 
-// Widget untuk dropdown channel
-Widget _buildChannelDropdown() {
-  // Generate list channel berdasarkan max channels
-  final availableChannels = List.generate(_maxChannels, (index) => index + 1);
-  
-  return Container(
-    width: 100,
-    padding: const EdgeInsets.symmetric(horizontal: 12),
-    decoration: BoxDecoration(
-      color: AppColors.darkGrey,
-      borderRadius: BorderRadius.circular(8),
-      border: Border.all(color: AppColors.neonGreen),
-    ),
-    child: DropdownButton<int>(
-      value: _selectedChannel,
-      isExpanded: true,
-      dropdownColor: AppColors.darkGrey,
-      style: const TextStyle(color: AppColors.pureWhite, fontSize: 12),
-      underline: const SizedBox(),
-      icon: Icon(Icons.arrow_drop_down, color: AppColors.neonGreen, size: 20),
-      items: availableChannels.map((int channel) {
-        return DropdownMenuItem<int>(
-          value: channel,
-          child: Text(
-            '$channel',
-            style: const TextStyle(color: AppColors.pureWhite, fontSize: 12),
+  Widget _buildLicenseInfo() {
+    String licenseInfo = '';
+    String channelInfo = '';
+    
+    switch (_licenseLevel) {
+      case '1':
+        licenseInfo = 'BASIC';
+        channelInfo = 'Max 8 Channels';
+        break;
+      case '2':
+        licenseInfo = 'STANDARD';
+        channelInfo = 'Max 16 Channels';
+        break;
+      case '3':
+        licenseInfo = 'PRO';
+        channelInfo = 'Max 32 Channels';
+        break;
+      case '4':
+        licenseInfo = 'ENTERPRISE';
+        channelInfo = 'Max 64 Channels';
+        break;
+      case '5':
+        licenseInfo = 'ULTIMATE';
+        channelInfo = 'Max 80 Channels';
+        break;
+      default:
+        licenseInfo = 'UNKNOWN';
+        channelInfo = 'Max 8 Channels';
+    }
+    
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.primaryBlack,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.neonGreen.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'License: $licenseInfo',
+                style: const TextStyle(
+                  color: AppColors.pureWhite,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                channelInfo,
+                style: TextStyle(
+                  color: AppColors.pureWhite.withOpacity(0.7),
+                  fontSize: 10,
+                ),
+              ),
+            ],
           ),
-        );
-      }).toList(),
-      onChanged: (int? newValue) {
-        if (newValue != null) {
-          setState(() {
-            _selectedChannel = newValue;
-          });
-        }
-      },
-    ),
-  );
-}
-
-// Widget untuk menampilkan info license dan channel restrictions
-Widget _buildLicenseInfo() {
-  String licenseInfo = '';
-  String channelInfo = '';
-  
-  switch (_licenseLevel) {
-    case '1':
-      licenseInfo = 'BASIC';
-      channelInfo = 'Max 8 Channels';
-      break;
-    case '2':
-      licenseInfo = 'STANDARD';
-      channelInfo = 'Max 16 Channels';
-      break;
-    case '3':
-      licenseInfo = 'PRO';
-      channelInfo = 'Max 32 Channels';
-      break;
-    case '4':
-      licenseInfo = 'ENTERPRISE';
-      channelInfo = 'Max 64 Channels';
-      break;
-    case '5':
-      licenseInfo = 'ULTIMATE';
-      channelInfo = 'Max 80 Channels';
-      break;
-    default:
-      licenseInfo = 'UNKNOWN';
-      channelInfo = 'Max 8 Channels';
-  }
-  
-  return Container(
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: AppColors.primaryBlack,
-      borderRadius: BorderRadius.circular(8),
-      border: Border.all(color: AppColors.neonGreen.withOpacity(0.3)),
-    ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'License: $licenseInfo',
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: _getLicenseColor(_licenseLevel),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'Level $_licenseLevel',
               style: const TextStyle(
-                color: AppColors.pureWhite,
-                fontSize: 12,
+                color: AppColors.primaryBlack,
+                fontSize: 10,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            Text(
-              channelInfo,
-              style: TextStyle(
-                color: AppColors.pureWhite.withOpacity(0.7),
-                fontSize: 10,
-              ),
-            ),
-          ],
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: _getLicenseColor(_licenseLevel),
-            borderRadius: BorderRadius.circular(12),
           ),
-          child: Text(
-            'Level $_licenseLevel',
-            style: const TextStyle(
-              color: AppColors.primaryBlack,
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-// Helper untuk mendapatkan warna berdasarkan license level
-Color _getLicenseColor(String licenseLevel) {
-  switch (licenseLevel) {
-    case '1':
-      return Colors.blue;
-    case '2':
-      return Colors.green;
-    case '3':
-      return Colors.orange;
-    case '4':
-      return Colors.purple;
-    case '5':
-      return Colors.red;
-    default:
-      return Colors.grey;
+        ],
+      ),
+    );
   }
-}
-  // Method untuk apply speed settings
+
+  Color _getLicenseColor(String licenseLevel) {
+    switch (licenseLevel) {
+      case '1':
+        return Colors.blue;
+      case '2':
+        return Colors.green;
+      case '3':
+        return Colors.orange;
+      case '4':
+        return Colors.purple;
+      case '5':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
   void _updateSpeedSettings() {
     final delays = <int>[];
     var hasError = false;
     var errorMessage = '';
 
-    // Validasi dan kumpulkan delay values
     for (final speed in _speedOptions) {
       final controller = _speedControllers[speed]!;
       final value = controller.text.trim();
@@ -851,7 +982,6 @@ Color _getLicenseColor(String licenseLevel) {
     }
 
     if (delays.length == 4) {
-      // Kirim delay settings ke device
       widget.socketService.setDelays(
         delays[0],
         delays[1],
@@ -863,42 +993,30 @@ Color _getLicenseColor(String licenseLevel) {
         'Speed settings applied: ${delays[0]}, ${delays[1]}, ${delays[2]}, ${delays[3]} ms',
       );
 
-      // Update selected speed value juga
-      setState(() {
-        _speedValues['LAMBAT'] = delays[0];
-        _speedValues['SEDANG'] = delays[1];
-        _speedValues['CEPAT'] = delays[2];
-        _speedValues['CEPAAT'] = delays[3];
-      });
+      if (mounted) {
+        setState(() {
+          _speedValues['LAMBAT'] = delays[0];
+          _speedValues['SEDANG'] = delays[1];
+          _speedValues['CEPAT'] = delays[2];
+          _speedValues['CEPAAT'] = delays[3];
+        });
+      }
     }
   }
 
-  // Method untuk load current delay values dari config
-  void _loadCurrentDelayValues() {
-    // Method ini akan dipanggil ketika config diterima dari device
-    // Contoh: jika ada data delay dari device, update controllers
-  }
-
-  
-
-  void _setupSocketListeners() {
-    widget.socketService.messages.listen((message) {
-      _handleSocketMessage(message);
-    });
-  }
-
   void _handleSocketMessage(String message) {
-    print('SettingsPage received: $message');
+    if (!mounted) return;
 
     if (message.startsWith('config,')) {
       _handleConfigResponse(message);
     } else if (message.startsWith('info,')) {
       final infoMessage = message.substring(5);
       _showSnackbar(infoMessage);
+    } else if (message.startsWith('CONFIG_UPDATED:')) {
+      // Ignore CONFIG_UPDATED messages to prevent setState after dispose
+      print('Config updated received, ignoring...');
     }
   }
-
-  // ========== SOCKET ACTIONS ==========
 
   void _updateEmail() {
     if (_emailController.text.isNotEmpty) {
@@ -907,54 +1025,68 @@ Color _getLicenseColor(String licenseLevel) {
     }
   }
 
-void _updateWelcomeSettings() {
-  if (_selectedWelcomeAnimation == null) {
-    _showSnackbar('Pilih animasi welcome terlebih dahulu');
-    return;
-  }
-
-  final animationIndex = _getAnimationIndex(_selectedWelcomeAnimation!);
-  final deviceAnimationId = _getDeviceAnimationId(_selectedWelcomeAnimation!);
-  
-  // Validasi index
-  if (animationIndex < 0 || animationIndex >= _defaultAnimationsData.length) {
-    _showSnackbar('Animasi tidak valid');
-    return;
-  }
-
-  // Kirim ke device via socket - gunakan deviceAnimationId (1-based)
-  widget.socketService.setWelcomeAnimation(deviceAnimationId, _selectedDuration);
-
-  // Update config lokal - gunakan animationIndex (0-based untuk storage)
-  setState(() {
-    if (config != null) {
-      config = config!.copyWith(animWelcome: animationIndex);
+  void _updateWelcomeSettings() {
+    if (_selectedWelcomeAnimation == null) {
+      _showSnackbar('Pilih animasi welcome terlebih dahulu');
+      return;
     }
-  });
 
-  // Simpan ke preferences
-  if (config != null) {
-    _preferencesService.saveDeviceConfig(config!);
+    final deviceAnimationId = _getDeviceAnimationId(_selectedWelcomeAnimation!);
+    
+    if (deviceAnimationId < 0 || deviceAnimationId > 31) {
+      _showSnackbar('Animasi tidak valid');
+      return;
+    }
+
+    widget.socketService.setWelcomeAnimation(deviceAnimationId, _selectedDuration);
+
+    final uiIndex = _getAnimationIndex(_selectedWelcomeAnimation!);
+    if (mounted) {
+      setState(() {
+        if (config != null) {
+          config = config!.copyWith(animWelcome: uiIndex);
+        }
+      });
+    }
+
+    if (config != null) {
+      _preferencesService.saveDeviceConfig(config!);
+    }
+
+    _showSnackbar(
+      'Welcome animation diubah ke: $_selectedWelcomeAnimation (ID: ${deviceAnimationId.toString().padLeft(2, '0')})',
+    );
+
+    print('🎯 Kirim ke device:');
+    print('   - Animation Name: $_selectedWelcomeAnimation');
+    print('   - UI Index: $uiIndex');
+    print('   - Device ID: $deviceAnimationId');
+    print('   - Duration: $_selectedDuration');
   }
 
-  _showSnackbar(
-    'Welcome animation diubah ke: $_selectedWelcomeAnimation (ID: ${deviceAnimationId.toString().padLeft(2, '0')})',
-  );
-}
-  int _getWelcomeAnimationIndex(String animationName) {
-    // Mapping nama animasi ke index
-    final animationMap = {
-      'Welcome Animation 1': 1,
-      'Welcome Animation 2': 2,
-      'Welcome Animation 3': 3,
-      'MaNo 06': 4,
-      'Balin': 5,
-      'Default Welcome': 6,
-    };
+  void _testWelcomeAnimation() {
+    if (_selectedWelcomeAnimation == null) {
+      _showSnackbar('Pilih animasi welcome terlebih dahulu');
+      return;
+    }
 
-    return animationMap[animationName] ?? 1;
+    final deviceAnimationId = _getDeviceAnimationId(_selectedWelcomeAnimation!);
+    
+    if (deviceAnimationId < 0 || deviceAnimationId > 31) {
+      _showSnackbar('Animasi tidak valid');
+      return;
+    }
+
+    widget.socketService.builtinAnimation(deviceAnimationId);
+
+    _showSnackbar(
+      'Testing animation: $_selectedWelcomeAnimation (ID: ${deviceAnimationId.toString().padLeft(2, '0')})',
+    );
+
+    print('🧪 Test Animation:');
+    print('   - Animation Name: $_selectedWelcomeAnimation');
+    print('   - Device ID: $deviceAnimationId');
   }
-
 
   void _updateWiFi() {
     if (_ssidController.text.isNotEmpty &&
@@ -973,25 +1105,23 @@ void _updateWelcomeSettings() {
       return;
     }
 
-    setState(() {
-      _isCalibrating = true;
-      _currentCalibrationStep = 'A';
-    });
+    if (mounted) {
+      setState(() {
+        _isCalibrating = true;
+        _currentCalibrationStep = 'A';
+      });
+    }
 
-    // Mulai mode kalibrasi
     widget.socketService.setCalibrationMode(true);
-
-    // Setup listener untuk pesan dari socket
     _setupCalibrationListener();
-
-    // Tampilkan popup pertama
     _showCalibrationPopup('A', 'Tekan tombol A pada remote');
   }
 
   void _setupCalibrationListener() {
-    _calibrationSubscription?.cancel(); // Cancel existing subscription
+    _calibrationSubscription?.cancel();
 
     _calibrationSubscription = widget.socketService.messages.listen((message) {
+      if (!mounted) return;
       _handleCalibrationMessage(message);
     });
   }
@@ -1004,29 +1134,30 @@ void _updateWelcomeSettings() {
       if (parts.length >= 2) {
         final step = parts[1].trim();
 
-        // Close popup yang sedang aktif terlebih dahulu
         _closeCurrentPopup();
 
         if (step == '1' && _currentCalibrationStep == 'A') {
-          // Pindah ke step B
-          setState(() {
-            _currentCalibrationStep = 'B';
-          });
+          if (mounted) {
+            setState(() {
+              _currentCalibrationStep = 'B';
+            });
+          }
           _showCalibrationPopup('B', 'Tekan tombol B pada remote');
         } else if (step == '2' && _currentCalibrationStep == 'B') {
-          // Pindah ke step C
-          setState(() {
-            _currentCalibrationStep = 'C';
-          });
+          if (mounted) {
+            setState(() {
+              _currentCalibrationStep = 'C';
+            });
+          }
           _showCalibrationPopup('C', 'Tekan tombol C pada remote');
         } else if (step == '3' && _currentCalibrationStep == 'C') {
-          // Pindah ke step D
-          setState(() {
-            _currentCalibrationStep = 'D';
-          });
+          if (mounted) {
+            setState(() {
+              _currentCalibrationStep = 'D';
+            });
+          }
           _showCalibrationPopup('D', 'Tekan tombol D pada remote');
         } else if (step == '4' && _currentCalibrationStep == 'D') {
-          // Selesaikan kalibrasi
           _finishCalibration();
         }
       }
@@ -1042,7 +1173,7 @@ void _updateWelcomeSettings() {
   void _showCalibrationPopup(String step, String instruction) {
     showDialog(
       context: context,
-      barrierDismissible: false, // User tidak bisa close dengan tap di luar
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.darkGrey,
         title: Text(
@@ -1095,7 +1226,7 @@ void _updateWelcomeSettings() {
           ],
         ),
         actions: [
-          if (step == 'A') // Hanya di step A bisa cancel
+          if (step == 'A')
             TextButton(
               onPressed: _cancelCalibration,
               child: Text('BATAL', style: TextStyle(color: AppColors.errorRed)),
@@ -1106,41 +1237,33 @@ void _updateWelcomeSettings() {
   }
 
   void _finishCalibration() {
-    // Kirim KM0 untuk mematikan proses kalibrasi
     widget.socketService.send('KM0');
-
-    // Close dialog secara langsung
-    // if (Navigator.of(context, rootNavigator: true).canPop()) {
     Navigator.of(context).pop();
-    // }
 
-    setState(() {
-      _isCalibrating = false;
-      _currentCalibrationStep = 'A';
-    });
+    if (mounted) {
+      setState(() {
+        _isCalibrating = false;
+        _currentCalibrationStep = 'A';
+      });
+    }
 
     _showSnackbar('Kalibrasi berhasil diselesaikan!');
-
-    // Cleanup subscription
     _calibrationSubscription?.cancel();
     _calibrationSubscription = null;
   }
 
   void _cancelCalibration() {
-    // Kirim KM0 untuk mematikan proses kalibrasi
     widget.socketService.send('KM0');
-
-    // Close popup
     Navigator.of(context, rootNavigator: true).pop();
 
-    setState(() {
-      _isCalibrating = false;
-      _currentCalibrationStep = 'A';
-    });
+    if (mounted) {
+      setState(() {
+        _isCalibrating = false;
+        _currentCalibrationStep = 'A';
+      });
+    }
 
     _showSnackbar('Kalibrasi dibatalkan');
-
-    // Cleanup subscription
     _calibrationSubscription?.cancel();
     _calibrationSubscription = null;
   }
@@ -1201,25 +1324,30 @@ void _updateWelcomeSettings() {
 
   void _checkUpdate() {
     _showSnackbar('Checking for firmware updates...');
-    // Bisa ditambahkan logic untuk check update
   }
 
   void _uploadFirmware() {
     _showSnackbar('Membuka firmware upload...');
-    // Bisa navigate ke firmware upload page
   }
 
   void _contactSupport() {
     _showSnackbar('Membuka kontak support...');
-    // Buka email/link support
   }
 
   Widget _buildWelcomeAnimationInfo() {
     if (_selectedWelcomeAnimation == null) return const SizedBox();
 
-    final animationData = _defaultAnimationsData.firstWhere(
-      (anim) => anim['name'] == _selectedWelcomeAnimation,
-    );
+    final animationIndex = _getAnimationIndex(_selectedWelcomeAnimation!);
+    if (animationIndex < 0 || animationIndex >= _defaultAnimationsData.length) {
+      return const SizedBox();
+    }
+
+    final animationData = _defaultAnimationsData[animationIndex];
+    final deviceId = _safeGetInt(animationData, 'deviceId');
+    final channelCount = _safeGetInt(animationData, 'channelCount');
+    final animationLength = _safeGetInt(animationData, 'animationLength');
+    final delayData = _safeGetString(animationData, 'delayData');
+    final description = _safeGetString(animationData, 'description');
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -1244,7 +1372,7 @@ void _updateWelcomeSettings() {
             children: [
               Expanded(
                 child: Text(
-                  animationData['name'] as String,
+                  _selectedWelcomeAnimation!,
                   style: const TextStyle(
                     color: AppColors.pureWhite,
                     fontSize: 12,
@@ -1260,7 +1388,7 @@ void _updateWelcomeSettings() {
                   border: Border.all(color: Colors.blue),
                 ),
                 child: Text(
-                  'ID: ${_getAnimationIndex(animationData['name'] as String).toString().padLeft(2, '0')}',
+                  'ID: ${deviceId.toString().padLeft(2, '0')}',
                   style: TextStyle(
                     color: Colors.blue,
                     fontSize: 10,
@@ -1272,7 +1400,7 @@ void _updateWelcomeSettings() {
           ),
           const SizedBox(height: 4),
           Text(
-            animationData['description'] as String,
+            description,
             style: TextStyle(
               color: AppColors.pureWhite.withOpacity(0.7),
               fontSize: 10,
@@ -1282,42 +1410,51 @@ void _updateWelcomeSettings() {
           const SizedBox(height: 4),
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                decoration: BoxDecoration(
-                  color: AppColors.neonGreen.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(4),
+              if (channelCount > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: AppColors.neonGreen.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '${channelCount} Channels',
+                    style: TextStyle(color: AppColors.neonGreen, fontSize: 10),
+                  ),
                 ),
-                child: Text(
-                  '${animationData['channelCount']} Channels',
-                  style: TextStyle(color: AppColors.neonGreen, fontSize: 10),
-                ),
-              ),
               const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(4),
+              if (animationLength > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '${animationLength} Length',
+                    style: TextStyle(color: Colors.blue, fontSize: 10),
+                  ),
                 ),
-                child: Text(
-                  '${animationData['animationLength']} Length',
-                  style: TextStyle(color: Colors.blue, fontSize: 10),
-                ),
-              ),
               const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(4),
+              if (delayData != '0')
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '${delayData}ms Delay',
+                    style: TextStyle(color: Colors.orange, fontSize: 10),
+                  ),
                 ),
-                child: Text(
-                  '${animationData['delayData']}ms Delay',
-                  style: TextStyle(color: Colors.orange, fontSize: 10),
-                ),
-              ),
             ],
+          ),
+          const SizedBox(height: 8),
+          _buildSmallButton(
+            'TEST ANIMASI',
+            _testWelcomeAnimation,
+            enabled: widget.socketService.isConnected,
           ),
         ],
       ),
@@ -1352,7 +1489,7 @@ void _updateWelcomeSettings() {
 
   List<DropdownMenuItem<int>> _buildDurationItems() {
     return List.generate(10, (index) {
-      final duration = index + 1; // 1 sampai 10
+      final duration = index + 1;
       return DropdownMenuItem<int>(
         value: duration,
         child: Row(
@@ -1376,11 +1513,6 @@ void _updateWelcomeSettings() {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Connection Status
-            // _buildConnectionStatus(),
-            // const SizedBox(height: 16),
-
-            // Email Section
             _buildSection(
               title: 'Email',
               children: [
@@ -1399,34 +1531,26 @@ void _updateWelcomeSettings() {
 
             const SizedBox(height: 24),
 
-            // Welcome Mode Section - DIUBAH
             _buildSection(
               title: 'Welcome mode',
               children: [
-                // Dropdown untuk memilih animasi welcome
                 _buildSettingRow(
                   title: 'Animasi Welcome',
                   child: _buildWelcomeAnimationDropdown(),
                 ),
                 const SizedBox(height: 12),
-
-                // Dropdown durasi (1-10)
                 _buildSettingRow(
                   title: 'Durasi',
                   child: _buildDurationDropdown(),
                 ),
                 const SizedBox(height: 16),
-
-                // Info animasi yang dipilih
-                // if (_selectedWelcomeAnimation != null)
-                //   _buildWelcomeAnimationInfo(),
-
+                if (_selectedWelcomeAnimation != null)
+                  _buildWelcomeAnimationInfo(),
                 const SizedBox(height: 20),
                 _buildActionButton(
                   text: 'KIRIM',
                   onPressed: _updateWelcomeSettings,
-                  enabled:
-                      widget.socketService.isConnected &&
+                  enabled: widget.socketService.isConnected &&
                       _selectedWelcomeAnimation != null,
                 ),
               ],
@@ -1434,33 +1558,26 @@ void _updateWelcomeSettings() {
 
             const SizedBox(height: 24),
 
-            // Firmware Info Section
-            // Firmware Info Section - DIUBAH
-_buildSection(
-  title: 'Versi Firmware : $_firmwareVersion',
-  children: [
-    // Tampilkan info license
-    _buildLicenseInfo(),
-    const SizedBox(height: 16),
-    
-    _buildInfoRow('Versi Aplikasi', '1.0.6'),
-    _buildInfoRow('Device ID', _deviceId),
-    _buildInfoRow('Level Lisensi', _licenseLevel),
-    
-    // Ganti Device Channel dari text biasa menjadi dropdown
-    _buildSettingRow(
-      title: 'Device Channel',
-      child: _buildChannelDropdown(),
-    ),
-    
-    const SizedBox(height: 16),
-    _buildActionButton(
-      text: 'UBAH CHANNEL',
-      onPressed: _updateChannel,
-      enabled: widget.socketService.isConnected,
-    ),
-  ],
-),
+            _buildSection(
+              title: 'Versi Firmware : $_firmwareVersion',
+              children: [
+                _buildLicenseInfo(),
+                const SizedBox(height: 16),
+                _buildInfoRow('Versi Aplikasi', '1.0.6'),
+                _buildInfoRow('Device ID', _deviceId),
+                _buildInfoRow('Level Lisensi', _licenseLevel),
+                _buildSettingRow(
+                  title: 'Device Channel',
+                  child: _buildChannelDropdown(),
+                ),
+                const SizedBox(height: 16),
+                _buildActionButton(
+                  text: 'UBAH CHANNEL',
+                  onPressed: _updateChannel,
+                  enabled: widget.socketService.isConnected,
+                ),
+              ],
+            ),
 
             const SizedBox(height: 24),
 
@@ -1498,7 +1615,9 @@ _buildSection(
                 ),
               ],
             ),
+
             const SizedBox(height: 24),
+
             _buildSection(
               title: 'KALIBRASI',
               children: [
@@ -1535,7 +1654,9 @@ _buildSection(
                 ),
               ],
             ),
+
             const SizedBox(height: 24),
+
             _buildSection(
               title: 'Sync',
               children: [
@@ -1558,27 +1679,8 @@ _buildSection(
               ],
             ),
 
-            // const SizedBox(height: 24),
-
-            // // Mitra ID Section
-            // _buildSection(
-            //   title: '# Mitra ID',
-            //   children: [
-            //     _buildTextField(
-            //       controller: _mitraIdController,
-            //       hintText: 'Masukkan Mitra ID',
-            //     ),
-            //     const SizedBox(height: 16),
-            //     _buildActionButton(
-            //       text: 'UPDATE',
-            //       onPressed: _updateMitraID,
-            //       enabled: widget.socketService.isConnected,
-            //     ),
-            //   ],
-            // ),
             const SizedBox(height: 24),
 
-            // User Info Section
             _buildSection(
               title: 'AKTIVASI',
               children: [
@@ -1600,6 +1702,7 @@ _buildSection(
             ),
 
             const SizedBox(height: 40),
+
             _buildSection(
               title: 'MORE',
               children: [
@@ -2103,13 +2206,17 @@ _buildSection(
     );
   }
 
-  @override
+   @override
   void dispose() {
-    // Cancel calibration subscription
+    print('🛑 SettingsPage disposing...');
+    
+    // --- PERBAIKAN: Cancel semua stream subscriptions ---
+    _messageSubscription?.cancel();
     _calibrationSubscription?.cancel();
+    
+    _messageSubscription = null;
     _calibrationSubscription = null;
 
-    // Dispose semua text controllers
     _emailController.dispose();
     _ssidController.dispose();
     _passwordController.dispose();
@@ -2117,11 +2224,11 @@ _buildSection(
     _activationController.dispose();
     _mitraIdController.dispose();
 
-    // Dispose speed controllers
     for (final controller in _speedControllers.values) {
       controller.dispose();
     }
 
     super.dispose();
+    print('✅ SettingsPage disposed');
   }
 }

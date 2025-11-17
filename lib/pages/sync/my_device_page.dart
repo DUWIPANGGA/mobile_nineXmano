@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:iTen/constants/app_colors.dart';
-import 'package:iTen/models/config_model.dart';
-import 'package:iTen/services/config_service.dart';
+import 'package:iTen/models/config_show_model.dart'; // IMPORT MODEL BARU
 import 'package:iTen/services/preferences_service.dart';
 import 'package:iTen/services/socket_service.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -17,38 +16,79 @@ class MyDevicePage extends StatefulWidget {
 
 class _MyDevicePageState extends State<MyDevicePage> {
   final PreferencesService _preferencesService = PreferencesService();
-  final ConfigService _configService = ConfigService();
-
+  
   bool _isLoading = true;
-  ConfigModel? _deviceConfig;
+  ConfigShowModel? _deviceConfigShow; // GUNAKAN ConfigShowModel
 
   @override
   void initState() {
     super.initState();
     _loadDeviceData();
+    
+    // Setup socket listeners untuk config show
+    _setupSocketListeners();
+    
     if (widget.socketService.isConnected) {
-        debugPrint("✅ Connected, sending XM11");
-        widget.socketService.send("XM11");
-      } 
+      debugPrint("✅ Connected, requesting config show dengan XC");
+      widget.socketService.requestConfigShow(); // MENGIRIM XC
+    } 
+    
     widget.socketService.onConnectionChanged = (isConnected) {
       if (isConnected) {
-        debugPrint("✅ Connected, sending XM11");
-        widget.socketService.send("XM11");
+        debugPrint("✅ Connected, requesting config show dengan XC");
+        widget.socketService.requestConfigShow(); // MENGIRIM XC
       } else {
         debugPrint("❌ Disconnected");
       }
     };
   }
 
+  // TAMBAHKAN: Setup socket listeners untuk handle config2 response
+  void _setupSocketListeners() {
+    widget.socketService.messages.listen((message) {
+      if (message.startsWith('CONFIG2_UPDATED')) {
+        print('🔄 ConfigShow updated, reloading data...');
+        _loadDeviceData();
+      } else if (message.startsWith('config2,')) {
+        print('🎯 Received config2 data directly');
+        // Process config2 data langsung
+        _processConfig2Data(message);
+      }
+    });
+  }
+
+  // TAMBAHKAN: Process config2 data langsung dari socket
+  void _processConfig2Data(String message) async {
+    try {
+      print('🔧 Processing direct config2 data...');
+      final configShow = ConfigShowModel.fromConfig2String(message);
+      await _preferencesService.saveConfigShow(configShow);
+      
+      if (mounted) {
+        setState(() {
+          _deviceConfigShow = configShow;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('❌ Error processing direct config2 data: $e');
+    }
+  }
+
   Future<void> _loadDeviceData() async {
     try {
-      await _configService.initialize();
-      final config = await _preferencesService.getDeviceConfig();
+      // Load dari preferences
+      final configShow = await _preferencesService.getConfigShow();
 
       setState(() {
-        _deviceConfig = config;
+        _deviceConfigShow = configShow;
         _isLoading = false;
       });
+      
+      // Jika tidak ada data, request dari device
+      if (configShow == null && widget.socketService.isConnected) {
+        widget.socketService.requestConfigShow();
+      }
     } catch (e) {
       print('Error loading device data: $e');
       setState(() {
@@ -57,9 +97,10 @@ class _MyDevicePageState extends State<MyDevicePage> {
     }
   }
 
+
   String _generateQRCodeData() {
-    if (_deviceConfig == null) return 'NO_CONFIG_AVAILABLE';
-    return '${_deviceConfig!.email},${_deviceConfig!.devID},${_deviceConfig!.jumlahChannel}';
+    if (_deviceConfigShow == null) return 'NO_CONFIG_AVAILABLE';
+    return '${_deviceConfigShow!.email},${_deviceConfigShow!.devID},${_deviceConfigShow!.jumlahChannel}';
   }
 
   Widget _buildLoadingState() {
@@ -73,6 +114,15 @@ class _MyDevicePageState extends State<MyDevicePage> {
             'Memuat data device...',
             style: TextStyle(color: AppColors.pureWhite, fontSize: 16),
           ),
+          const SizedBox(height: 8),
+          if (widget.socketService.isConnected)
+            Text(
+              'Requesting config dari device...',
+              style: TextStyle(
+                color: AppColors.neonGreen,
+                fontSize: 12,
+              ),
+            ),
         ],
       ),
     );
@@ -102,14 +152,41 @@ class _MyDevicePageState extends State<MyDevicePage> {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: _loadDeviceData,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.neonGreen,
-              foregroundColor: AppColors.primaryBlack,
+          const SizedBox(height: 16),
+          if (!widget.socketService.isConnected)
+            Text(
+              'Status: Tidak terkoneksi ke device',
+              style: TextStyle(
+                color: AppColors.warningYellow,
+                fontSize: 12,
+              ),
             ),
-            child: const Text('Coba Lagi'),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton(
+                onPressed: _loadDeviceData,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.neonGreen,
+                  foregroundColor: AppColors.primaryBlack,
+                ),
+                child: const Text('Refresh Data'),
+              ),
+              const SizedBox(width: 12),
+              if (!widget.socketService.isConnected)
+                ElevatedButton(
+                  onPressed: () {
+                    // Trigger reconnect dari parent
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryBlack,
+                    foregroundColor: AppColors.neonGreen,
+                    side: BorderSide(color: AppColors.neonGreen),
+                  ),
+                  child: const Text('Connect'),
+                ),
+            ],
           ),
         ],
       ),
@@ -168,7 +245,7 @@ class _MyDevicePageState extends State<MyDevicePage> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Format: MANO_DEVICE',
+              'Format: ITEN_DEVICE',
               style: TextStyle(
                 color: AppColors.pureWhite.withOpacity(0.7),
                 fontSize: 12,
@@ -189,13 +266,34 @@ class _MyDevicePageState extends State<MyDevicePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'DEVICE INFORMATION',
-              style: TextStyle(
-                color: AppColors.neonGreen,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'DEVICE INFORMATION',
+                  style: TextStyle(
+                    color: AppColors.neonGreen,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.neonGreen.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.neonGreen),
+                  ),
+                  child: Text(
+                    'XCC DATA',
+                    style: TextStyle(
+                      color: AppColors.neonGreen,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
 
@@ -203,15 +301,7 @@ class _MyDevicePageState extends State<MyDevicePage> {
             _buildInfoRow(
               icon: Icons.badge,
               label: 'Device ID',
-              value: _deviceConfig?.devID ?? '-',
-            ),
-            const SizedBox(height: 16),
-
-            // MAC Address
-            _buildInfoRow(
-              icon: Icons.network_wifi,
-              label: 'MAC Address',
-              value: _deviceConfig?.mac ?? '-',
+              value: _deviceConfigShow?.devID ?? '-',
             ),
             const SizedBox(height: 16),
 
@@ -219,7 +309,7 @@ class _MyDevicePageState extends State<MyDevicePage> {
             _buildInfoRow(
               icon: Icons.email,
               label: 'Email',
-              value: _deviceConfig?.email ?? '-',
+              value: _deviceConfigShow?.email ?? '-',
             ),
             const SizedBox(height: 16),
 
@@ -227,7 +317,7 @@ class _MyDevicePageState extends State<MyDevicePage> {
             _buildInfoRow(
               icon: Icons.memory,
               label: 'Firmware',
-              value: _deviceConfig?.firmware ?? '-',
+              value: _deviceConfigShow?.firmware ?? '-',
             ),
             const SizedBox(height: 16),
 
@@ -235,17 +325,16 @@ class _MyDevicePageState extends State<MyDevicePage> {
             _buildInfoRow(
               icon: Icons.tune,
               label: 'Jumlah Channel',
-              value: '${_deviceConfig?.jumlahChannel ?? 0}',
+              value: '${_deviceConfigShow?.jumlahChannel ?? 0}',
             ),
             const SizedBox(height: 16),
 
-            // Type License
+            // Speed Run
             _buildInfoRow(
-              icon: Icons.verified_user,
-              label: 'Type License',
-              value: '${_deviceConfig?.typeLicense ?? 0}',
+              icon: Icons.speed,
+              label: 'Speed Run',
+              value: '${_deviceConfigShow?.speedRun ?? 0} ms',
             ),
-            const SizedBox(height: 16),
           ],
         ),
       ),
@@ -289,123 +378,63 @@ class _MyDevicePageState extends State<MyDevicePage> {
     );
   }
 
-  Widget _buildAdvancedInfoSection() {
-    return Card(
-      color: AppColors.darkGrey,
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'ADVANCED INFORMATION',
-              style: TextStyle(
-                color: AppColors.neonGreen,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // WiFi Info
-            _buildAdvancedInfoItem('WiFi SSID', _deviceConfig?.ssid ?? '-'),
-            const SizedBox(height: 12),
-
-            _buildAdvancedInfoItem(
-              'Welcome Animation',
-              '${_deviceConfig?.animWelcome ?? 0}',
-            ),
-            const SizedBox(height: 12),
-
-            _buildAdvancedInfoItem(
-              'Welcome Duration',
-              '${_deviceConfig?.durasiWelcome ?? 0} detik',
-            ),
-            const SizedBox(height: 12),
-
-            _buildAdvancedInfoItem(
-              'Quick Trigger',
-              '${_deviceConfig?.quickTrigger ?? 0}',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAdvancedInfoItem(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: AppColors.pureWhite.withOpacity(0.7),
-            fontSize: 14,
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            color: AppColors.pureWhite,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActionButtons() {
+  Widget _buildConnectionStatus() {
     return Card(
       color: AppColors.darkGrey,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  // Share functionality bisa ditambahkan later
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      backgroundColor: AppColors.neonGreen,
-                      content: Text(
-                        'Fitur share akan datang',
-                        style: TextStyle(color: AppColors.primaryBlack),
-                      ),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.neonGreen,
-                  foregroundColor: AppColors.primaryBlack,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                icon: const Icon(Icons.share),
-                label: const Text(
-                  'Share QR Code',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: widget.socketService.isConnected 
+                    ? AppColors.successGreen 
+                    : AppColors.errorRed,
+                shape: BoxShape.circle,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: ElevatedButton.icon(
-                onPressed: _loadDeviceData,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlack,
-                  foregroundColor: AppColors.neonGreen,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  side: BorderSide(color: AppColors.neonGreen),
-                ),
-                icon: const Icon(Icons.refresh),
-                label: const Text(
-                  'Refresh',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.socketService.isConnected 
+                        ? 'Terhubung ke Device' 
+                        : 'Tidak Terhubung',
+                    style: TextStyle(
+                      color: widget.socketService.isConnected 
+                          ? AppColors.successGreen 
+                          : AppColors.errorRed,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    widget.socketService.isConnected 
+                        ? 'Data berasal dari config show (XCC)' 
+                        : 'Hubungkan device untuk mendapatkan data',
+                    style: TextStyle(
+                      color: AppColors.pureWhite.withOpacity(0.7),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
             ),
+            if (!widget.socketService.isConnected)
+              ElevatedButton(
+                onPressed: () {
+                  // Trigger reconnect - bisa ditambahkan callback ke parent
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.neonGreen,
+                  foregroundColor: AppColors.primaryBlack,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                ),
+                child: const Text('Connect'),
+              ),
           ],
         ),
       ),
@@ -416,25 +445,22 @@ class _MyDevicePageState extends State<MyDevicePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.primaryBlack,
-
       body: _isLoading
           ? _buildLoadingState()
-          : _deviceConfig == null
-          ? _buildErrorState()
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  _buildQRCodeSection(),
-                  const SizedBox(height: 16),
-                  _buildDeviceInfoSection(),
-                  const SizedBox(height: 16),
-                  _buildAdvancedInfoSection(),
-                  const SizedBox(height: 16),
-                  // _buildActionButtons(),
-                ],
-              ),
-            ),
+          : _deviceConfigShow == null
+              ? _buildErrorState()
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      // _buildConnectionStatus(),
+                      // const SizedBox(height: 16),
+                      _buildQRCodeSection(),
+                      const SizedBox(height: 16),
+                      _buildDeviceInfoSection(),
+                    ],
+                  ),
+                ),
     );
   }
 }

@@ -135,22 +135,22 @@ void _updateTriggerSettingsFromConfig(ConfigModel config) {
       final triggerIndex = _getTriggerIndex(triggerType);
       final safeTriggerIndex = triggerIndex != -1
           ? triggerIndex
-          : 1; // Fallback ke index 1
+          : 0; // Fallback ke index 1
 
       // Validasi setting value
       final validSettings = [
+        'MATI',
         'REMOTE A',
         'REMOTE B',
         'REMOTE C',
         'REMOTE D',
-        'MATI',
       ];
       final safeSetting = validSettings.contains(setting)
           ? setting
           : 'REMOTE A'; // Fallback ke REMOTE A
 
-      final modeCode = _getModeCode(safeSetting);
-      widget.socketService.send('S$safeTriggerIndex$modeCode');
+      // final modeCode = _getModeCode(safeSetting);
+      widget.socketService.send('SQ0');
 
       print(
         '✅ Sent $triggerType trigger (index: $safeTriggerIndex): $safeSetting',
@@ -1242,7 +1242,7 @@ Future<void> _saveDeviceConfig() async {
 
     try {
       final triggerCode = _getMapToggleCode(triggerLabel);
-      final value = isStatic ? 1 : 0; // Convert boolean ke 1/0
+      final value = isStatic ? 0 : 1; // Convert boolean ke 1/0
 
       widget.socketService.sendTriggerToggle(triggerCode, value);
 

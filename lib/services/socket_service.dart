@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:iTen/services/config_service.dart';
+import 'package:iTen/services/config_show_service.dart';
 
 class SocketService {
   final String host;
@@ -218,7 +219,7 @@ void addConsumer() {
       _handleConfigResponse(cleanMessage);
     } else if (cleanMessage.startsWith('config2,')) {
       print('║ 🎭 TYPE: CONFIG SHOW DATA');
-      _handleConfigShowResponse(cleanMessage);
+      _handleConfig2Response(cleanMessage);
     } else if (cleanMessage.startsWith('info,')) {
       print('║ 💡 TYPE: INFO MESSAGE');
       _handleInfoMessage(cleanMessage);
@@ -304,26 +305,60 @@ void addConsumer() {
     }
   }
 
-  void _handleConfigShowResponse(String message) {
-    final parts = message.split(',');
-    print('║ 📊 Config2 Analysis:');
-    print('║   - Total parts: ${parts.length}');
+  void _handleConfig2Response(String message) {
+  print('🔧 Processing config2 show data from device...');
 
-    if (parts.length >= 6) {
-      final configData = {
-        'firmware': parts[1],
-        'speedRun': parts[2],
-        'jumlahChannel': parts[3],
-        'email': parts[4],
-        'mac': parts[5],
-      };
-      print('║   ✅ Config2 parsed successfully');
-      print('║   🎭 Data: $configData');
-    } else {
-      print('║   ⚠️ Incomplete config2 data');
+  try {
+    if (message.isEmpty || !message.startsWith('config2,')) {
+      print('❌ Invalid config2 message format');
+      _messageController.add('CONFIG2_ERROR:Invalid format');
+      return;
     }
-  }
 
+    print('📨 Raw config2 data received: ${message.length} characters');
+    _processConfig2Data(message);
+    
+  } catch (e) {
+    print('❌ Error in _handleConfig2Response: $e');
+    _messageController.add('CONFIG2_ERROR:${e.toString()}');
+  }
+}
+
+// TAMBAHKAN processor untuk config2
+void _processConfig2Data(String message) async {
+  try {
+    print('🔄 [PROCESSOR] Starting config2 data processing...');
+    
+    final configShowService = ConfigShowService();
+    await configShowService.initialize();
+    final configShow = await configShowService.parseAndSaveConfigShow(message);
+
+    if (configShow != null) {
+      print('✅ [PROCESSOR] Config2 processed and saved to preferences successfully');
+
+      // Print config2 details
+      print('📋 [PROCESSOR] Saved Config2 Details:');
+      print('   - Firmware: ${configShow.firmware}');
+      print('   - Speed Run: ${configShow.speedRun}');
+      print('   - Channels: ${configShow.jumlahChannel}');
+      print('   - Email: ${configShow.email}');
+      print('   - Device ID: ${configShow.devID}');
+      print('   - Valid: ${configShow.isValid}');
+
+      // Kirim event bahwa config2 telah diperbarui
+      _messageController.add('CONFIG2_UPDATED:${configShow.devID}');
+    } else {
+      print('⚠️ [PROCESSOR] Failed to process and save config2 data');
+      _messageController.add('CONFIG2_ERROR:Failed to save config2');
+    }
+  } catch (e) {
+    print('❌ [PROCESSOR] Error processing config2 data: $e');
+    _messageController.add('CONFIG2_ERROR:$e');
+  }
+}
+
+// PASTIKAN requestConfigShow mengirim XC
+void requestConfigShow() => _send('XCC');
   void _handleInfoMessage(String message) {
     final info = message.substring(5);
     print('║ 💬 Info: "$info"');
@@ -377,11 +412,12 @@ void addConsumer() {
   void turnOff() => _send('RF');
 
   /// Builtin Animations (3-31)
-  void builtinAnimation(int number) {
-    if (number >= 3 && number <= 31) {
-      _send('RH${number.toString().padLeft(2, '0')}');
-    }
+void builtinAnimation(int number) {
+  if (number >= 1 && number <= 31) {
+    _send('RH${number.toString().padLeft(2, '0')}');
+    print('🧪 Testing builtin animation: $number');
   }
+}
 
   // ========== OUTGOING MESSAGES - CONFIGURATION ==========
 
@@ -517,10 +553,13 @@ void sendTriggerToggle(String triggerCode, int value) {
   // ========== OUTGOING MESSAGES - WELCOME ANIMATION ==========
 
   /// Set welcome animation
-  void setWelcomeAnimation(int animNumber, int duration) {
-    _send('W${_pad3(animNumber)}${_pad3(duration)}');
-    requestConfig();
-  }
+void setWelcomeAnimation(int animNumber, int duration) {
+  final paddedAnim = animNumber.toString().padLeft(3, '0');
+  final paddedDuration = duration.toString().padLeft(3, '0');
+  _send('W$paddedAnim$paddedDuration');
+  print('🎭 Set welcome animation: ID $animNumber, Duration: ${duration}s');
+}
+
 
   // ========== OUTGOING MESSAGES - MITRA ID ==========
 
@@ -535,9 +574,6 @@ void sendTriggerToggle(String triggerCode, int value) {
   void resetDevice() => _send('Z');
 
   // ========== OUTGOING MESSAGES - MANO SHOW MODE ==========
-
-  /// Request config show
-  void requestConfigShow() => _send('XC');
 
   /// Remote control show mode
   void remoteShow(String command) => _send('XR$command');

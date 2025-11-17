@@ -446,43 +446,44 @@ class _MappingPageState extends State<MappingPage> {
   }
 
   // Kirim animasi untuk tombol tertentu
-  Future<void> _sendAnimationForButton(
-    int buttonIndex,
-    String? animationName,
-  ) async {
-    if (animationName == null) return;
+ Future<void> _sendAnimationForButton(
+  int buttonIndex,
+  String? animationName,
+) async {
+  if (animationName == null) return;
 
-    // Cari animasi di semua sumber (default + user)
-    final animation = _allAnimations.firstWhere(
-      (anim) => anim.name == animationName,
-      orElse: () => AnimationModel(
-        name: '',
-        channelCount: 0,
-        animationLength: 0,
-        description: '',
-        delayData: '',
-        frameData: [],
-      ),
-    );
+  // Cari animasi di semua sumber (default + user)
+  final animation = _allAnimations.firstWhere(
+    (anim) => anim.name == animationName,
+    orElse: () => AnimationModel(
+      name: '',
+      channelCount: 0,
+      animationLength: 0,
+      description: '',
+      delayData: '',
+      frameData: [],
+    ),
+  );
 
-    if (animation.name.isEmpty) {
-      print('❌ Animation not found: $animationName');
-      return;
-    }
-
-    // Cek apakah ini animasi default
-    final isDefault = _defaultAnimations.any(
-      (anim) => anim.name == animationName,
-    );
-
-    if (isDefault) {
-      // Kirim menggunakan format B[kode remot][index animasi 2 digit]
-      await _sendDefaultAnimation(buttonIndex, animation);
-    } else {
-      // Kirim menggunakan format biasa (frame data)
-      await _sendCustomAnimation(buttonIndex, animation);
-    }
+  if (animation.name.isEmpty) {
+    print('❌ Animation not found: $animationName');
+    return;
   }
+
+  // Cek apakah ini animasi default
+  final isDefault = _defaultAnimations.any(
+    (anim) => anim.name == animationName,
+  );
+
+  if (isDefault) {
+    // Kirim menggunakan format B[kode remot][index animasi 2 digit]
+    await _sendDefaultAnimation(buttonIndex, animation);
+  } else {
+    // --- PERBAIKAN: Untuk custom, gunakan animationIndex ---
+    final animationIndex = _getCustomAnimationIndex(animationName);
+    await _sendCustomAnimation(animationIndex, animation);
+  }
+}
 
   // Kirim animasi default dengan format B[kode remot][index animasi]
   // Kirim animasi default dengan format B[kode remot][index animasi]
@@ -518,28 +519,23 @@ class _MappingPageState extends State<MappingPage> {
 
   // Kirim animasi custom (user animations) dengan frame data
   Future<void> _sendCustomAnimation(
-    int buttonIndex,
-    AnimationModel animation,
-  ) async {
-    print(
-      '📤 Sending custom animation for Button ${_getButtonLabel(buttonIndex)}: ${animation.name}',
-    );
+  int animationIndex, // GANTI: buttonIndex -> animationIndex
+  AnimationModel animation,
+) async {
+  print(
+    '📤 Sending custom animation with Index $animationIndex: ${animation.name}',
+  );
 
-    // Kirim frame data untuk setiap channel (A-J)
-    await _sendAnimationFrames(buttonIndex, animation);
+  // Kirim frame data untuk setiap channel (A-J)
+  await _sendAnimationFrames(animationIndex, animation);
 
-    // Kirim delay data
-    await _sendAnimationDelay(buttonIndex, animation);
+  // Kirim delay data
+  await _sendAnimationDelay(animationIndex, animation);
 
-    print(
-      '✅ Successfully sent custom animation for Button ${_getButtonLabel(buttonIndex)}',
-    );
-  }
-
-  // Method _sendAnimationFrames, _getDeviceChannelCount, _calculateFramesPerChannel,
-  // _extractChannelDataForDevice, _getFrameDataForChannelFrame, _extractChannelData
-  // tetap sama seperti sebelumnya...
-
+  print(
+    '✅ Successfully sent custom animation with Index $animationIndex',
+  );
+}
   Future<void> _sendAnimationFrames(
     int buttonIndex,
     AnimationModel animation,
@@ -731,66 +727,86 @@ class _MappingPageState extends State<MappingPage> {
 
   // Method untuk mengirim animasi individual
   Future<void> _sendSingleAnimation(
-    int buttonIndex,
-    String? animationName,
-  ) async {
-    if (animationName == null || animationName.isEmpty) {
-      _showSnackbar(
-        'Pilih animasi terlebih dahulu untuk Tombol ${_getButtonLabel(buttonIndex)}',
-        isError: true,
-      );
-      return;
-    }
-
-    if (!widget.socketService.isConnected) {
-      _showSnackbar('Tidak terhubung ke device', isError: true);
-      return;
-    }
-
-    try {
-      print(
-        '🔄 Mengirim animasi individual untuk Tombol ${_getButtonLabel(buttonIndex)}: $animationName',
-      );
-
-      // Cari animasi di semua sumber (default + user)
-      final animation = _allAnimations.firstWhere(
-        (anim) => anim.name == animationName,
-        orElse: () => AnimationModel(
-          name: '',
-          channelCount: 0,
-          animationLength: 0,
-          description: '',
-          delayData: '',
-          frameData: [],
-        ),
-      );
-
-      if (animation.name.isEmpty) {
-        _showSnackbar('Animasi tidak ditemukan: $animationName', isError: true);
-        return;
-      }
-
-      // Cek apakah ini animasi default
-      final isDefault = _defaultAnimations.any(
-        (anim) => anim.name == animationName,
-      );
-
-      if (isDefault) {
-        // Kirim animasi default
-        await _sendDefaultAnimation(buttonIndex, animation);
-      } else {
-        // Kirim animasi custom
-        await _sendCustomAnimation(buttonIndex, animation);
-      }
-
-      _showSnackbar(
-        'Animasi berhasil dikirim ke Tombol ${_getButtonLabel(buttonIndex)}: $animationName',
-      );
-    } catch (e) {
-      _showSnackbar('Error mengirim animasi: $e', isError: true);
-      print('❌ Error sending single animation: $e');
-    }
+  int buttonIndex,
+  String? animationName,
+) async {
+  if (animationName == null || animationName.isEmpty) {
+    _showSnackbar(
+      'Pilih animasi terlebih dahulu untuk Tombol ${_getButtonLabel(buttonIndex)}',
+      isError: true,
+    );
+    return;
   }
+
+  if (!widget.socketService.isConnected) {
+    _showSnackbar('Tidak terhubung ke device', isError: true);
+    return;
+  }
+
+  try {
+    print(
+      '🔄 Mengirim animasi individual untuk Tombol ${_getButtonLabel(buttonIndex)}: $animationName',
+    );
+
+    // Cari animasi di semua sumber (default + user)
+    final animation = _allAnimations.firstWhere(
+      (anim) => anim.name == animationName,
+      orElse: () => AnimationModel(
+        name: '',
+        channelCount: 0,
+        animationLength: 0,
+        description: '',
+        delayData: '',
+        frameData: [],
+      ),
+    );
+
+    if (animation.name.isEmpty) {
+      _showSnackbar('Animasi tidak ditemukan: $animationName', isError: true);
+      return;
+    }
+
+    // Cek apakah ini animasi default
+    final isDefault = _defaultAnimations.any(
+      (anim) => anim.name == animationName,
+    );
+
+    if (isDefault) {
+      // Kirim animasi default dengan buttonIndex
+      await _sendDefaultAnimation(buttonIndex, animation);
+    } else {
+      // --- PERBAIKAN: Untuk custom animation, gunakan animationIndex ---
+      final animationIndex = _getCustomAnimationIndex(animationName);
+      await _sendCustomAnimation(animationIndex, animation);
+    }
+
+    _showSnackbar(
+      'Animasi berhasil dikirim ke Tombol ${_getButtonLabel(buttonIndex)}: $animationName',
+    );
+  } catch (e) {
+    _showSnackbar('Error mengirim animasi: $e', isError: true);
+    print('❌ Error sending single animation: $e');
+  }
+}
+int _getCustomAnimationIndex(String animationName) {
+  // Cari di user animations
+  final index = _userAnimations.indexWhere(
+    (anim) => anim.name == animationName,
+  );
+  
+  if (index != -1) {
+    // Custom animation index bisa mulai dari 32 (setelah default 1-31)
+    // atau sesuai kebutuhan device
+    return 32 + index; // Contoh: custom animasi mulai dari index 32
+  }
+  
+  // Fallback: gunakan index dari allAnimations
+  final allIndex = _allAnimations.indexWhere(
+    (anim) => anim.name == animationName,
+  );
+  
+  return allIndex != -1 ? allIndex + 1 : 1; // 1-based index
+}
 
   // Helper method untuk mendapatkan label tombol
   String _getButtonLabel(int buttonIndex) {

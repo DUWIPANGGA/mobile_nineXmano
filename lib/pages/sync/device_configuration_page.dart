@@ -4,6 +4,7 @@ import 'package:barcode_scan2/barcode_scan2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:iTen/constants/app_colors.dart';
+import 'package:iTen/models/config_show_model.dart'; // IMPORT MODEL BARU
 import 'package:iTen/services/config_service.dart';
 import 'package:iTen/services/preferences_service.dart';
 import 'package:iTen/services/socket_service.dart';
@@ -34,6 +35,10 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
   final List<TextEditingController> _idControllers = [];
   final List<TextEditingController> _channelControllers = [];
 
+  // --- TAMBAHKAN VARIABEL UNTUK SPEED RUN ---
+  final TextEditingController _speedRunController = TextEditingController();
+  ConfigShowModel? _currentConfigShow;
+
   List<String> _logMessages = [];
 
   // Stream subscriptions
@@ -49,19 +54,43 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
     _initializeDeviceSections();
     _setupSocketListeners();
     _loadSavedDeviceSections();
-        // widget.socketService.send("XM10");
-        if (widget.socketService.isConnected) {
-        debugPrint("✅ Connected, sending XM10");
-        widget.socketService.send("XM10");
-      } 
-widget.socketService.onConnectionChanged = (isConnected) {
+    _loadConfigShowData(); // TAMBAHKAN: Load config show data
+    
+    if (widget.socketService.isConnected) {
+      debugPrint("✅ Connected, sending XM10");
+      widget.socketService.send("XM10");
+    } 
+    
+    widget.socketService.onConnectionChanged = (isConnected) {
       if (isConnected) {
         debugPrint("✅ Connected, sending XM10");
         widget.socketService.send("XM10");
+        _loadConfigShowData(); // Reload data ketika terkoneksi
       } else {
         debugPrint("❌ Disconnected");
       }
     };
+  }
+
+  // TAMBAHKAN: Load config show data
+  Future<void> _loadConfigShowData() async {
+    try {
+      await _preferencesService.initialize();
+      final configShow = await _preferencesService.getConfigShow();
+      
+      if (mounted) {
+        setState(() {
+          _currentConfigShow = configShow;
+          if (configShow != null) {
+            _speedRunController.text = configShow.speedRun.toString();
+          } else {
+            _speedRunController.text = '50'; // Default value
+          }
+        });
+      }
+    } catch (e) {
+      print('❌ Error loading config show data: $e');
+    }
   }
 
   void _setupSocketListeners() {
@@ -79,6 +108,50 @@ widget.socketService.onConnectionChanged = (isConnected) {
         });
       }
     });
+  }
+
+  // TAMBAHKAN: Method untuk set speed run
+  void _setSpeedRun() {
+    if (!widget.socketService.isConnected) {
+      _showSnackbar('Tidak terhubung ke device');
+      return;
+    }
+
+    final speedText = _speedRunController.text.trim();
+    if (speedText.isEmpty) {
+      _showSnackbar('Masukkan nilai speed run');
+      return;
+    }
+
+    final speed = int.tryParse(speedText);
+    if (speed == null || speed < 1 || speed > 999) {
+      _showSnackbar('Speed run harus antara 1-999');
+      return;
+    }
+
+    // Format: XS(delaynya 3digit)
+    final command = 'XS${speed.toString().padLeft(3, '0')}';
+    widget.socketService.send(command);
+
+    _addLogMessage('⚡ Set speed run: $speed ms');
+    _showSnackbar('Speed run diatur ke $speed ms');
+
+    // Update local config
+    if (_currentConfigShow != null) {
+      final updatedConfig = _currentConfigShow!.copyWith(speedRun: speed);
+      _preferencesService.saveConfigShow(updatedConfig);
+      setState(() {
+        _currentConfigShow = updatedConfig;
+      });
+    }
+  }
+
+  // TAMBAHKAN: Method untuk reset speed run ke default
+  void _resetSpeedRun() {
+    setState(() {
+      _speedRunController.text = '50'; // Default value
+    });
+    _addLogMessage('🔄 Speed run direset ke default: 50 ms');
   }
 
   // Method untuk load saved device sections dari preferences
@@ -261,15 +334,12 @@ widget.socketService.onConnectionChanged = (isConnected) {
   }
 
   void _sendDeviceDataToSocket(int sectionIndex) {
-    // sectionIndex = 0, 1, 2...
     if (!widget.socketService.isConnected) {
       _showSnackbar('Tidak terhubung ke device');
       return;
     }
 
-    // --- PERUBAHAN ---
     final deviceNumber = sectionIndex + 2; // index 0 adalah device ke-2
-    // --- SELESAI ---
 
     final email = _emailControllers[sectionIndex].text.trim();
     final id = _idControllers[sectionIndex].text.trim();
@@ -281,7 +351,7 @@ widget.socketService.onConnectionChanged = (isConnected) {
     }
 
     // Format: XD[jumlah device],[device count],[email],[mac],[channel]
-    final command = 'XD$_selectedDeviceCount,$deviceNumber,$email,$id,$channel';
+    final command = 'XD$_selectedDeviceCount,$email,$id,$channel';
     widget.socketService.send(command);
 
     _addLogMessage('📤 Sent to socket: $command');
@@ -290,15 +360,12 @@ widget.socketService.onConnectionChanged = (isConnected) {
 
   // Method untuk kirim data manual (tanpa scan)
   void _sendManualDataToSocket(int sectionIndex) {
-    // sectionIndex = 0, 1, 2...
     if (!widget.socketService.isConnected) {
       _showSnackbar('Tidak terhubung ke device');
       return;
     }
 
-    // --- PERUBAHAN ---
     final deviceNumber = sectionIndex + 2; // index 0 adalah device ke-2
-    // --- SELESAI ---
 
     final email = _emailControllers[sectionIndex].text.trim();
     final id = _idControllers[sectionIndex].text.trim();
@@ -312,7 +379,7 @@ widget.socketService.onConnectionChanged = (isConnected) {
     }
 
     // Format: XD[jumlah device],[device count],[email],[mac],[channel]
-    final command = 'XD$_selectedDeviceCount,$deviceNumber,$email,$id,$channel';
+    final command = 'XD$_selectedDeviceCount,$email,$id,$channel';
     widget.socketService.send(command);
 
     _addLogMessage('📤 Manual send: $command');
@@ -334,31 +401,13 @@ widget.socketService.onConnectionChanged = (isConnected) {
     // Kirim command XD untuk setup device sendiri
     // Format: XD[jumlah device],[device count],[email],[mac],[channel]
     final command =
-        'XD$_selectedDeviceCount,1,${config.email},${config.mac},${config.jumlahChannel}';
+        'XD1,${config.email},${config.mac},${config.jumlahChannel}';
     widget.socketService.send(command);
 
     _addLogMessage(
       '🔧 Setup device saya: ${config.email} - ${config.mac} - ${config.jumlahChannel} channels',
     );
     _showSnackbar('Device saya berhasil di-setup');
-  }
-
-  void _sendRemoteCommand(String command) {
-    if (!widget.socketService.isConnected) {
-      _showSnackbar('Tidak terhubung ke device');
-      return;
-    }
-
-    if (command == 'Z') {
-      // Tombol Auto - kirim XRZ
-      widget.socketService.send('XRZ');
-      _addLogMessage('🔄 Auto mode diaktifkan');
-    } else {
-      // Tombol 1-13 - kirim XRA sampai XRM
-      final remoteCommand = 'XR${String.fromCharCode(64 + int.parse(command))}';
-      widget.socketService.send(remoteCommand);
-      _addLogMessage('🎛️ Remote command: $remoteCommand');
-    }
   }
 
   Future<void> _connectToDevice() async {
@@ -371,7 +420,8 @@ widget.socketService.onConnectionChanged = (isConnected) {
     await widget.socketService.connect();
 
     if (widget.socketService.isConnected) {
-      widget.socketService.requestConfig();
+      widget.socketService.requestConfigShow(); // Request config show, bukan config biasa
+      _loadConfigShowData(); // Load config show data setelah terkoneksi
     }
   }
 
@@ -393,110 +443,116 @@ widget.socketService.onConnectionChanged = (isConnected) {
       final infoMessage = message.substring(5);
       _showSnackbar(infoMessage);
       _addLogMessage('💡: $infoMessage');
-    } else if (message.startsWith('CONFIG_UPDATED:')) {
-      _addLogMessage('🔄 Config updated');
+    } else if (message.startsWith('CONFIG2_UPDATED:')) {
+      _addLogMessage('🔄 Config show updated');
+      _loadConfigShowData(); // Reload data ketika config show diupdate
     }
   }
 
   void _handleConfigShowResponse(String message) {
-    final parts = message.split(',');
-    if (parts.length >= 6) {
-      _addLogMessage('✅ Mode Show aktif - Firmware: ${parts[1]}');
+    try {
+      final configShow = ConfigShowModel.fromConfig2String(message);
+      _preferencesService.saveConfigShow(configShow);
+      
+      if (mounted) {
+        setState(() {
+          _currentConfigShow = configShow;
+          _speedRunController.text = configShow.speedRun.toString();
+        });
+      }
+      
+      _addLogMessage('✅ Config show loaded - Speed: ${configShow.speedRun}ms');
+    } catch (e) {
+      _addLogMessage('❌ Error parsing config show: $e');
     }
   }
 
-  Widget _buildConnectionButton() {
-    if (_isConnecting) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: AppColors.warningYellow.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.warningYellow),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
+  // TAMBAHKAN: Widget untuk speed run configuration
+  Widget _buildSpeedRunSection() {
+    return Card(
+      color: AppColors.darkGrey,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              width: 12,
-              height: 12,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: AppColors.warningYellow,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              'Connecting...',
-              style: TextStyle(
-                color: AppColors.warningYellow,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_isConnected) {
-      return GestureDetector(
-        onTap: () => _showConnectionMenu(context),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppColors.successGreen.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.successGreen),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: AppColors.successGreen,
-                  shape: BoxShape.circle,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'SPEED RUN CONFIGURATION',
+                  style: TextStyle(
+                    color: AppColors.neonGreen,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'Connected',
-                style: TextStyle(
-                  color: AppColors.successGreen,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+                if (_currentConfigShow != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.neonGreen.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.neonGreen),
+                    ),
+                    child: Text(
+                      'Current: ${_currentConfigShow!.speedRun}ms',
+                      style: TextStyle(
+                        color: AppColors.neonGreen,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const SizedBox(height: 8),
+            
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _speedRunController,
+                    decoration: const InputDecoration(
+                      labelText: 'Speed Run (ms)',
+                      labelStyle: TextStyle(color: AppColors.pureWhite),
+                      border: OutlineInputBorder(),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: AppColors.neonGreen),
+                      ),
+                      hintText: '50',
+                    ),
+                    style: const TextStyle(color: AppColors.pureWhite),
+                    keyboardType: TextInputType.number,
+                    maxLength: 3,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 4),
-              Icon(Icons.expand_more, size: 12, color: AppColors.successGreen),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return GestureDetector(
-      onTap: _connectToDevice,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: AppColors.errorRed.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.errorRed),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.wifi_off, size: 12, color: AppColors.errorRed),
-            const SizedBox(width: 6),
+                const SizedBox(width: 12),
+                Column(
+                  children: [
+                    _buildSmallButton(
+                      'SET',
+                      _setSpeedRun,
+                      enabled: widget.socketService.isConnected,
+                    ),
+                    const SizedBox(height: 4),
+                    _buildSmallButton(
+                      'RESET',
+                      _resetSpeedRun,
+                      enabled: true,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            
             Text(
-              'Connect',
+              'Rekomendasi: 30-200 ms (semakin kecil semakin cepat)',
               style: TextStyle(
-                color: AppColors.errorRed,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+                color: AppColors.pureWhite.withOpacity(0.7),
+                fontSize: 10,
+                fontStyle: FontStyle.italic,
               ),
             ),
           ],
@@ -526,7 +582,6 @@ widget.socketService.onConnectionChanged = (isConnected) {
             _buildDeviceCountDropdown(),
             const SizedBox(height: 16),
 
-            // --- PERUBAHAN ---
             // Tampilkan card "My Device" (Modul 1)
             _buildMyDeviceSectionCard(),
 
@@ -552,7 +607,6 @@ widget.socketService.onConnectionChanged = (isConnected) {
                 return _buildDeviceSectionCard(section, index, deviceNumber);
               }),
             ],
-            // --- SELESAI ---
           ],
         ),
       ),
@@ -600,7 +654,6 @@ widget.socketService.onConnectionChanged = (isConnected) {
           labelText: label,
           labelStyle: const TextStyle(color: AppColors.pureWhite),
           border: const OutlineInputBorder(),
-          // Ganti border jadi abu-abu biar kelihatan "disabled"
           enabledBorder: OutlineInputBorder(
             borderSide: BorderSide(color: AppColors.pureWhite.withOpacity(0.3)),
           ),
@@ -622,7 +675,6 @@ widget.socketService.onConnectionChanged = (isConnected) {
         border: Border.all(color: AppColors.neonGreen.withOpacity(0.3)),
       ),
       child: FutureBuilder(
-        // Kita pakai FutureBuilder untuk ambil config HP ini
         future: _preferencesService.getDeviceConfig(),
         builder: (context, snapshot) {
           String email = 'Loading...';
@@ -654,10 +706,9 @@ widget.socketService.onConnectionChanged = (isConnected) {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  // Tombol Setup (Kirim data "My Device")
                   _buildSmallButton(
                     'SETUP',
-                    _setupMyDevice, // Memanggil fungsi yang sudah ada
+                    _setupMyDevice,
                     enabled: widget.socketService.isConnected,
                   ),
                 ],
@@ -665,7 +716,7 @@ widget.socketService.onConnectionChanged = (isConnected) {
               const SizedBox(height: 8),
 
               // Input fields read-only
-              _buildReadOnlyTextField(label: 'ID Device (MAC)', value: id),
+              _buildReadOnlyTextField(label: 'ID Device', value: id),
               _buildReadOnlyTextField(label: 'Email', value: email),
               _buildReadOnlyTextField(label: 'Jumlah Channel', value: channel),
             ],
@@ -701,12 +752,9 @@ widget.socketService.onConnectionChanged = (isConnected) {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              // Tombol Kirim Manual
               _buildSmallButton(
                 'KIRIM',
-
                 () => _sendManualDataToSocket(index),
-
                 enabled: widget.socketService.isConnected,
               ),
             ],
@@ -725,7 +773,7 @@ widget.socketService.onConnectionChanged = (isConnected) {
               ),
             ),
             style: const TextStyle(color: AppColors.pureWhite),
-            onChanged: (_) => _saveDeviceSections(), // Auto-save ketika diubah
+            onChanged: (_) => _saveDeviceSections(),
           ),
           const SizedBox(height: 8),
 
@@ -740,24 +788,24 @@ widget.socketService.onConnectionChanged = (isConnected) {
               ),
             ),
             style: const TextStyle(color: AppColors.pureWhite),
-            onChanged: (_) => _saveDeviceSections(), // Auto-save ketika diubah
+            onChanged: (_) => _saveDeviceSections(),
           ),
           const SizedBox(height: 8),
 
           TextField(
-  controller: _channelControllers[index],
-  decoration: const InputDecoration(
-    labelText: 'Jumlah Channel',
-    labelStyle: TextStyle(color: AppColors.pureWhite),
-    border: OutlineInputBorder(), // Border default
-    enabledBorder: OutlineInputBorder( // Border saat field aktif
-      borderSide: BorderSide(color: AppColors.neonGreen),
-    ),
-  ),
-  keyboardType: TextInputType.number, // Memastikan input hanya angka
-  style: const TextStyle(color: AppColors.pureWhite),
-  onChanged: (_) => _saveDeviceSections(), // Auto-save ketika diubah
-),
+            controller: _channelControllers[index],
+            decoration: const InputDecoration(
+              labelText: 'Jumlah Channel',
+              labelStyle: TextStyle(color: AppColors.pureWhite),
+              border: OutlineInputBorder(),
+              enabledBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: AppColors.neonGreen),
+              ),
+            ),
+            keyboardType: TextInputType.number,
+            style: const TextStyle(color: AppColors.pureWhite),
+            onChanged: (_) => _saveDeviceSections(),
+          ),
           const SizedBox(height: 12),
 
           // Tombol Scan
@@ -795,25 +843,6 @@ widget.socketService.onConnectionChanged = (isConnected) {
     );
   }
 
-  Widget _buildSetupMyDeviceButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: _setupMyDevice,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.neonGreen,
-          foregroundColor: AppColors.primaryBlack,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-        ),
-        icon: const Icon(Icons.device_hub),
-        label: const Text(
-          'SETUP DEVICE SAYA',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
-  }
-
   Widget _buildSmallButton(
     String text,
     VoidCallback onPressed, {
@@ -845,26 +874,6 @@ widget.socketService.onConnectionChanged = (isConnected) {
             fontWeight: FontWeight.bold,
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildRemoteButton(
-    String label, {
-    VoidCallback? onPressed,
-    bool isAuto = false,
-  }) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: isAuto ? AppColors.warningYellow : AppColors.neonGreen,
-        foregroundColor: AppColors.primaryBlack,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        padding: const EdgeInsets.all(8),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -933,134 +942,6 @@ widget.socketService.onConnectionChanged = (isConnected) {
     );
   }
 
-  void _showConnectionMenu(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.darkGrey,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Connection Menu',
-                style: TextStyle(
-                  color: AppColors.neonGreen,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryBlack,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: _isConnected
-                        ? AppColors.successGreen
-                        : AppColors.errorRed,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: _isConnected
-                            ? AppColors.successGreen
-                            : AppColors.errorRed,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        _isConnected ? 'Connected to Device' : 'Disconnected',
-                        style: TextStyle(
-                          color: _isConnected
-                              ? AppColors.successGreen
-                              : AppColors.errorRed,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              if (_isConnected) ...[
-                _buildConnectionAction(
-                  icon: Icons.refresh,
-                  title: 'Reconnect',
-                  onTap: _connectToDevice,
-                ),
-                _buildConnectionAction(
-                  icon: Icons.settings,
-                  title: 'Request Config',
-                  onTap: () {
-                    widget.socketService.requestConfig();
-                    Navigator.pop(context);
-                    _showSnackbar('Requesting device config...');
-                  },
-                ),
-                _buildConnectionAction(
-                  icon: Icons.wifi_off,
-                  title: 'Disconnect',
-                  onTap: () {
-                    _disconnectFromDevice();
-                    Navigator.pop(context);
-                  },
-                  isDestructive: true,
-                ),
-              ],
-              // else [
-              //   _buildConnectionAction(
-              //     icon: Icons.wifi,
-              //     title: 'Connect to Device',
-              //     onTap: () {
-              //       _connectToDevice();
-              //       Navigator.pop(context);
-              //     },
-              //   ),
-              // ],
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildConnectionAction({
-    required IconData icon,
-    required String title,
-    required Function() onTap,
-    bool isDestructive = false,
-  }) {
-    return ListTile(
-      leading: Icon(
-        icon,
-        color: isDestructive ? AppColors.errorRed : AppColors.neonGreen,
-      ),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: isDestructive ? AppColors.errorRed : AppColors.pureWhite,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      onTap: onTap,
-    );
-  }
-
   void _addLogMessage(String message) {
     final timestamp = DateTime.now()
         .toIso8601String()
@@ -1094,9 +975,10 @@ widget.socketService.onConnectionChanged = (isConnected) {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            _buildDeviceConfigurationSection(),
+            // TAMBAHKAN speed run section di atas device configuration
+            _buildSpeedRunSection(),
             const SizedBox(height: 16),
-            // _buildRemoteControlSection(),
+            _buildDeviceConfigurationSection(),
             // const SizedBox(height: 16),
             // _buildLogSection(),
           ],
@@ -1109,6 +991,7 @@ widget.socketService.onConnectionChanged = (isConnected) {
   void dispose() {
     _messageSubscription?.cancel();
     _connectionSubscription?.cancel();
+    _speedRunController.dispose(); // TAMBAHKAN: Dispose speed run controller
 
     // Dispose semua controller untuk device sections
     for (var controller in _emailControllers) {

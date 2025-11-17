@@ -17,6 +17,7 @@ dependencies:
   shared_preferences: ^2.5.3
   qr_flutter: ^4.1.0
   barcode_scan2: ^4.5.1
+  connectivity_plus: ^5.0.2
 
 dev_dependencies:
   flutter_test:

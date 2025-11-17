@@ -1,10 +1,11 @@
   import 'dart:convert';
 
-  import 'package:dio/dio.dart';
-  import 'package:iTen/models/animation_model.dart';
-  import 'package:iTen/models/list_animation_model.dart';
-  import 'package:iTen/models/system_model.dart';
-  import 'package:iTen/services/preferences_service.dart';
+import 'package:dio/dio.dart';
+import 'package:iTen/models/animation_model.dart';
+import 'package:iTen/models/list_animation_model.dart';
+import 'package:iTen/models/system_model.dart';
+import 'package:iTen/services/connectivity_service.dart';
+import 'package:iTen/services/preferences_service.dart';
 
   enum FirebaseNode {
     USER,
@@ -15,6 +16,7 @@
     static final FirebaseDataService _instance = FirebaseDataService._internal();
     factory FirebaseDataService() => _instance;
     final PreferencesService _prefsService = PreferencesService();
+  final ConnectivityService _connectivityService = ConnectivityService();
 
     FirebaseDataService._internal();
 
@@ -71,12 +73,67 @@
       }
       return nodePath;
     }
-  // Di FirebaseDataService class - update method ini
-Future<bool> saveLocalAnimationToCloud(AnimationModel animation) async {
+ Future<bool> checkAnimationExists(AnimationModel animation) async {
   try {
-    if (!_isInitialized) {
-      throw Exception('Service not initialized. Call initialize() first.');
+    final config = await _prefsService.getDeviceConfig();
+    String email = config?.email ?? 'CC';
+    
+    // Format yang sama dengan yang akan disimpan
+    String expectedIdentifier = '${animation.channelCount.toString().padLeft(3, '0')} ${animation.name} $email';
+    
+    print('🔍 Checking duplicate for identifier: $expectedIdentifier');
+
+    // Get all user animations dari Firebase (bukan dari cache)
+    final response = await _dio.get('USER.json');
+    
+    if (response.statusCode == 200 && response.data != null) {
+      final data = response.data as Map<String, dynamic>;
+      
+      // Cek setiap entry di Firebase
+      for (final entry in data.entries) {
+        final animationData = entry.value;
+        if (animationData is Map && animationData['identifier'] == expectedIdentifier) {
+          print('⚠️ Duplicate found: $expectedIdentifier');
+          return true;
+        }
+      }
     }
+    
+    print('✅ No duplicate found for: $expectedIdentifier');
+    return false;
+  } catch (e) {
+    print('❌ Error checking animation existence: $e');
+    return false; // Jika error, anggap tidak ada duplikasi (biarkan proses continue)
+  }
+}
+ Future<bool> get _shouldFetchFromFirebase async {
+    final isConnected = await _connectivityService.isConnected;
+    if (!isConnected) {
+      print('🌐 No internet connection - using local data');
+      return false;
+    }
+    
+    // Optional: Tambahkan logika cache validation di sini
+    final isCacheValid = await _prefsService.isApiCacheValid();
+    if (isCacheValid) {
+      print('📂 Cache is valid - considering using local data');
+      // Bisa return false jika ingin selalu gunakan cache ketika ada koneksi
+    }
+    
+    return true;
+  }
+ Future<bool> saveLocalAnimationToCloud(AnimationModel animation) async {
+    try {
+      if (!_isInitialized) {
+        throw Exception('Service not initialized. Call initialize() first.');
+      }
+
+      // CEK KONEKSI DULU - jika offline, throw error
+      final isConnected = await _connectivityService.isConnected;
+      if (!isConnected) {
+        throw Exception('No internet connection - cannot save to cloud');
+      }
+
 
     // Ambil config dari preferences untuk mendapatkan email
     final config = await _prefsService.getDeviceConfig();
@@ -87,43 +144,68 @@ Future<bool> saveLocalAnimationToCloud(AnimationModel animation) async {
       email = 'CC';
     }
 
-    // Format key: [jumlah channel 3 digit] [nama animasi] [email]
+    // Format key: [channel] [nama animasi] [email]
     String channelPart = animation.channelCount.toString().padLeft(3, '0');
-    
-    // Bersihkan nama animasi dari karakter khusus
-    String cleanName = animation.name.replaceAll(RegExp(r'[^\w\s]'), '');
-    String key = '$channelPart $cleanName $email';
+    String key = '$channelPart ${animation.name} $email';
 
-    // Prepare data dalam format yang sesuai
-    List<dynamic> firebaseData = [
-      animation.channelCount.toString(),
-      animation.animationLength,
-      animation.description.isEmpty ? '' : animation.description,
-      animation.delayData,
-      ...animation.frameData,
-    ];
+    print('💾 Checking duplicate for: $key');
+    print('📧 Using email: $email');
 
-    print('💾 Saving to cloud: $key');
-    print('📊 Data: ${firebaseData.length} elements');
+    // ✅ CEK DUPLIKASI DULU
+    final isDuplicate = await checkAnimationExists(animation);
+    if (isDuplicate) {
+      print('❌ Animation already exists in cloud: $key');
+      throw Exception('Animation "$key" already exists in cloud storage');
+    }
 
-    // Save ke Firebase
-    final response = await _dio.put(
-      'USER/$key.json',
+    print('✅ No duplicate found, proceeding with save...');
+
+    // Prepare data dalam format yang sesuai dengan struktur Firebase
+    Map<String, dynamic> firebaseData = {
+      'identifier': key, // Simpan identifier sebagai field
+      'channel': animation.channelCount.toString(),
+      'name': animation.name,
+      'email': email,
+      'animationLength': animation.animationLength,
+      'description': animation.description.isEmpty ? '' : animation.description,
+      'delayData': animation.delayData,
+      'frameData': animation.frameData,
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+      'isDefault': false,
+      'source': 'user_upload',
+    };
+
+    print('📊 Data prepared with ${animation.frameData.length} frames');
+
+    // ✅ GUNAKAN POST (STORE) - Firebase auto-generate key
+    final response = await _dio.post(
+      'USER.json',
       data: jsonEncode(firebaseData),
     );
 
     if (response.statusCode == 200) {
-      print('✅ Animation saved to cloud: $key');
+      final generatedKey = response.data['name']; // Key yang di-generate Firebase
+      print('✅ Animation saved to cloud with Firebase key: $generatedKey');
+      print('📝 Stored with identifier: $key');
       return true;
     }
     
     return false;
   } on DioException catch (e) {
     print('❌ Error saving animation to cloud: $e');
+    
+    // Log detail error
+    if (e.response != null) {
+      print('🔍 Error response: ${e.response?.data}');
+      print('🔍 Error status: ${e.response?.statusCode}');
+    }
+    
     throw _handleError(e);
+  } catch (e) {
+    print('❌ Unexpected error saving to cloud: $e');
+    rethrow;
   }
 }
-
 // Method untuk mendapatkan email yang akan digunakan
 Future<String> getCloudEmail() async {
   final config = await _prefsService.getDeviceConfig();
@@ -133,21 +215,40 @@ Future<String> getCloudEmail() async {
   }
   return email;
 }
-// Method untuk save multiple animations
-Future<Map<String, bool>> saveMultipleAnimationsToCloud(
+Future<Map<String, String>> saveMultipleAnimationsToCloud(
   List<AnimationModel> animations,
 ) async {
-  final results = <String, bool>{};
+  final results = <String, String>{};
   
   for (final animation in animations) {
     try {
+      print('\n🔄 Processing: ${animation.name}');
+      
       final success = await saveLocalAnimationToCloud(animation);
-      results[animation.name] = success;
+      
+      if (success) {
+        results[animation.name] = 'success';
+        print('✅ Successfully saved: ${animation.name}');
+      } else {
+        results[animation.name] = 'failed';
+        print('❌ Failed to save: ${animation.name}');
+      }
     } catch (e) {
-      results[animation.name] = false;
-      print('❌ Failed to save ${animation.name}: $e');
+      // Tangani error duplikasi khusus
+      if (e.toString().contains('already exists')) {
+        results[animation.name] = 'duplicate';
+        print('⚠️ Duplicate skipped: ${animation.name}');
+      } else {
+        results[animation.name] = 'error';
+        print('❌ Error saving ${animation.name}: $e');
+      }
     }
   }
+  
+  print('\n📊 Final results:');
+  results.forEach((name, status) {
+    print('   - $name: $status');
+  });
   
   return results;
 }
@@ -163,35 +264,43 @@ Future<bool> isDeviceConfigured() async {
   final config = await _prefsService.getDeviceConfig();
   return config != null && config.email.isNotEmpty;
 }
-  Future<ListAnimationModel> getUserAnimationsWithCache() async {
-      try {
-        // Cek cache dulu
-        final cachedData = await _prefsService.getApiUserAnimations();
-        final isCacheValid = await _prefsService.isApiCacheValid();
-        
-        if (cachedData != null && isCacheValid && cachedData.isNotEmpty) {
-          print('📂 Using cached user animations (${cachedData.length} animations)');
-          return cachedData;
-        }
-        
-        // Jika cache tidak valid, ambil dari Firebase
-        print('🌐 Fetching user animations from Firebase...');
-        final freshData = await getUserAnimations();
-        
-        return freshData;
-      } catch (e) {
-        print('❌ Error in getUserAnimationsWithCache: $e');
-        
-        // Fallback ke cache meskipun expired
-        final cachedData = await _prefsService.getApiUserAnimations();
+   Future<ListAnimationModel> getUserAnimationsWithCache() async {
+    try {
+      // Cek cache dulu tanpa peduli koneksi
+      final cachedData = await _prefsService.getApiUserAnimations();
+      
+      // Cek apakah harus fetch dari Firebase
+      final shouldFetch = await _shouldFetchFromFirebase;
+      
+      if (!shouldFetch) {
         if (cachedData != null && cachedData.isNotEmpty) {
-          print('🔄 Using expired cache as fallback');
+          print('📂 Using cached user animations (offline mode)');
           return cachedData;
+        } else {
+          print('📂 No cached data available offline');
+          return ListAnimationModel.empty('USER');
         }
-        
-        return ListAnimationModel.empty('USER');
       }
+      
+      // Jika ada koneksi, fetch dari Firebase
+      print('🌐 Fetching user animations from Firebase...');
+      final freshData = await getUserAnimations();
+      
+      return freshData;
+    } catch (e) {
+      print('❌ Error in getUserAnimationsWithCache: $e');
+      
+      // Fallback ke cache
+      final cachedData = await _prefsService.getApiUserAnimations();
+      if (cachedData != null && cachedData.isNotEmpty) {
+        print('🔄 Using cache as fallback due to error');
+        return cachedData;
+      }
+      
+      return ListAnimationModel.empty('USER');
     }
+  }
+
 
     // Add to user selections
     Future<bool> addToUserSelections(AnimationModel animation) async {
@@ -216,29 +325,63 @@ Future<bool> isDeviceConfigured() async {
       print('✅ API force refresh completed');
     }
     // GET data spesifik dari node dengan sub-path + AUTO SAVE ke preferences
-    Future<dynamic> getData(FirebaseNode node, String subPath) async {
-      try {
-        if (!_isInitialized) {
-          throw Exception('Service not initialized. Call initialize() first.');
-        }
-        
-        final path = _getNodePath(node, subPath);
-        final response = await _dio.get('$path.json');
-        
-        if (response.statusCode == 200) {
-          final data = response.data;
-          
-          // AUTO SAVE ke preferences berdasarkan node type
-          await _autoSaveToPreferences(node, subPath, data);
-          
-          return data;
-        }
-        return null;
-      } on DioException catch (e) {
-        print('❌ Error getting data from ${node.name}/$subPath: $e');
-        throw _handleError(e);
+     Future<dynamic> getData(FirebaseNode node, String subPath) async {
+    try {
+      if (!_isInitialized) {
+        throw Exception('Service not initialized. Call initialize() first.');
       }
+      
+      // Cek koneksi dulu
+      final shouldFetch = await _shouldFetchFromFirebase;
+      if (!shouldFetch) {
+        print('📂 Offline mode - returning null for getData');
+        return null;
+      }
+      
+      final path = _getNodePath(node, subPath);
+      final response = await _dio.get('$path.json');
+      
+      if (response.statusCode == 200) {
+        final data = response.data;
+        
+        // AUTO SAVE ke preferences berdasarkan node type
+        await _autoSaveToPreferences(node, subPath, data);
+        
+        return data;
+      }
+      return null;
+    } on DioException catch (e) {
+      print('❌ Error getting data from ${node.name}/$subPath: $e');
+      
+      // Fallback ke cache untuk error koneksi
+      if (e.type == DioExceptionType.connectionError || 
+          e.type == DioExceptionType.connectionTimeout) {
+        print('📂 Connection error - falling back to cache');
+        return await _getCachedData(node, subPath);
+      }
+      
+      throw _handleError(e);
     }
+  }
+   Future<dynamic> _getCachedData(FirebaseNode node, String subPath) async {
+    switch (node) {
+      case FirebaseNode.SYSTEM:
+        final systemData = await _prefsService.getApiSystemData();
+        return systemData?.toJson();
+      
+      case FirebaseNode.USER:
+        if (subPath.isEmpty) {
+          final userAnimations = await _prefsService.getApiUserAnimations();
+          return userAnimations?.toFirebaseMap();
+        } else {
+          // Untuk subPath spesifik, cari di cached animations
+          final userAnimations = await _prefsService.getApiUserAnimations();
+          final animation = userAnimations?.animations
+              .firstWhere((anim) => anim.name == subPath);
+          return animation?.toList();
+        }
+    }
+  }
 
     // Method untuk auto save ke preferences berdasarkan node
     Future<void> _autoSaveToPreferences(FirebaseNode node, String subPath, dynamic data) async {
@@ -358,35 +501,51 @@ Future<bool> isDeviceConfigured() async {
 
     // GET semua data dari node + AUTO SAVE
     Future<Map<String, dynamic>?> getAllData(FirebaseNode node) async {
-      try {
-        if (!_isInitialized) {
-          throw Exception('Service not initialized. Call initialize() first.');
-        }
-        
-        final path = _getNodePath(node);
-        print('📥 Fetching all data from: $path');
-        
-        final response = await _dio.get('$path.json');
-        
-        if (response.statusCode == 200) {
-          final data = response.data;
-          
-          if (data == null) {
-            print('ℹ️ No data found in node: $path');
-            return {};
-          }
-          
-          // AUTO SAVE ke preferences
-          await _autoSaveToPreferences(node, '', data);
-          
-          return data;
-        }
-        return null;
-      } on DioException catch (e) {
-        print('❌ Error getting all data from ${node.name}: $e');
-        throw _handleError(e);
+    try {
+      if (!_isInitialized) {
+        throw Exception('Service not initialized. Call initialize() first.');
       }
+      
+      // Cek koneksi dulu
+      final shouldFetch = await _shouldFetchFromFirebase;
+      if (!shouldFetch) {
+        print('📂 Offline mode - returning cached data for ${node.name}');
+        return await _getCachedData(node, '');
+      }
+      
+      final path = _getNodePath(node);
+      print('📥 Fetching all data from: $path');
+      
+      final response = await _dio.get('$path.json');
+      
+      if (response.statusCode == 200) {
+        final data = response.data;
+        
+        if (data == null) {
+          print('ℹ️ No data found in node: $path');
+          return {};
+        }
+        
+        // AUTO SAVE ke preferences
+        await _autoSaveToPreferences(node, '', data);
+        
+        return data;
+      }
+      return null;
+    } on DioException catch (e) {
+      print('❌ Error getting all data from ${node.name}: $e');
+      
+      // Fallback ke cache untuk error koneksi
+      if (e.type == DioExceptionType.connectionError || 
+          e.type == DioExceptionType.connectionTimeout) {
+        print('📂 Connection error - falling back to cache');
+        return await _getCachedData(node, '');
+      }
+      
+      throw _handleError(e);
     }
+  }
+
 
     // ============ USER NODE METHODS dengan Auto-Save ============
 
@@ -729,15 +888,29 @@ Future<bool> isDeviceConfigured() async {
     }
 
     Future<bool> testConnection() async {
-      try {
-        print('🧪 Testing Firebase connection...');
-        final response = await _dio.get('.json');
-        return response.statusCode == 200;
-      } catch (e) {
-        print('❌ Connection test failed: $e');
+    try {
+      print('🧪 Testing connectivity...');
+      final isConnected = await _connectivityService.isConnected;
+      
+      if (!isConnected) {
+        print('❌ No internet connection');
         return false;
       }
+
+      print('🌐 Internet available, testing Firebase connection...');
+      final response = await _dio.get('.json', 
+        options: Options(
+          receiveTimeout: const Duration(seconds: 10),
+          sendTimeout: const Duration(seconds: 10),
+        )
+      );
+      
+      return response.statusCode == 200;
+    } catch (e) {
+      print('❌ Connection test failed: $e');
+      return false;
     }
+  }
 
     // Error handling
     String _handleError(DioException error) {

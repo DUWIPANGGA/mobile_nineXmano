@@ -4,6 +4,7 @@ import 'dart:convert';
 
 import 'package:iTen/models/animation_model.dart';
 import 'package:iTen/models/config_model.dart';
+import 'package:iTen/models/config_show_model.dart';
 import 'package:iTen/models/list_animation_model.dart';
 import 'package:iTen/models/system_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,7 +13,7 @@ class PreferencesService {
   static final PreferencesService _instance = PreferencesService._internal();
   factory PreferencesService() => _instance;
   PreferencesService._internal();
-
+static const String _configShowKey = 'config_show_data';
   static const String _deviceConfigKey = 'device_config';
   static const String _systemDataKey = 'system_data';
   static const String _userAnimationsKey = 'user_animations';
@@ -707,4 +708,76 @@ class PreferencesService {
       return false;
     }
   }
+
+  // Config Show Methods
+Future<bool> saveConfigShow(ConfigShowModel configShow) async {
+  try {
+    await _ensureInitialized();
+    
+    final configShowMap = configShow.toMap();
+    final jsonString = jsonEncode(configShowMap);
+    final success = await _prefs!.setString(_configShowKey, jsonString);
+
+    if (success) {
+      print('💾 ConfigShow saved to preferences');
+      print('📊 ConfigShow summary: ${configShow.summary}');
+    } else {
+      print('❌ Failed to save config show');
+    }
+    return success;
+  } catch (e, stackTrace) {
+    print('❌ Error saving config show to preferences: $e');
+    print('Stack trace: $stackTrace');
+    return false;
+  }
+}
+
+Future<ConfigShowModel?> getConfigShow() async {
+  try {
+    await _ensureInitialized();
+    
+    final jsonString = _prefs!.getString(_configShowKey);
+    if (jsonString == null) {
+      print('📭 No config show found in preferences');
+      return null;
+    }
+
+    final configShowMap = jsonDecode(jsonString) as Map<String, dynamic>;
+    final configShow = ConfigShowModel.fromMap(configShowMap);
+    print('📖 ConfigShow loaded: ${configShow.summary}');
+    return configShow;
+  } catch (e, stackTrace) {
+    print('❌ Error reading config show from preferences: $e');
+    print('Stack trace: $stackTrace');
+    return null;
+  }
+}
+
+Future<bool> hasConfigShow() async {
+  try {
+    await _ensureInitialized();
+    final hasConfigShow = _prefs!.containsKey(_configShowKey);
+    print('🔍 ConfigShow exists: $hasConfigShow');
+    return hasConfigShow;
+  } catch (e) {
+    print('❌ Error checking config show: $e');
+    return false;
+  }
+}
+
+Future<bool> clearConfigShow() async {
+  try {
+    await _ensureInitialized();
+    final success = await _prefs!.remove(_configShowKey);
+    if (success) {
+      print('🗑️ ConfigShow cleared from preferences');
+    } else {
+      print('❌ Failed to clear config show');
+    }
+    return success;
+  } catch (e) {
+    print('❌ Error clearing config show: $e');
+    return false;
+  }
+}
 }

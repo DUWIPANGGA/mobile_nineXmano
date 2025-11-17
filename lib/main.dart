@@ -1,22 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:iTen/constants/app_colors.dart';
 import 'package:iTen/routes/routes.dart';
+import 'package:iTen/services/connectivity_service.dart';
 import 'package:iTen/services/firebase_data_service.dart';
 import 'package:iTen/services/preferences_service.dart';
 
 void main() async {
-    WidgetsFlutterBinding.ensureInitialized();
+  WidgetsFlutterBinding.ensureInitialized();
 
-  // await Firebase.initializeApp(
-  //   options: DefaultFirebaseOptions.currentPlatform,
-  // );
-    FirebaseDataService().initialize(); // ADD THIS
-try {
+  print('🚀 Initializing app...');
+  
+  try {
+    // Initialize services secara berurutan
     await PreferencesService().initialize();
-    print('✅ PreferencesService initialized in main');
+    print('✅ PreferencesService initialized');
+    
+    // Initialize connectivity service
+    ConnectivityService();
+    print('✅ ConnectivityService initialized');
+    
+    // Initialize Firebase service
+    FirebaseDataService().initialize();
+    print('✅ FirebaseDataService initialized');
+
+    // Test koneksi (optional)
+    final hasConnection = await FirebaseDataService().testConnection();
+    print(hasConnection ? '🌐 Online mode' : '📂 Offline mode');
+
   } catch (e) {
-    print('❌ Failed to initialize PreferencesService in main: $e');
+    print('❌ Failed to initialize services: $e');
   }
+  
   runApp(const MainApp());
 }
 
@@ -49,7 +63,3 @@ class MainApp extends StatelessWidget {
     );
   }
 }
-
-
-
-

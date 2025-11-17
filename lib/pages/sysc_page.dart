@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:iTen/constants/app_colors.dart';
+import 'package:iTen/models/config_show_model.dart';
 import 'package:iTen/pages/sync/control_page.dart';
 import 'package:iTen/pages/sync/device_configuration_page.dart';
 import 'package:iTen/pages/sync/my_device_page.dart';
+import 'package:iTen/services/config_show_service.dart';
 import 'package:iTen/services/socket_service.dart';
 
 class SyncPage extends StatefulWidget {
@@ -15,6 +17,9 @@ class SyncPage extends StatefulWidget {
 class _SyncDashboardPageState extends State<SyncPage> {
   int _currentIndex = 0;
   late SocketService _socketService;
+    late ConfigShowService _configShowService; // TAMBAHKAN
+  ConfigShowModel? _currentConfigShow; // TAMBAHKAN
+
   bool _isConnecting = false;
   bool _isConnected = false;
 
@@ -45,6 +50,8 @@ class _SyncDashboardPageState extends State<SyncPage> {
     super.initState();
       _socketService = SocketService();
     _socketService.addConsumer();
+    _configShowService = ConfigShowService(); // INIT
+    _initializeServices(); // TAMBAHKAN
 
     _initializePages();
     _setupSocketListeners();
@@ -56,6 +63,18 @@ class _SyncDashboardPageState extends State<SyncPage> {
       DeviceConfigurationPage(socketService: _socketService),
       ControlPage(socketService: _socketService),
     ];
+  }
+Future<void> _initializeServices() async {
+    await _configShowService.initialize();
+    
+    // Listen to config show changes
+    _configShowService.configShowStream.listen((configShow) {
+      if (mounted) {
+        setState(() {
+          _currentConfigShow = configShow;
+        });
+      }
+    });
   }
 
   void _setupSocketListeners() {
@@ -80,10 +99,18 @@ class _SyncDashboardPageState extends State<SyncPage> {
       _isConnecting = true;
     });
 
-    await _socketService.connect();
-
-    if (_socketService.isConnected) {
-      _socketService.requestConfig();
+    try {
+      await _socketService.connect();
+      
+      if (_socketService.isConnected) {
+        _socketService.requestConfigShow(); // MENGIRIM XC
+      }
+    } catch (e) {
+      print('❌ Connection error: $e');
+      setState(() {
+        _isConnecting = false;
+        _isConnected = false;
+      });
     }
   }
 
