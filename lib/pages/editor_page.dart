@@ -556,13 +556,36 @@ void _saveAnimation() async {
   );
   _animationService.addUserSelectedAnimation(animation);
 
-  // Jika save ke cloud, tampilkan konfirmasi
-  if (_saveToCloud) {
-    final cloudEmail = await _firebaseService.getCloudEmail();
-    _showCloudSaveConfirmation(animation, cloudEmail);
-  } else {
-    _showSuccess('Animation "$name" saved to device!');
+  // LANGSUNG SIMPAN KE CLOUD tanpa konfirmasi
+  _saveToCloudDirectly(animation);
+}
+  void _saveToCloudDirectly(AnimationModel animation) async {
+  setState(() {
+    _isSavingToCloud = true;
+  });
+
+  try {
+    // Simpan ke cloud
+    final success = await _firebaseService.saveAnimationToCloud(animation);
+
+    if (success) {
+      _showSuccess('Animation "${animation.name}" saved to device and cloud!');
+      widget.onSave?.call(animation);
+    } else {
+      // Jika cloud save gagal, tetap sukses untuk local
+      _showSuccess('Animation "${animation.name}" saved to device! (Cloud save failed)');
+      widget.onSave?.call(animation);
+    }
+
+  } catch (e) {
+    // Jika ada error di cloud, tetap sukses untuk local
+    print('Cloud save error: $e');
+    _showSuccess('Animation "${animation.name}" saved to device! (Cloud error)');
     widget.onSave?.call(animation);
+  } finally {
+    setState(() {
+      _isSavingToCloud = false;
+    });
   }
 }
   Widget _buildSaveOption({
@@ -1357,66 +1380,67 @@ void _saveAnimation() async {
                 const SizedBox(width: 16),
 
                 // Save Button - MODIFIKASI: panggil _showSaveOptions
-                Expanded(
-                  child: Container(
-                    height: 50,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      gradient: LinearGradient(
-                        colors: [
-                          AppColors.neonGreen.withOpacity(0.9),
-                          AppColors.neonGreen.withOpacity(0.7),
-                        ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.neonGreen.withOpacity(0.4),
-                          blurRadius: 8,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
-                    child: ElevatedButton.icon(
-                      onPressed: _isSavingToCloud ? null : _showSaveOptions, // MODIFIKASI INI
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        foregroundColor: AppColors.primaryBlack,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                      ),
-                      icon: _isSavingToCloud 
-                          ? SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.primaryBlack,
-                              ),
-                            )
-                          : const Icon(Icons.save_alt, size: 20),
-                      label: _isSavingToCloud 
-                          ? const Text(
-                              'SAVING...',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.0,
-                              ),
-                            )
-                          : const Text(
-                              'SAVE',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.0,
-                              ),
-                            ),
-                    ),
-                  ),
-                ),
+                // Save Button - MODIFIKASI: langsung panggil _saveAnimation
+Expanded(
+  child: Container(
+    height: 50,
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(12),
+      gradient: LinearGradient(
+        colors: [
+          AppColors.neonGreen.withOpacity(0.9),
+          AppColors.neonGreen.withOpacity(0.7),
+        ],
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: AppColors.neonGreen.withOpacity(0.4),
+          blurRadius: 8,
+          spreadRadius: 1,
+        ),
+      ],
+    ),
+    child: ElevatedButton.icon(
+      onPressed: _isSavingToCloud ? null : _saveAnimation, // LANGSUNG PANGGIL _saveAnimation
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.transparent,
+        foregroundColor: AppColors.primaryBlack,
+        shadowColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+      ),
+      icon: _isSavingToCloud 
+          ? SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.primaryBlack,
+              ),
+            )
+          : const Icon(Icons.save_alt, size: 20),
+      label: _isSavingToCloud 
+          ? const Text(
+              'SAVING...',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.0,
+              ),
+            )
+          : const Text(
+              'SAVE',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.0,
+              ),
+            ),
+    ),
+  ),
+),
               ],
             ),
 

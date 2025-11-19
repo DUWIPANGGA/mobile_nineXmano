@@ -1,13 +1,13 @@
 
   import 'dart:async';
 
-  import 'package:flutter/material.dart';
-  import 'package:flutter/services.dart';
-  import 'package:iTen/constants/app_colors.dart';
-  import 'package:iTen/models/config_model.dart';
-  import 'package:iTen/services/preferences_service.dart';
-  import 'package:iTen/services/socket_service.dart';
-  import 'package:qr_flutter/qr_flutter.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:iTen/constants/app_colors.dart';
+import 'package:iTen/models/config_model.dart';
+import 'package:iTen/services/preferences_service.dart';
+import 'package:iTen/services/socket_service.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
   class SettingsPage extends StatefulWidget {
     final SocketService socketService;
@@ -1740,39 +1740,39 @@
 
               const SizedBox(height: 40),
 
-              _buildSection(
-                title: 'MORE',
-                children: [
-                  _buildSubSection(
-                    title: '',
-                    children: [
-                      _buildActionButton(
-                        text: 'RESET PABRIK',
-                        onPressed: _resetFactory,
-                        enabled: widget.socketService.isConnected,
-                        backgroundColor: AppColors.errorRed,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildActionButton(
-                        text: 'CHECK UPDATE',
-                        onPressed: _checkUpdate,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildActionButton(
-                        text: 'UPLOAD FIRMWARE',
-                        onPressed: _uploadFirmware,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  _buildActionButton(
-                    text: 'HUBUNGI KAMI',
-                    onPressed: _contactSupport,
-                    backgroundColor: AppColors.darkGrey,
-                    foregroundColor: AppColors.neonGreen,
-                  ),
-                ],
-              ),
+              // _buildSection(
+              //   title: 'MORE',
+              //   children: [
+              //     _buildSubSection(
+              //       title: '',
+              //       children: [
+              //         _buildActionButton(
+              //           text: 'RESET PABRIK',
+              //           onPressed: _resetFactory,
+              //           enabled: widget.socketService.isConnected,
+              //           backgroundColor: AppColors.errorRed,
+              //         ),
+              //         const SizedBox(height: 12),
+              //         _buildActionButton(
+              //           text: 'CHECK UPDATE',
+              //           onPressed: _checkUpdate,
+              //         ),
+              //         const SizedBox(height: 12),
+              //         _buildActionButton(
+              //           text: 'UPLOAD FIRMWARE',
+              //           onPressed: _uploadFirmware,
+              //         ),
+              //       ],
+              //     ),
+              //     const SizedBox(height: 20),
+              //     _buildActionButton(
+              //       text: 'HUBUNGI KAMI',
+              //       onPressed: _contactSupport,
+              //       backgroundColor: AppColors.darkGrey,
+              //       foregroundColor: AppColors.neonGreen,
+              //     ),
+              //   ],
+              // ),
             ],
           ),
         ),
