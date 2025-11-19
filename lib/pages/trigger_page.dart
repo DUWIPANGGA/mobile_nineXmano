@@ -894,7 +894,7 @@ Future<void> _saveDeviceConfig() async {
                           _saveTriggerSettings();
 
                           // Kirim langsung ke device
-                          _sendQuickSettingWithFallback('QUICK', safeValue);
+                          // _sendQuickSettingWithFallback('QUICK', safeValue);
                         },
                       ),
 
@@ -1383,12 +1383,12 @@ Future<void> _saveDeviceConfig() async {
 
   // Method untuk mengirim setting QUICK saat onChanged
   void _sendQuickSetting(String triggerLabel, String? value) {
-    if (value == null || value == 'MATI' || !widget.socketService.isConnected) {
-      return;
-    }
+    // if (value == null || value == 'MATI' || !widget.socketService.isConnected) {
+    //   return;
+    // }
 
     try {
-      final triggerIndex = _getTriggerIndex(value);
+      final triggerIndex = _getTriggerIndex(value!);
       final modeCode = _getModeCode(value);
 
       widget.socketService.send('SQ$triggerIndex');

@@ -2,8 +2,10 @@
 import 'package:flutter/material.dart';
 import 'package:iTen/constants/app_colors.dart';
 import 'package:iTen/models/animation_model.dart';
+import 'package:iTen/models/config_model.dart';
 import 'package:iTen/models/list_animation_model.dart';
 import 'package:iTen/services/firebase_data_service.dart';
+import 'package:iTen/services/preferences_service.dart';
 
 class CloudFilePage extends StatefulWidget {
   const CloudFilePage({super.key});
@@ -15,20 +17,28 @@ class CloudFilePage extends StatefulWidget {
 class _CloudFilePageState extends State<CloudFilePage> {
   final FirebaseDataService _firebaseService = FirebaseDataService();
   final Set<int> _selectedFiles = {};
-  
+    final PreferencesService _preferencesService = PreferencesService();
+
   // Data dari preferences
   ListAnimationModel _userAnimations = ListAnimationModel.empty('USER');
     ListAnimationModel _filteredAnimations = ListAnimationModel.empty('FILTERED');
-  int _channelFilter = 016; // Filter channel count 16
+  int _channelFilter = 08;
   int _startIndex = 1; // Mulai dari index 2
   int _endIndex = 3;   // Sampai index 3
   bool _isLoading = true;
   String _errorMessage = '';
+  late ConfigModel? config;
 
   @override
   void initState() {
     super.initState();
+     _preferencesService.getDeviceConfig().then((configValue) {
+      setState(() {
+        config = configValue;
+        _channelFilter = config?.jumlahChannel??8;
+      });
     _loadAnimationsFromPreferences();
+    });
   }
 
   ListAnimationModel _applyFilters(ListAnimationModel animations) {

@@ -471,7 +471,7 @@ class _LandingPageState extends State<LandingPage> {
                       Icon(Icons.dashboard, size: 20),
                       SizedBox(width: 8),
                       Text(
-                        'Singkronasi',
+                        'Singkronisasi',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -503,7 +503,7 @@ class _LandingPageState extends State<LandingPage> {
         ),
         const SizedBox(height: 8),
         Text(
-          'v1.0.0',
+          'v1.0.10',
           style: TextStyle(
             fontSize: 10,
             color: AppColors.neonGreen.withOpacity(0.5),

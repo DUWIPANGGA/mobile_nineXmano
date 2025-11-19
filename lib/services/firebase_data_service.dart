@@ -8,8 +8,8 @@ import 'package:iTen/services/connectivity_service.dart';
 import 'package:iTen/services/preferences_service.dart';
 
   enum FirebaseNode {
-    USER,
-    SYSTEM
+    ITEN_USER,
+    ITEN_SYSTEM
   }
 
   class FirebaseDataService {
@@ -84,7 +84,7 @@ import 'package:iTen/services/preferences_service.dart';
     print('🔍 Checking duplicate for identifier: $expectedIdentifier');
 
     // Get all user animations dari Firebase (bukan dari cache)
-    final response = await _dio.get('USER.json');
+    final response = await _dio.get('ITEN_USER.json');
     
     if (response.statusCode == 200 && response.data != null) {
       final data = response.data as Map<String, dynamic>;
@@ -122,37 +122,33 @@ import 'package:iTen/services/preferences_service.dart';
     
     return true;
   }
- Future<bool> saveLocalAnimationToCloud(AnimationModel animation) async {
-    try {
-      if (!_isInitialized) {
-        throw Exception('Service not initialized. Call initialize() first.');
-      }
+Future<bool> saveLocalAnimationToCloud(AnimationModel animation) async {
+  try {
+    if (!_isInitialized) {
+      throw Exception('Service not initialized. Call initialize() first.');
+    }
 
-      // CEK KONEKSI DULU - jika offline, throw error
-      final isConnected = await _connectivityService.isConnected;
-      if (!isConnected) {
-        throw Exception('No internet connection - cannot save to cloud');
-      }
+    // 1. CEK KONEKSI
+    final isConnected = await _connectivityService.isConnected;
+    if (!isConnected) {
+      throw Exception('No internet connection - cannot save to cloud');
+    }
 
-
-    // Ambil config dari preferences untuk mendapatkan email
+    // Ambil email dari preferences
     final config = await _prefsService.getDeviceConfig();
-    
-    // Gunakan email dari config jika ada, jika kosong gunakan "CC"
     String email = config?.email ?? 'CC';
     if (email.isEmpty) {
       email = 'CC';
     }
 
-    // Format key: [channel] [nama animasi] [email]
+    // 2. FORMAT KEY IDENTIFIER
     String channelPart = animation.channelCount.toString().padLeft(3, '0');
     String key = '$channelPart ${animation.name} $email';
 
-    print('💾 Checking duplicate for: $key');
-    print('📧 Using email: $email');
+    print('💾 Checking duplicate for key: $key');
 
-    // ✅ CEK DUPLIKASI DULU
-    final isDuplicate = await checkAnimationExists(animation);
+    // ✅ CEK DUPLIKASI
+    final isDuplicate = await checkAnimationExists(animation); 
     if (isDuplicate) {
       print('❌ Animation already exists in cloud: $key');
       throw Exception('Animation "$key" already exists in cloud storage');
@@ -160,33 +156,31 @@ import 'package:iTen/services/preferences_service.dart';
 
     print('✅ No duplicate found, proceeding with save...');
 
-    // Prepare data dalam format yang sesuai dengan struktur Firebase
-    Map<String, dynamic> firebaseData = {
-      'identifier': key, // Simpan identifier sebagai field
-      'channel': animation.channelCount.toString(),
-      'name': animation.name,
-      'email': email,
-      'animationLength': animation.animationLength,
-      'description': animation.description.isEmpty ? '' : animation.description,
-      'delayData': animation.delayData,
-      'frameData': animation.frameData,
-      'timestamp': DateTime.now().millisecondsSinceEpoch,
-      'isDefault': false,
-      'source': 'user_upload',
-    };
+    // 3. SIAPKAN PAYLOAD DATA (Array List)
+    final List<dynamic> listToStore = animation.toList();
 
-    print('📊 Data prepared with ${animation.frameData.length} frames');
+    // 🎯 PERUBAHAN UTAMA:
+    // Lakukan JSON encode dua kali. Pertama untuk mendapatkan JSON Array string.
+    // Kedua untuk mengirim string tersebut ke endpoint sebagai raw body.
+    // final String jsonStringValue = jsonEncode(listToStore);
+final String jsonStringValue = jsonEncode("[\"${animation.channelCount}\",${animation.animationLength},\"${animation.description}\",\"${animation.delayData}\",\"${animation.frameData[0]}\",\"${animation.frameData[1]}\",\"${animation.frameData[2]}\",\"${animation.frameData[3]}\",\"${animation.frameData[4]}\",\"${animation.frameData[5]}\",\"${animation.frameData[6]}\",\"${animation.frameData[7]}\",\"${animation.frameData[8]}\",\"${animation.frameData[10]}\"]");
+    print('📊 Data prepared. JSON String Value: $jsonStringValue');
+    
+    // Path untuk operasi PUT: ITEN_USER/[key_animasi].json
+    final path = 'ITEN_USER/$key.json';
 
-    // ✅ GUNAKAN POST (STORE) - Firebase auto-generate key
-    final response = await _dio.post(
-      'USER.json',
-      data: jsonEncode(firebaseData),
+    // 4. GUNAKAN PUT UNTUK MENYIMPAN STRING VALUE
+    // Kita mengirim JSON String yang berisi Array, BUKAN Map<String, dynamic>
+    // Dio akan mengirim string ini sebagai body raw, dan Firebase akan menyimpannya 
+    // sebagai string tunggal (String Value) di bawah key kustom.
+    final response = await _dio.put(
+      path, 
+      data: jsonStringValue, // Kirim STRING yang sudah di-encode
     );
 
     if (response.statusCode == 200) {
-      final generatedKey = response.data['name']; // Key yang di-generate Firebase
-      print('✅ Animation saved to cloud with Firebase key: $generatedKey');
-      print('📝 Stored with identifier: $key');
+      print('✅ Animation saved to cloud with custom key (PUT): $key');
+      print('📝 Data stored as STRING value in Firebase.');
       return true;
     }
     
@@ -194,7 +188,6 @@ import 'package:iTen/services/preferences_service.dart';
   } on DioException catch (e) {
     print('❌ Error saving animation to cloud: $e');
     
-    // Log detail error
     if (e.response != null) {
       print('🔍 Error response: ${e.response?.data}');
       print('🔍 Error status: ${e.response?.statusCode}');
@@ -252,6 +245,17 @@ Future<Map<String, String>> saveMultipleAnimationsToCloud(
   
   return results;
 }
+Future<bool> saveAnimationToCloud(AnimationModel animation) async {
+  return await saveLocalAnimationToCloud(animation);
+}
+
+
+
+// Method untuk mengecek apakah device sudah dikonfigurasi
+Future<bool> isDeviceConfigured() async {
+  final config = await _prefsService.getDeviceConfig();
+  return config != null && config.email.isNotEmpty;
+}
 
 // Method untuk mendapatkan email dari config
 Future<String?> getDeviceEmail() async {
@@ -259,11 +263,22 @@ Future<String?> getDeviceEmail() async {
   return config?.email;
 }
 
-// Method untuk mengecek apakah device sudah dikonfigurasi
-Future<bool> isDeviceConfigured() async {
-  final config = await _prefsService.getDeviceConfig();
-  return config != null && config.email.isNotEmpty;
+// Test connection method (jika belum ada)
+Future<bool> testConnection() async {
+  try {
+    final response = await _dio.get('.json', 
+      options: Options(
+        receiveTimeout: const Duration(seconds: 10),
+        sendTimeout: const Duration(seconds: 10),
+      )
+    );
+    return response.statusCode == 200;
+  } catch (e) {
+    print('❌ Connection test failed: $e');
+    return false;
+  }
 }
+
    Future<ListAnimationModel> getUserAnimationsWithCache() async {
     try {
       // Cek cache dulu tanpa peduli koneksi
@@ -365,11 +380,11 @@ Future<bool> isDeviceConfigured() async {
   }
    Future<dynamic> _getCachedData(FirebaseNode node, String subPath) async {
     switch (node) {
-      case FirebaseNode.SYSTEM:
+      case FirebaseNode.ITEN_SYSTEM:
         final systemData = await _prefsService.getApiSystemData();
         return systemData?.toJson();
       
-      case FirebaseNode.USER:
+      case FirebaseNode.ITEN_USER:
         if (subPath.isEmpty) {
           final userAnimations = await _prefsService.getApiUserAnimations();
           return userAnimations?.toFirebaseMap();
@@ -387,11 +402,11 @@ Future<bool> isDeviceConfigured() async {
     Future<void> _autoSaveToPreferences(FirebaseNode node, String subPath, dynamic data) async {
       try {
         switch (node) {
-          case FirebaseNode.SYSTEM:
+          case FirebaseNode.ITEN_SYSTEM:
             await _handleSystemData(data);
             break;
           
-          case FirebaseNode.USER:
+          case FirebaseNode.ITEN_USER:
             await _handleUserData(subPath, data);
             break;
         }
@@ -552,7 +567,7 @@ Future<bool> isDeviceConfigured() async {
     // Get ListAnimationModel dari USER node + AUTO SAVE
     Future<ListAnimationModel> getUserAnimations() async {
       try {
-        final data = await getAllData(FirebaseNode.USER);
+        final data = await getAllData(FirebaseNode.ITEN_USER);
         if (data != null) {
           final animationList = ListAnimationModel.fromFirebaseData('USER', data);
           
@@ -571,7 +586,7 @@ Future<bool> isDeviceConfigured() async {
     // Get specific animation by name + AUTO SAVE sebagai user selection
     Future<AnimationModel?> getUserAnimation(String animationName) async {
       try {
-        final data = await getData(FirebaseNode.USER, animationName);
+        final data = await getData(FirebaseNode.ITEN_USER, animationName);
         if (data is List) {
           final animation = AnimationModel.fromList(animationName, data);
           
@@ -592,7 +607,7 @@ Future<bool> isDeviceConfigured() async {
     // Get System Data + AUTO SAVE
     Future<SystemModel?> getSystemModel() async {
       try {
-        final data = await getAllData(FirebaseNode.SYSTEM);
+        final data = await getAllData(FirebaseNode.ITEN_SYSTEM);
         if (data != null) {
           final systemModel = SystemModel.fromJson(data);
           
@@ -650,7 +665,7 @@ Future<bool> isDeviceConfigured() async {
         
         // 1. Test SYSTEM data auto-save
         print('\n📋 TEST 1: SYSTEM Data Auto-Save');
-        final systemData = await getData(FirebaseNode.SYSTEM, '');
+        final systemData = await getData(FirebaseNode.ITEN_SYSTEM, '');
         print('✅ SYSTEM data fetched: ${systemData != null}');
         
         // Check if saved in preferences
@@ -663,7 +678,7 @@ Future<bool> isDeviceConfigured() async {
         
         // 2. Test USER animations auto-save
         print('\n📋 TEST 2: USER Animations Auto-Save');
-        final userData = await getData(FirebaseNode.USER, '');
+        final userData = await getData(FirebaseNode.ITEN_USER, '');
         print('✅ USER data fetched: ${userData != null}');
         
         // Check if saved in preferences
@@ -678,7 +693,7 @@ Future<bool> isDeviceConfigured() async {
         // Coba ambil animasi pertama jika ada
         if (cachedAnimations != null && cachedAnimations.isNotEmpty) {
           final firstAnimationName = cachedAnimations[0].name;
-          final specificAnimation = await getData(FirebaseNode.USER, firstAnimationName);
+          final specificAnimation = await getData(FirebaseNode.ITEN_USER, firstAnimationName);
           print('✅ Specific animation fetched: ${specificAnimation != null}');
           
           // Check if saved as user selection
@@ -811,7 +826,7 @@ Future<bool> isDeviceConfigured() async {
     // Delete animation dari USER
     Future<bool> deleteUserAnimation(String animationName) async {
       try {
-        return await deleteData(FirebaseNode.USER, animationName);
+        return await deleteData(FirebaseNode.ITEN_USER, animationName);
       } catch (e) {
         print('Error deleting USER animation: $e');
         return false;
@@ -856,7 +871,7 @@ Future<bool> isDeviceConfigured() async {
     Future<bool> updateSystemModel(SystemModel systemModel) async {
       try {
         return await updateData(
-          FirebaseNode.SYSTEM,
+          FirebaseNode.ITEN_SYSTEM,
           '', // root of SYSTEM node
           systemModel.toJson(),
         );
@@ -886,31 +901,6 @@ Future<bool> isDeviceConfigured() async {
         return 0;
       }
     }
-
-    Future<bool> testConnection() async {
-    try {
-      print('🧪 Testing connectivity...');
-      final isConnected = await _connectivityService.isConnected;
-      
-      if (!isConnected) {
-        print('❌ No internet connection');
-        return false;
-      }
-
-      print('🌐 Internet available, testing Firebase connection...');
-      final response = await _dio.get('.json', 
-        options: Options(
-          receiveTimeout: const Duration(seconds: 10),
-          sendTimeout: const Duration(seconds: 10),
-        )
-      );
-      
-      return response.statusCode == 200;
-    } catch (e) {
-      print('❌ Connection test failed: $e');
-      return false;
-    }
-  }
 
     // Error handling
     String _handleError(DioException error) {

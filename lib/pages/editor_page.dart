@@ -4,6 +4,7 @@ import 'package:iTen/constants/app_colors.dart';
 import 'package:iTen/models/animation_model.dart';
 import 'package:iTen/models/config_model.dart';
 import 'package:iTen/services/animation_service.dart';
+import 'package:iTen/services/firebase_data_service.dart'; // TAMBAH INI
 import 'package:iTen/services/matrix_pattern_service.dart';
 import 'package:iTen/services/preferences_service.dart';
 
@@ -21,6 +22,7 @@ class _EditorPageState extends State<EditorPage> {
   final AnimationService _animationService = AnimationService();
   final MatrixPatternService _patternService = MatrixPatternService();
   final PreferencesService _preferencesService = PreferencesService();
+    final FirebaseDataService _firebaseService = FirebaseDataService();
   late ConfigModel? config;
 
   // Data animasi
@@ -35,6 +37,9 @@ class _EditorPageState extends State<EditorPage> {
   int _currentFrame = 0;
   bool _isPlaying = false;
   int _playSpeed = 500;
+  bool _isSavingToCloud = false;
+  bool _saveToCloud = true;
+    bool _isLoading = true;
 
   // UI controllers
   final TextEditingController _nameController = TextEditingController();
@@ -444,58 +449,188 @@ class _EditorPageState extends State<EditorPage> {
   }
 
   // ============ SAVE/LOAD METHODS ============
+// Di _saveAnimation method - perbaiki bagian ini:
 
-  void _saveAnimation() async {
-    final name = _nameController.text.trim();
-    if (name.isEmpty) {
-      _showError('Please enter animation name');
-      return;
-    }
-
-    print('=== SAVING ANIMATION ===');
-    print('ListAnim Data: $_listAnim');
-    print('Channel Count: $_channelCount');
-    print('Animation Length: $_animationLength');
-
-    // Convert _listAnim ke format yang sesuai untuk disimpan
-    for (int i = 0; i < _listAnim.length; i++) {
-      if (_listAnim[i].isEmpty) {
-        _listAnim[i] = ("00" * _animationLength);
-      } else if (_listAnim[i].length < _animationLength * 2) {
-        _listAnim[i] = ("00" * _animationLength);
-      }
-    }
-    print('ListAnim after filter: $_listAnim');
-    final animation = AnimationModel(
-      name: name,
-      channelCount: _channelCount,
-      animationLength: _animationLength,
-      description: _descController.text.trim(),
-      delayData: _delayData,
-      frameData: _listAnim,
-    );
-
-    if (!animation.isValid) {
-      _showError('Animation data is not valid');
-      return;
-    }
-
-    final selectedAnimationKey = _animationService.generateAnimationKey(
-      name,
-      _channelCount,
-      "dimas@gmail.com",
-    );
-
-    await _animationService.saveToSelectedAnimations(
-      selectedAnimationKey,
-      animation,
-    );
-    _animationService.addUserSelectedAnimation(animation);
-
-    widget.onSave?.call(animation);
-    _showSuccess('Animation "$name" saved to selected animations!');
+void _saveAnimation() async {
+  final name = _nameController.text.trim();
+  if (name.isEmpty) {
+    _showError('Please enter animation name');
+    return;
   }
 
+  print('=== SAVING ANIMATION ===');
+  print('ListAnim Data: $_listAnim');
+  print('Channel Count: $_channelCount');
+  print('Animation Length: $_animationLength');
+
+  // DEBUG: Print untuk troubleshooting
+  print('🔄 DEBUG: Preparing animation data...');
+  for (int i = 0; i < _listAnim.length; i++) {
+    print('   - _listAnim[$i]: "${_listAnim[i]}" (length: ${_listAnim[i].length})');
+  }
+
+  // Convert _listAnim ke format yang sesuai untuk disimpan
+  List<String> formattedFrameData = [];
+  for (int i = 0; i < _listAnim.length; i++) {
+    String frame = _listAnim[i];
+    
+    // Pastikan frame data memiliki panjang yang benar
+    if (frame.isEmpty) {
+      frame = "00" * _animationLength;
+      print('   ⚠️ Empty frame[$i], setting to: "$frame"');
+    } else if (frame.length < _animationLength * 2) {
+      // Padding dengan '00' jika terlalu pendek
+      frame = frame.padRight(_animationLength * 2, '0');
+      print('   ⚠️ Short frame[$i], padding to: "$frame"');
+    } else if (frame.length > _animationLength * 2) {
+      // Potong jika terlalu panjang
+      frame = frame.substring(0, _animationLength * 2);
+      print('   ⚠️ Long frame[$i], truncating to: "$frame"');
+    }
+    
+    formattedFrameData.add(frame);
+  }
+
+  print('✅ Formatted Frame Data:');
+  for (int i = 0; i < formattedFrameData.length; i++) {
+    print('   - frameData[$i]: "${formattedFrameData[i]}" (length: ${formattedFrameData[i].length})');
+  }
+
+  // Pastikan delay data sesuai dengan animation length
+  String formattedDelayData = _delayData;
+  if (_delayData.length < _animationLength) {
+    formattedDelayData = _delayData.padRight(_animationLength, '4');
+    print('⚠️ Delay data too short, padding to: "$formattedDelayData"');
+  } else if (_delayData.length > _animationLength) {
+    formattedDelayData = _delayData.substring(0, _animationLength);
+    print('⚠️ Delay data too long, truncating to: "$formattedDelayData"');
+  }
+
+  final animation = AnimationModel(
+    name: name,
+    channelCount: _channelCount,
+    animationLength: _animationLength,
+    description: _descController.text.trim(),
+    delayData: formattedDelayData,
+    frameData: formattedFrameData,
+  );
+
+  // DEBUG: Validasi manual sebelum menggunakan animation.isValid
+  print('🔍 DEBUG: Manual validation check:');
+  print('   - Name: ${animation.name.isNotEmpty}');
+  print('   - Channel Count: ${animation.channelCount >= 4 && animation.channelCount <= 32}');
+  print('   - Animation Length: ${animation.animationLength > 0}');
+  print('   - Delay Data Length: ${animation.delayData.length == animation.animationLength}');
+  print('   - Frame Data Length: ${animation.frameData.length == 11}'); // Harus 11 channels
+  
+  bool allFramesValid = true;
+  for (int i = 0; i < animation.frameData.length; i++) {
+    bool frameValid = animation.frameData[i].length == animation.animationLength * 2;
+    print('   - Frame[$i] valid: $frameValid (length: ${animation.frameData[i].length}, expected: ${animation.animationLength * 2})');
+    if (!frameValid) {
+      allFramesValid = false;
+    }
+  }
+
+  if (!animation.isValid) {
+    print('❌ ANIMATION VALIDATION FAILED:');
+    print('   - isValid: ${animation.isValid}');
+    print('   - Manual check: ${allFramesValid && animation.delayData.length == animation.animationLength}');
+    
+    _showError('Animation data is not valid. Please check frame data.');
+    return;
+  }
+
+  print('✅ ANIMATION VALIDATION PASSED');
+
+  // Simpan ke local storage terlebih dahulu
+  final selectedAnimationKey = _animationService.generateAnimationKey(
+    name,
+    _channelCount,
+    config?.email ?? "CC",
+  );
+
+  await _animationService.saveToSelectedAnimations(
+    selectedAnimationKey,
+    animation,
+  );
+  _animationService.addUserSelectedAnimation(animation);
+
+  // Jika save ke cloud, tampilkan konfirmasi
+  if (_saveToCloud) {
+    final cloudEmail = await _firebaseService.getCloudEmail();
+    _showCloudSaveConfirmation(animation, cloudEmail);
+  } else {
+    _showSuccess('Animation "$name" saved to device!');
+    widget.onSave?.call(animation);
+  }
+}
+  Widget _buildSaveOption({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool value,
+    required Function(bool) onChanged,
+  }) {
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: value ? AppColors.neonGreen.withOpacity(0.2) : AppColors.primaryBlack,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: value ? AppColors.neonGreen : AppColors.darkGrey,
+            width: 2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: value ? AppColors.neonGreen : AppColors.darkGrey,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(
+                icon,
+                color: value ? AppColors.primaryBlack : AppColors.pureWhite,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: AppColors.pureWhite,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: AppColors.pureWhite.withOpacity(0.7),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Radio<bool>(
+              value: true,
+              groupValue: value,
+              onChanged: (bool? newValue) => onChanged(newValue ?? false),
+              fillColor: MaterialStateProperty.all(AppColors.neonGreen),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
   void _clearAllFrames() {
     showDialog(
       context: context,
@@ -1119,7 +1254,7 @@ class _EditorPageState extends State<EditorPage> {
     );
   }
 
-  Widget _buildBottomControls() {
+ Widget _buildBottomControls() {
     return Container(
       margin: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
@@ -1221,7 +1356,7 @@ class _EditorPageState extends State<EditorPage> {
 
                 const SizedBox(width: 16),
 
-                // Save Button
+                // Save Button - MODIFIKASI: panggil _showSaveOptions
                 Expanded(
                   child: Container(
                     height: 50,
@@ -1242,7 +1377,7 @@ class _EditorPageState extends State<EditorPage> {
                       ],
                     ),
                     child: ElevatedButton.icon(
-                      onPressed: _saveAnimation,
+                      onPressed: _isSavingToCloud ? null : _showSaveOptions, // MODIFIKASI INI
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.transparent,
                         foregroundColor: AppColors.primaryBlack,
@@ -1252,26 +1387,66 @@ class _EditorPageState extends State<EditorPage> {
                         ),
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                       ),
-                      icon: const Icon(Icons.save_alt, size: 20),
-                      label: const Text(
-                        'SAVE',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.0,
-                        ),
-                      ),
+                      icon: _isSavingToCloud 
+                          ? SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.primaryBlack,
+                              ),
+                            )
+                          : const Icon(Icons.save_alt, size: 20),
+                      label: _isSavingToCloud 
+                          ? const Text(
+                              'SAVING...',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.0,
+                              ),
+                            )
+                          : const Text(
+                              'SAVE',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
                     ),
                   ),
                 ),
               ],
             ),
+
+            // TAMBAH: Cloud save status indicator
+            if (_isSavingToCloud) ...[
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.cloud_upload,
+                    color: AppColors.neonGreen,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Uploading to cloud...',
+                    style: TextStyle(
+                      color: AppColors.neonGreen,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
     );
   }
-
   // Helper widget untuk info item
   Widget _buildInfoItem(String label, String value, IconData icon) {
     return Column(
@@ -1309,6 +1484,454 @@ class _EditorPageState extends State<EditorPage> {
     );
   }
 
+void _showCloudSaveConfirmation(AnimationModel animation, String cloudEmail) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      backgroundColor: AppColors.darkGrey,
+      title: Row(
+        children: [
+          Icon(Icons.cloud_upload, color: AppColors.neonGreen),
+          SizedBox(width: 8),
+          Text(
+            'Save to Cloud',
+            style: TextStyle(
+              color: AppColors.neonGreen,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Save "${animation.name}" to cloud storage?',
+            style: TextStyle(color: AppColors.pureWhite),
+          ),
+          SizedBox(height: 12),
+          Container(
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primaryBlack,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Storage Format:',
+                  style: TextStyle(
+                    color: AppColors.neonGreen,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  '[Channel] [Animation Name] [Email]',
+                  style: TextStyle(
+                    color: AppColors.pureWhite.withOpacity(0.8),
+                    fontSize: 11,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Example: "${animation.channelCount.toString().padLeft(3, '0')} ${animation.name} $cloudEmail"',
+                  style: TextStyle(
+                    color: AppColors.pureWhite.withOpacity(0.7),
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.email, color: AppColors.neonGreen, size: 16),
+              SizedBox(width: 4),
+              Text(
+                'Using identifier: $cloudEmail',
+                style: TextStyle(
+                  color: AppColors.pureWhite.withOpacity(0.8),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+          if (cloudEmail == 'CC') ...[
+            SizedBox(height: 8),
+            Container(
+              padding: EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info, color: Colors.blue, size: 14),
+                  SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      'Using "CC" as identifier. Configure device to use your email.',
+                      style: TextStyle(color: Colors.blue, fontSize: 10),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text('CANCEL', style: TextStyle(color: AppColors.neonGreen)),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.pop(context);
+            _performCloudSave(animation);
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.neonGreen,
+            foregroundColor: AppColors.primaryBlack,
+          ),
+          child: Text('SAVE TO CLOUD'),
+        ),
+      ],
+    ),
+  );
+}
+
+// Method untuk save single animation ke cloud
+Future<void> _performCloudSave(AnimationModel animation) async {
+  setState(() {
+    _isSavingToCloud = true;
+  });
+
+  try {
+    // Show progress dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.darkGrey,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: AppColors.neonGreen),
+            SizedBox(height: 16),
+            Text(
+              'Saving "${animation.name}" to cloud...',
+              style: TextStyle(color: AppColors.pureWhite),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 8),
+            FutureBuilder(
+              future: _firebaseService.getCloudEmail(),
+              builder: (context, snapshot) {
+                final email = snapshot.data ?? 'CC';
+                return Text(
+                  'Using identifier: $email',
+                  style: TextStyle(
+                    color: AppColors.pureWhite.withOpacity(0.7),
+                    fontSize: 12,
+                  ),
+                  textAlign: TextAlign.center,
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+
+    // Save single animation to cloud
+    final success = await _firebaseService.saveAnimationToCloud(animation);
+
+    // Close progress dialog
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
+
+    if (success) {
+      _showCloudSaveSuccess(animation);
+    } else {
+      throw Exception('Failed to save animation to cloud');
+    }
+
+  } catch (e) {
+    // Close progress dialog if open
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
+
+    _showCloudSaveError(animation.name, e.toString());
+  } finally {
+    setState(() {
+      _isSavingToCloud = false;
+    });
+  }
+}
+
+// Method untuk show success result
+void _showCloudSaveSuccess(AnimationModel animation) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      backgroundColor: AppColors.darkGrey,
+      title: Row(
+        children: [
+          Icon(Icons.check_circle, color: AppColors.neonGreen),
+          SizedBox(width: 8),
+          Text(
+            'Success!',
+            style: TextStyle(
+              color: AppColors.pureWhite,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Animation "${animation.name}" saved to cloud successfully!',
+            style: TextStyle(color: AppColors.pureWhite),
+          ),
+          SizedBox(height: 12),
+          FutureBuilder(
+            future: _firebaseService.getCloudEmail(),
+            builder: (context, snapshot) {
+              final email = snapshot.data ?? 'CC';
+              return Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryBlack,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Stored as:',
+                      style: TextStyle(
+                        color: AppColors.neonGreen,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      '${animation.channelCount.toString().padLeft(3, '0')} ${animation.name} $email',
+                      style: TextStyle(
+                        color: AppColors.pureWhite,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text('OK', style: TextStyle(color: AppColors.neonGreen)),
+        ),
+      ],
+    ),
+  );
+}
+
+// Method untuk show error result
+void _showCloudSaveError(String animationName, String error) {
+  String errorMessage = 'Failed to save to cloud';
+  
+  if (error.contains('already exists')) {
+    errorMessage = 'Animation "$animationName" already exists in cloud storage';
+  } else if (error.contains('No internet')) {
+    errorMessage = 'No internet connection - cannot save to cloud';
+  } else {
+    errorMessage = 'Failed to save to cloud: $error';
+  }
+
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      backgroundColor: AppColors.darkGrey,
+      title: Row(
+        children: [
+          Icon(Icons.error, color: Colors.red),
+          SizedBox(width: 8),
+          Text(
+            'Save Failed',
+            style: TextStyle(
+              color: Colors.red,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+      content: Text(
+        errorMessage,
+        style: TextStyle(color: AppColors.pureWhite),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text('OK', style: TextStyle(color: AppColors.neonGreen)),
+        ),
+      ],
+    ),
+  );
+}
+
+void _showSaveOptions() {
+  showDialog(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setDialogState) {
+        return AlertDialog(
+          backgroundColor: AppColors.darkGrey,
+          title: Text(
+            'Save Animation',
+            style: TextStyle(
+              color: AppColors.neonGreen,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Choose where to save "${_nameController.text.trim()}"',
+                style: TextStyle(color: AppColors.pureWhite),
+              ),
+              const SizedBox(height: 16),
+              
+              // Local storage option
+              _buildSaveOption(
+                title: 'Local Storage Only',
+                subtitle: 'Save to device only',
+                icon: Icons.storage,
+                value: !_saveToCloud,
+                onChanged: (value) {
+                  setDialogState(() {
+                    _saveToCloud = !value;
+                  });
+                },
+              ),
+              
+              const SizedBox(height: 12),
+              
+              // Cloud storage option
+              _buildSaveOption(
+                title: 'Cloud Storage',
+                subtitle: 'Save to device and cloud',
+                icon: Icons.cloud_upload,
+                value: _saveToCloud,
+                onChanged: (value) {
+                  setDialogState(() {
+                    _saveToCloud = value;
+                  });
+                },
+              ),
+              
+              if (_saveToCloud) ...[
+                const SizedBox(height: 12),
+                FutureBuilder(
+                  future: _firebaseService.getCloudEmail(),
+                  builder: (context, snapshot) {
+                    final email = snapshot.data ?? 'CC';
+                    return Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.neonGreen.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: AppColors.neonGreen.withOpacity(0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.info, color: AppColors.neonGreen, size: 16),
+                              SizedBox(width: 8),
+                              Text(
+                                'Cloud Storage Info',
+                                style: TextStyle(
+                                  color: AppColors.neonGreen,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            '• Will be available on all your devices',
+                            style: TextStyle(
+                              color: AppColors.pureWhite,
+                              fontSize: 11,
+                            ),
+                          ),
+                          Text(
+                            '• Stored as: ${_channelCount.toString().padLeft(3, '0')} ${_nameController.text.trim()} $email',
+                            style: TextStyle(
+                              color: AppColors.pureWhite,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'CANCEL',
+                style: TextStyle(color: AppColors.pureWhite),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: _isSavingToCloud ? null : () {
+                Navigator.pop(context);
+                _saveAnimation();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.neonGreen,
+                foregroundColor: AppColors.primaryBlack,
+              ),
+              child: _isSavingToCloud 
+                  ? SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.primaryBlack,
+                      ),
+                    )
+                  : Text('SAVE'),
+            ),
+          ],
+        );
+      },
+    ),
+  );
   @override
   void dispose() {
     _nameController.dispose();
@@ -1317,4 +1940,5 @@ class _EditorPageState extends State<EditorPage> {
     _frameScrollController.dispose();
     super.dispose();
   }
+}
 }

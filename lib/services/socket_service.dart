@@ -10,7 +10,7 @@ class SocketService {
   final int port;
   Socket? _socket;
   bool _isConnected = false;
- int _consumerCount = 0;
+  int _consumerCount = 0;
   final _consumerController = StreamController<bool>.broadcast();
   final _messageController = StreamController<String>.broadcast();
   final _binaryController = StreamController<List<int>>.broadcast();
@@ -27,7 +27,7 @@ class SocketService {
   Stream<bool> get connectionStatus => _connectionController.stream;
 
   bool get isConnected => _isConnected;
-Function(bool isConnected)? onConnectionChanged;
+  Function(bool isConnected)? onConnectionChanged;
 
   // ========== CONNECTION MANAGEMENT ==========
 
@@ -42,7 +42,7 @@ Function(bool isConnected)? onConnectionChanged;
       _isConnected = true;
       _connectionController.add(true);
       print('✅ Connected to server.');
-requestConfig();
+      requestConfig();
       _socket!.listen(
         (data) {
           _handleIncomingData(data);
@@ -63,20 +63,22 @@ requestConfig();
       rethrow;
     }
   }
-void addConsumer() {
+
+  void addConsumer() {
     _consumerCount++;
     print('🔄 SocketService consumers: $_consumerCount');
   }
-  
+
   void removeConsumer() {
     _consumerCount--;
     print('🔄 SocketService consumers: $_consumerCount');
-    
+
     if (_consumerCount <= 0) {
       _consumerCount = 0;
       _disconnect();
     }
   }
+
   void disconnect() {
     _disconnect();
   }
@@ -112,11 +114,11 @@ void addConsumer() {
   void _handleConfigMessage(String message) async {
     try {
       print('🔄 [SOCKET] Processing config message...');
-      
+
       // Use singleton instance
       final configService = ConfigService();
       final config = await configService.parseAndSaveConfig(message);
-      
+
       if (config != null) {
         _messageController.add('CONFIG_UPDATED:Success');
         print('✅ [SOCKET] Config processed and saved successfully');
@@ -265,7 +267,6 @@ void addConsumer() {
 
       // Process config data langsung
       _processConfigData(message);
-      
     } catch (e) {
       print('❌ Error in _handleConfigResponse: $e');
       _messageController.add('CONFIG_ERROR:${e.toString()}');
@@ -276,13 +277,15 @@ void addConsumer() {
   void _processConfigData(String message) async {
     try {
       print('🔄 [PROCESSOR] Starting config data processing...');
-      
+
       // Use singleton instance
       final configService = ConfigService();
       final config = await configService.parseAndSaveConfig(message);
 
       if (config != null) {
-        print('✅ [PROCESSOR] Config processed and saved to preferences successfully');
+        print(
+          '✅ [PROCESSOR] Config processed and saved to preferences successfully',
+        );
 
         // Print config details
         print('📋 [PROCESSOR] Saved Config Details:');
@@ -306,59 +309,62 @@ void addConsumer() {
   }
 
   void _handleConfig2Response(String message) {
-  print('🔧 Processing config2 show data from device...');
+    print('🔧 Processing config2 show data from device...');
 
-  try {
-    if (message.isEmpty || !message.startsWith('config2,')) {
-      print('❌ Invalid config2 message format');
-      _messageController.add('CONFIG2_ERROR:Invalid format');
-      return;
+    try {
+      if (message.isEmpty || !message.startsWith('config2,')) {
+        print('❌ Invalid config2 message format');
+        _messageController.add('CONFIG2_ERROR:Invalid format');
+        return;
+      }
+
+      print('📨 Raw config2 data received: ${message.length} characters');
+      _processConfig2Data(message);
+    } catch (e) {
+      print('❌ Error in _handleConfig2Response: $e');
+      _messageController.add('CONFIG2_ERROR:${e.toString()}');
     }
-
-    print('📨 Raw config2 data received: ${message.length} characters');
-    _processConfig2Data(message);
-    
-  } catch (e) {
-    print('❌ Error in _handleConfig2Response: $e');
-    _messageController.add('CONFIG2_ERROR:${e.toString()}');
   }
-}
 
-// TAMBAHKAN processor untuk config2
-void _processConfig2Data(String message) async {
-  try {
-    print('🔄 [PROCESSOR] Starting config2 data processing...');
-    
-    final configShowService = ConfigShowService();
-    await configShowService.initialize();
-    final configShow = await configShowService.parseAndSaveConfigShow(message);
+  // TAMBAHKAN processor untuk config2
+  void _processConfig2Data(String message) async {
+    try {
+      print('🔄 [PROCESSOR] Starting config2 data processing...');
 
-    if (configShow != null) {
-      print('✅ [PROCESSOR] Config2 processed and saved to preferences successfully');
+      final configShowService = ConfigShowService();
+      await configShowService.initialize();
+      final configShow = await configShowService.parseAndSaveConfigShow(
+        message,
+      );
 
-      // Print config2 details
-      print('📋 [PROCESSOR] Saved Config2 Details:');
-      print('   - Firmware: ${configShow.firmware}');
-      print('   - Speed Run: ${configShow.speedRun}');
-      print('   - Channels: ${configShow.jumlahChannel}');
-      print('   - Email: ${configShow.email}');
-      print('   - Device ID: ${configShow.devID}');
-      print('   - Valid: ${configShow.isValid}');
+      if (configShow != null) {
+        print(
+          '✅ [PROCESSOR] Config2 processed and saved to preferences successfully',
+        );
 
-      // Kirim event bahwa config2 telah diperbarui
-      _messageController.add('CONFIG2_UPDATED:${configShow.devID}');
-    } else {
-      print('⚠️ [PROCESSOR] Failed to process and save config2 data');
-      _messageController.add('CONFIG2_ERROR:Failed to save config2');
+        // Print config2 details
+        print('📋 [PROCESSOR] Saved Config2 Details:');
+        print('   - Firmware: ${configShow.firmware}');
+        print('   - Speed Run: ${configShow.speedRun}');
+        print('   - Channels: ${configShow.jumlahChannel}');
+        print('   - Email: ${configShow.email}');
+        print('   - Device ID: ${configShow.devID}');
+        print('   - Valid: ${configShow.isValid}');
+
+        // Kirim event bahwa config2 telah diperbarui
+        _messageController.add('CONFIG2_UPDATED:${configShow.devID}');
+      } else {
+        print('⚠️ [PROCESSOR] Failed to process and save config2 data');
+        _messageController.add('CONFIG2_ERROR:Failed to save config2');
+      }
+    } catch (e) {
+      print('❌ [PROCESSOR] Error processing config2 data: $e');
+      _messageController.add('CONFIG2_ERROR:$e');
     }
-  } catch (e) {
-    print('❌ [PROCESSOR] Error processing config2 data: $e');
-    _messageController.add('CONFIG2_ERROR:$e');
   }
-}
 
-// PASTIKAN requestConfigShow mengirim XC
-void requestConfigShow() => _send('XCC');
+  // PASTIKAN requestConfigShow mengirim XC
+  void requestConfigShow() => _send('XCC');
   void _handleInfoMessage(String message) {
     final info = message.substring(5);
     print('║ 💬 Info: "$info"');
@@ -394,7 +400,7 @@ void requestConfigShow() => _send('XCC');
         print('║     [${i + 1}] "${parts[i]}" (${parts[i].length} chars)');
       }
     }
-    
+
     _messageController.add('UNKNOWN:$message');
   }
 
@@ -412,12 +418,12 @@ void requestConfigShow() => _send('XCC');
   void turnOff() => _send('RF');
 
   /// Builtin Animations (3-31)
-void builtinAnimation(int number) {
-  if (number >= 1 && number <= 31) {
-    _send('RH${number.toString().padLeft(2, '0')}');
-    print('🧪 Testing builtin animation: $number');
+  void builtinAnimation(int number) {
+    if (number >= 1 && number <= 31) {
+      _send('RH${number.toString().padLeft(2, '0')}');
+      print('🧪 Testing builtin animation: $number');
+    }
   }
-}
 
   // ========== OUTGOING MESSAGES - CONFIGURATION ==========
 
@@ -429,7 +435,9 @@ void builtinAnimation(int number) {
 
   /// Set jumlah channel (2 digit)
   void setChannel(int channel) {
-      _send('CB${channel.toString().padLeft(2, '0')}');requestConfig();}
+    _send('CB${channel.toString().padLeft(2, '0')}');
+    requestConfig();
+  }
 
   /// Set delays (masing-masing 3 digit)
   void setDelays(int delay1, int delay2, int delay3, int delay4) {
@@ -452,6 +460,9 @@ void builtinAnimation(int number) {
     required String hexData, // data dalam hex
   }) {
     final dataLength = hexData.length ~/ 2;
+    // print(
+    //   '📊 Device yyyy9999 Index: $frameIndex, device buttonIndex: $remoteIndex',
+    // );
     _send(
       'M$remoteIndex$channel${_pad5(frameIndex)}${_pad4(dataLength)}$hexData',
     );
@@ -459,13 +470,14 @@ void builtinAnimation(int number) {
 
   /// Upload delay data
   void uploadDelay({
+    required int animationIndex,
     required int remoteIndex, // 1-4
     required String delayType, // K/M/N
     required int frameIndex, // 5 digit
     required String delayData,
   }) {
     _send(
-      'M$remoteIndex$delayType${_pad5(frameIndex)}${_pad3(delayData.length)}$delayData',
+      'M$remoteIndex$delayType${_pad5(animationIndex)}${_pad3(delayData.length)}$delayData',
     );
   }
 
@@ -507,38 +519,38 @@ void builtinAnimation(int number) {
   void setQuickTrigger(int value) => _send('SQ$value');
 
   /// Kirim trigger toggle (0 atau 1)
-// Di SocketService
-void sendTriggerToggle(String triggerCode, int value) {
-  // value should be 1 or 0
-  if (value != 0 && value != 1) {
-    print('⚠️ Invalid toggle value: $value, should be 0 or 1');
-    value = 0; // default to KEDIP
+  // Di SocketService
+  void sendTriggerToggle(String triggerCode, int value) {
+    // value should be 1 or 0
+    if (value != 0 && value != 1) {
+      print('⚠️ Invalid toggle value: $value, should be 0 or 1');
+      value = 0; // default to KEDIP
+    }
+
+    final command = '${triggerCode}${value}';
+    send(command);
+    print('📤 Sent toggle command: $command');
   }
-  
-  final command = '${triggerCode}${value}';
-  send(command);
-  print('📤 Sent toggle command: $command');
-}
 
   /// Kirim mapping data (10 frame + 1 channel)
   void sendMappingData(String mappingCode, List<int> frameData, int channel) {
     // Validasi frame data harus 10 elements
     final paddedFrameData = List<int>.from(frameData);
-    
+
     // Pad dengan 0 jika kurang dari 10 frame
     while (paddedFrameData.length < 10) {
       paddedFrameData.add(0);
     }
-    
+
     // Pastikan tidak lebih dari 10 frame
     if (paddedFrameData.length > 10) {
       paddedFrameData.removeRange(10, paddedFrameData.length);
     }
-    
+
     // Format: [code][frame1],[frame2],...,[frame10],[channel]
     final frameString = paddedFrameData.take(10).join(',');
     final data = '$frameString,$channel';
-    
+
     _send('$mappingCode$data');
     print('🗺️ Mapping Data: $mappingCode$data');
     print('   - Frames: ${paddedFrameData.length} (padded to 10)');
@@ -546,20 +558,23 @@ void sendTriggerToggle(String triggerCode, int value) {
   }
 
   /// Kirim mapping data dengan List<int> untuk frames
-  void sendMappingDataWithList(String mappingCode, List<int> frames, int channel) {
+  void sendMappingDataWithList(
+    String mappingCode,
+    List<int> frames,
+    int channel,
+  ) {
     sendMappingData(mappingCode, frames, channel);
   }
 
   // ========== OUTGOING MESSAGES - WELCOME ANIMATION ==========
 
   /// Set welcome animation
-void setWelcomeAnimation(int animNumber, int duration) {
-  final paddedAnim = animNumber.toString().padLeft(3, '0');
-  final paddedDuration = duration.toString().padLeft(3, '0');
-  _send('W$paddedAnim$paddedDuration');
-  print('🎭 Set welcome animation: ID $animNumber, Duration: ${duration}s');
-}
-
+  void setWelcomeAnimation(int animNumber, int duration) {
+    final paddedAnim = animNumber.toString().padLeft(3, '0');
+    final paddedDuration = duration.toString().padLeft(3, '0');
+    _send('W$paddedAnim$paddedDuration');
+    print('🎭 Set welcome animation: ID $animNumber, Duration: ${duration}s');
+  }
 
   // ========== OUTGOING MESSAGES - MITRA ID ==========
 
@@ -621,7 +636,7 @@ void setWelcomeAnimation(int animNumber, int duration) {
   @override
   void dispose() {
     removeConsumer();
-    
+
     // Only actually dispose if no consumers left
     if (_consumerCount <= 0) {
       _messageController.close();

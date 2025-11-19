@@ -351,7 +351,7 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
     }
 
     // Format: XD[jumlah device],[device count],[email],[mac],[channel]
-    final command = 'XD$_selectedDeviceCount,$email,$id,$channel';
+    final command = 'XD$_selectedDeviceCount,$deviceNumber,$email,$id,$channel';
     widget.socketService.send(command);
 
     _addLogMessage('📤 Sent to socket: $command');
@@ -378,8 +378,7 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
       return;
     }
 
-    // Format: XD[jumlah device],[device count],[email],[mac],[channel]
-    final command = 'XD$_selectedDeviceCount,$email,$id,$channel';
+    final command = 'XD$_selectedDeviceCount,$deviceNumber,$email,$id,$channel';
     widget.socketService.send(command);
 
     _addLogMessage('📤 Manual send: $command');

@@ -28,7 +28,7 @@ class _MappingPageState extends State<MappingPage> {
   String? _selectedAnimationB;
   String? _selectedAnimationC;
   String? _selectedAnimationD;
-
+  
   // Data dari preferences
   List<AnimationModel> _userAnimations = [];
   List<AnimationModel> _defaultAnimations = []; // Tambahkan ini
@@ -48,7 +48,7 @@ class _MappingPageState extends State<MappingPage> {
       _loadSavedMappings();
     });
   }
-
+  
   Future<void> _initializeData() async {
     setState(() {
       _isLoading = true;
@@ -481,7 +481,7 @@ class _MappingPageState extends State<MappingPage> {
   } else {
     // --- PERBAIKAN: Untuk custom, gunakan animationIndex ---
     final animationIndex = _getCustomAnimationIndex(animationName);
-    await _sendCustomAnimation(animationIndex, animation);
+    await _sendCustomAnimation(animationIndex,buttonIndex, animation);
   }
 }
 
@@ -520,6 +520,7 @@ class _MappingPageState extends State<MappingPage> {
   // Kirim animasi custom (user animations) dengan frame data
   Future<void> _sendCustomAnimation(
   int animationIndex, // GANTI: buttonIndex -> animationIndex
+  int buttonIndex, // GANTI: buttonIndex -> animationIndex
   AnimationModel animation,
 ) async {
   print(
@@ -527,37 +528,38 @@ class _MappingPageState extends State<MappingPage> {
   );
 
   // Kirim frame data untuk setiap channel (A-J)
-  await _sendAnimationFrames(animationIndex, animation);
+  await _sendAnimationFrames(animationIndex,buttonIndex, animation);
 
   // Kirim delay data
-  await _sendAnimationDelay(animationIndex, animation);
+  await _sendAnimationDelay(animationIndex,buttonIndex, animation);
 
   print(
     '✅ Successfully sent custom animation with Index $animationIndex',
   );
 }
   Future<void> _sendAnimationFrames(
+    int animationIndex,
     int buttonIndex,
     AnimationModel animation,
   ) async {
     final deviceChannelCount = config?.jumlahChannel ?? 8;
-    // final framesPerChannel = _calculateFramesPerChannel(deviceChannelCount);
+    final framesPerChannel = _calculateFramesPerChannel(deviceChannelCount);
 
-    // print(
-    //   '📊 Device Channels: $deviceChannelCount, Frames per Channel: $framesPerChannel',
-    // );
+    print(
+      '📊 Device ppppp000 Index: $animationIndex, device buttonIndex: $buttonIndex',
+    );
 
     widget.socketService.uploadAnimation(
       remoteIndex: buttonIndex,
       channel: "A",
-      frameIndex: animation.animationLength,
+      frameIndex: animationIndex,
       hexData: animation.frameData[0],
     );
     if (deviceChannelCount > 8) {
       widget.socketService.uploadAnimation(
         remoteIndex: buttonIndex,
         channel: "B",
-        frameIndex: animation.animationLength,
+        frameIndex: animationIndex,
         hexData: animation.frameData[1],
       );
     }
@@ -565,7 +567,7 @@ class _MappingPageState extends State<MappingPage> {
       widget.socketService.uploadAnimation(
         remoteIndex: buttonIndex,
         channel: "C",
-        frameIndex: animation.animationLength,
+        frameIndex: animationIndex,
         hexData: animation.frameData[2],
       );
     }
@@ -573,7 +575,7 @@ class _MappingPageState extends State<MappingPage> {
       widget.socketService.uploadAnimation(
         remoteIndex: buttonIndex,
         channel: "D",
-        frameIndex: animation.animationLength,
+        frameIndex: animationIndex,
         hexData: animation.frameData[3],
       );
     }
@@ -581,7 +583,7 @@ class _MappingPageState extends State<MappingPage> {
       widget.socketService.uploadAnimation(
         remoteIndex: buttonIndex,
         channel: "E",
-        frameIndex: animation.animationLength,
+        frameIndex: animationIndex,
         hexData: animation.frameData[4],
       );
     }
@@ -589,7 +591,7 @@ class _MappingPageState extends State<MappingPage> {
       widget.socketService.uploadAnimation(
         remoteIndex: buttonIndex,
         channel: "F",
-        frameIndex: animation.animationLength,
+        frameIndex: animationIndex,
         hexData: animation.frameData[5],
       );
     }
@@ -597,7 +599,7 @@ class _MappingPageState extends State<MappingPage> {
       widget.socketService.uploadAnimation(
         remoteIndex: buttonIndex,
         channel: "G",
-        frameIndex: animation.animationLength,
+        frameIndex: animationIndex,
         hexData: animation.frameData[6],
       );
     }
@@ -605,7 +607,7 @@ class _MappingPageState extends State<MappingPage> {
       widget.socketService.uploadAnimation(
         remoteIndex: buttonIndex,
         channel: "H",
-        frameIndex: animation.animationLength,
+        frameIndex: animationIndex,
         hexData: animation.frameData[7],
       );
     }
@@ -613,7 +615,7 @@ class _MappingPageState extends State<MappingPage> {
       widget.socketService.uploadAnimation(
         remoteIndex: buttonIndex,
         channel: "I",
-        frameIndex: animation.animationLength,
+        frameIndex: animationIndex,
         hexData: animation.frameData[8],
       );
     }
@@ -621,7 +623,7 @@ class _MappingPageState extends State<MappingPage> {
       widget.socketService.uploadAnimation(
         remoteIndex: buttonIndex,
         channel: "J",
-        frameIndex: animation.animationLength,
+        frameIndex: animationIndex,
         hexData: animation.frameData[9],
       );
     }
@@ -629,7 +631,7 @@ class _MappingPageState extends State<MappingPage> {
       widget.socketService.uploadAnimation(
         remoteIndex: buttonIndex,
         channel: "K",
-        frameIndex: animation.animationLength,
+        frameIndex: animationIndex,
         hexData: animation.frameData[10],
       );
     }
@@ -710,6 +712,7 @@ class _MappingPageState extends State<MappingPage> {
 
   // Kirim delay data animasi
   Future<void> _sendAnimationDelay(
+    int animationIndex,
     int buttonIndex,
     AnimationModel animation,
   ) async {
@@ -717,6 +720,7 @@ class _MappingPageState extends State<MappingPage> {
       final delayType = _getDelayType(buttonIndex); // K, L, M, N
 
       widget.socketService.uploadDelay(
+        animationIndex: animationIndex,
         remoteIndex: buttonIndex,
         delayType: delayType,
         frameIndex: 1,
@@ -777,7 +781,7 @@ class _MappingPageState extends State<MappingPage> {
     } else {
       // --- PERBAIKAN: Untuk custom animation, gunakan animationIndex ---
       final animationIndex = _getCustomAnimationIndex(animationName);
-      await _sendCustomAnimation(animationIndex, animation);
+      await _sendCustomAnimation(animationIndex,buttonIndex, animation);
     }
 
     _showSnackbar(

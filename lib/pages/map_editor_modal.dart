@@ -38,7 +38,7 @@ class MapEditorModal extends StatefulWidget {
         triggerLabel: triggerLabel,
         socketService: socketService,
         initialMapData: initialMapData,
-        configData: configData, // Kirim configData ke modal
+        configData: configData,
         onMapDataCreated: onMapDataCreated,
       ),
     );
