@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:iTen/constants/app_colors.dart';
-import 'package:iTen/pages/cloud_file_page.dart';
 import 'package:iTen/pages/config_monitor.dart';
 import 'package:iTen/pages/editor_page.dart';
 import 'package:iTen/pages/mapping_page.dart';
@@ -32,7 +31,6 @@ class _DashboardPageState extends State<DashboardPage> {
     {'title': 'Editor', 'icon': Icons.edit, 'color': AppColors.neonGreen},
     {'title': 'Trigger', 'icon': Icons.play_arrow, 'color': AppColors.neonGreen},
     {'title': 'My File', 'icon': Icons.folder, 'color': AppColors.neonGreen},
-    {'title': 'Cloud File', 'icon': Icons.cloud, 'color': AppColors.neonGreen},
     {'title': 'Setting', 'icon': Icons.settings, 'color': AppColors.neonGreen},
     {'title': 'Monitor', 'icon': Icons.monitor, 'color': AppColors.neonGreen},
   ];
@@ -54,7 +52,6 @@ class _DashboardPageState extends State<DashboardPage> {
       EditorPage(),
       TriggerPage(socketService: _socketService),
       MyFilePage(),
-      CloudFilePage(),
       SettingsPage(socketService: _socketService),
       ConfigMonitorWidget(socketService: _socketService)
       // Tambahkan page untuk Setting atau gunakan placeholder

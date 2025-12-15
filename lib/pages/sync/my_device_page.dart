@@ -100,7 +100,7 @@ class _MyDevicePageState extends State<MyDevicePage> {
 
   String _generateQRCodeData() {
     if (_deviceConfigShow == null) return 'NO_CONFIG_AVAILABLE';
-    return '${_deviceConfigShow!.email},${_deviceConfigShow!.devID},${_deviceConfigShow!.jumlahChannel}';
+    return '${_deviceConfigShow!.devID},${_deviceConfigShow!.email},${_deviceConfigShow!.jumlahChannel}';
   }
 
   Widget _buildLoadingState() {

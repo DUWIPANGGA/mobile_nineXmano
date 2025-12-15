@@ -1702,8 +1702,8 @@ import 'package:qr_flutter/qr_flutter.dart';
                       color: AppColors.altNeonGreen,
                       child: QrImageView(
                         data: [
-                          config?.email ?? "-",
                           config?.mac ?? "-",
+                          config?.email ?? "-",
                           config?.jumlahChannel?.toString() ?? "-",
                         ].join(","),
                         version: QrVersions.auto,

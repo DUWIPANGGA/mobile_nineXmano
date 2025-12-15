@@ -299,10 +299,12 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
     try {
       final parts = qrData.split(',');
       if (parts.length >= 3) {
-        final email = parts[0].trim();
-        final id = parts[1].trim();
+        final email = parts[1].trim();
+        final id = parts[0].trim();
         final channel = int.tryParse(parts[2].trim()) ?? 0;
-
+print("email is == $email");
+print("id is == $id");
+print("channel is == $channel");
         setState(() {
           _emailControllers[sectionIndex].text = email;
           _idControllers[sectionIndex].text = id;

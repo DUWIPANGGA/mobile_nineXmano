@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:iTen/constants/app_colors.dart';
 import 'package:iTen/routes/routes.dart';
-import 'package:iTen/services/connectivity_service.dart';
-import 'package:iTen/services/firebase_data_service.dart';
 import 'package:iTen/services/preferences_service.dart';
 
 void main() async {
@@ -11,21 +9,11 @@ void main() async {
   print('🚀 Initializing app...');
   
   try {
-    // Initialize services secara berurutan
+    // Initialize services
     await PreferencesService().initialize();
     print('✅ PreferencesService initialized');
-    
-    // Initialize connectivity service
-    ConnectivityService();
-    print('✅ ConnectivityService initialized');
-    
-    // Initialize Firebase service
-    FirebaseDataService().initialize();
-    print('✅ FirebaseDataService initialized');
 
-    // Test koneksi (optional)
-    final hasConnection = await FirebaseDataService().testConnection();
-    print(hasConnection ? '🌐 Online mode' : '📂 Offline mode');
+    print('📱 App running in local mode');
 
   } catch (e) {
     print('❌ Failed to initialize services: $e');

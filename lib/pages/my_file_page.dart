@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:iTen/constants/app_colors.dart';
 import 'package:iTen/models/animation_model.dart';
 import 'package:iTen/services/default_animations_service.dart';
+import 'package:iTen/services/export_import_service.dart';
 import 'package:iTen/services/firebase_data_service.dart';
 
 class MyFilePage extends StatefulWidget {
@@ -16,6 +17,7 @@ class _MyFilePageState extends State<MyFilePage> {
   final FirebaseDataService _firebaseService = FirebaseDataService();
   final DefaultAnimationsService _defaultAnimationsService =
       DefaultAnimationsService();
+final ExportImportService _exportImportService = ExportImportService();
 
   // Data dari user selections dan default animations
   List<AnimationModel> _userSelectedFiles = [];
@@ -30,7 +32,225 @@ class _MyFilePageState extends State<MyFilePage> {
     super.initState();
     _loadAllFiles();
   }
+// Export selected files
+void _exportSelectedFiles() async {
+  if (_selectedFiles.isEmpty) return;
 
+  final selectedAnimations = _selectedFiles
+      .map((index) => _userSelectedFiles[index - _defaultFiles.length])
+      .toList();
+
+  try {
+    final success = await _exportImportService.exportMultipleAnimations(
+      selectedAnimations,
+      context: context,
+    );
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.neonGreen,
+          content: Text(
+            'Exported ${selectedAnimations.length} animation(s) successfully!',
+            style: TextStyle(
+              color: AppColors.primaryBlack,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      );
+      
+      // Clear selection setelah export
+      setState(() {
+        _selectedFiles.clear();
+      });
+    }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.red,
+        content: Text(
+          'Export failed: $e',
+          style: TextStyle(
+            color: AppColors.pureWhite,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Import files
+void _importFiles() async {
+  try {
+    final result = await _exportImportService.importAnimationsFromFile();
+
+    if (result.isCancelled) {
+      return;
+    }
+
+    if (!result.isSuccess) {
+      throw Exception(result.error);
+    }
+
+    // Refresh data setelah import
+    await _refreshData();
+
+    // Show success dialog
+    _showImportResult(result);
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.red,
+        content: Text(
+          'Import failed: $e',
+          style: TextStyle(
+            color: AppColors.pureWhite,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Show import result dialog
+void _showImportResult(ImportResult result) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      backgroundColor: AppColors.darkGrey,
+      title: Row(
+        children: [
+          Icon(
+            Icons.check_circle,
+            color: AppColors.neonGreen,
+          ),
+          SizedBox(width: 8),
+          Text(
+            'Import Successful',
+            style: TextStyle(
+              color: AppColors.pureWhite,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Successfully imported ${result.successfullyImported} animation(s)',
+            style: TextStyle(color: AppColors.pureWhite),
+          ),
+          if (result.duplicates > 0) ...[
+            SizedBox(height: 8),
+            Text(
+              '${result.duplicates} duplicate(s) were renamed',
+              style: TextStyle(
+                color: Colors.orange,
+                fontSize: 12,
+              ),
+            ),
+          ],
+          SizedBox(height: 12),
+          if (result.package != null) ...[
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primaryBlack,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'File Format:',
+                    style: TextStyle(
+                      color: AppColors.neonGreen,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    '[AnimationName]_[Channel]C_[Length]L_[Date]',
+                    style: TextStyle(
+                      color: AppColors.pureWhite.withOpacity(0.8),
+                      fontSize: 11,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  if (result.package!.animations.length == 1) ...[
+                    Text(
+                      'Example: "MyAnimation_8C_10L_20231215_1430.iten"',
+                      style: TextStyle(
+                        color: AppColors.pureWhite.withOpacity(0.7),
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context);
+            setState(() {
+              _selectedFiles.clear();
+            });
+          },
+          child: Text(
+            'OK',
+            style: TextStyle(color: AppColors.neonGreen),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+// Export all user animations
+void _exportAllUserAnimations() async {
+  try {
+    final success = await _exportImportService.exportAllUserAnimations(
+      context: context,
+    );
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.neonGreen,
+          content: Text(
+            'All user animations exported successfully!',
+            style: TextStyle(
+              color: AppColors.primaryBlack,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      );
+    }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.red,
+        content: Text(
+          'Export failed: $e',
+          style: TextStyle(
+            color: AppColors.pureWhite,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+}
   // Load data dari semua sumber
   Future<void> _loadAllFiles() async {
     try {
@@ -200,133 +420,132 @@ class _MyFilePageState extends State<MyFilePage> {
           ),
 
           // Options Bar (muncul ketika ada file yang dipilih)
-          if (_selectedFiles.isNotEmpty || _selectedDefaultFiles.isNotEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
+// Options Bar (muncul ketika ada file yang dipilih)
+if (_selectedFiles.isNotEmpty || _selectedDefaultFiles.isNotEmpty)
+  Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: AppColors.darkGrey,
+      border: Border(
+        bottom: BorderSide(
+          color: AppColors.neonGreen.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.3),
+          blurRadius: 8,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        // DELETE Button (hanya untuk non-default files)
+        if (_selectedFiles.isNotEmpty)
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.only(right: 8),
+              height: 45,
               decoration: BoxDecoration(
-                color: AppColors.darkGrey,
-                border: Border(
-                  bottom: BorderSide(
-                    color: AppColors.neonGreen.withOpacity(0.3),
-                    width: 1,
-                  ),
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.red.withOpacity(0.8),
+                    Colors.red.withOpacity(0.6),
+                  ],
                 ),
+                borderRadius: BorderRadius.circular(10),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
+                    color: Colors.red.withOpacity(0.3),
                     blurRadius: 8,
-                    offset: const Offset(0, 2),
+                    spreadRadius: 1,
                   ),
                 ],
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  // DELETE Button (hanya untuk non-default files)
-                  if (_selectedFiles.isNotEmpty)
-                    Expanded(
-                      child: Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        height: 45,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.red.withOpacity(0.8),
-                              Colors.red.withOpacity(0.6),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.red.withOpacity(0.3),
-                              blurRadius: 8,
-                              spreadRadius: 1,
-                            ),
-                          ],
-                        ),
-                        child: ElevatedButton(
-                          onPressed: _deleteSelectedFiles,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            foregroundColor: AppColors.pureWhite,
-                            shadowColor: Colors.transparent,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.delete_forever, size: 18),
-                              SizedBox(width: 6),
-                              Text(
-                                'DELETE',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-
-                  // SAVE TO CLOUD Button
-                  Expanded(
-                    child: Container(
-                      margin: EdgeInsets.only(
-                        left: _selectedFiles.isNotEmpty ? 8 : 0,
-                      ),
-                      height: 45,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.neonGreen.withOpacity(0.9),
-                            AppColors.neonGreen.withOpacity(0.7),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.neonGreen.withOpacity(0.4),
-                            blurRadius: 8,
-                            spreadRadius: 1,
-                          ),
-                        ],
-                      ),
-                      child: ElevatedButton(
-                        onPressed: _saveToCloud,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          foregroundColor: AppColors.primaryBlack,
-                          shadowColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.cloud_upload, size: 18),
-                            SizedBox(width: 6),
-                            Text(
-                              'SAVE TO CLOUD',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+              child: ElevatedButton(
+                onPressed: _deleteSelectedFiles,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: AppColors.pureWhite,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                ],
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.delete_forever, size: 18),
+                    SizedBox(width: 6),
+                    Text(
+                      'DELETE',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
+          ),
 
+        // EXPORT Button (untuk selected files)
+        if (_selectedFiles.isNotEmpty)
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 8),
+              height: 45,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.purple.withOpacity(0.8),
+                    Colors.purple.withOpacity(0.6),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.purple.withOpacity(0.3),
+                    blurRadius: 8,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+              child: ElevatedButton(
+                onPressed: _exportSelectedFiles,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: AppColors.pureWhite,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.import_export, size: 18),
+                    SizedBox(width: 6),
+                    Text(
+                      'EXPORT',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
+    ),
+  ),
           // Loading Indicator
           if (_isLoading)
             Expanded(
@@ -759,19 +978,35 @@ class _MyFilePageState extends State<MyFilePage> {
                         size: 24,
                       ),
                       onTap: () {
-                        if (!isDefault) {
-                          setState(() {
-                            if (_selectedFiles.contains(index)) {
-                              _selectedFiles.remove(index);
-                            } else {
-                              _selectedFiles.add(index);
-                            }
-                          });
-                        }
-                      },
-                      onLongPress: () {
-                        _previewFile(file, isDefault);
-                      },
+  if (!isDefault) {
+    setState(() {
+      if (_selectedFiles.contains(index)) {
+        _selectedFiles.remove(index);
+      } else {
+        _selectedFiles.add(index);
+      }
+    });
+  }
+},
+
+// Dan untuk default files, bisa ditambahkan feedback:
+onLongPress: () {
+  _previewFile(file, isDefault);
+  if (isDefault) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.blue,
+        content: Text(
+          'Default animation "${file.name}" - cannot be modified',
+          style: TextStyle(
+            color: AppColors.pureWhite,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+},
                     ),
                   );
                 },
@@ -781,533 +1016,128 @@ class _MyFilePageState extends State<MyFilePage> {
       ),
 
       // Refresh FAB dengan styling
-      floatingActionButton: _isLoading
-          ? null
-          : Container(
-              margin: const EdgeInsets.only(bottom: 16, right: 16),
+// Ganti floatingActionButton dengan ini:
+// Floating Action Button Section
+floatingActionButton: _isLoading
+    ? null
+    : Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Import Button - selalu visible
+          Container(
+            margin: const EdgeInsets.only(bottom: 8, right: 16),
+            child: FloatingActionButton(
+              onPressed: _importFiles,
+              backgroundColor: Colors.blue,
+              foregroundColor: AppColors.pureWhite,
+              elevation: 8,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              heroTag: 'import_fab',
+              child: const Icon(Icons.file_download, size: 24),
+            ),
+          ),
+          // Export All Button - hanya visible jika ada user animations
+          if (_userSelectedFiles.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.only(bottom: 8, right: 16),
               child: FloatingActionButton(
-                onPressed: _refreshData,
-                backgroundColor: AppColors.neonGreen,
-                foregroundColor: AppColors.primaryBlack,
+                onPressed: _exportAllUserAnimations,
+                backgroundColor: Colors.purple,
+                foregroundColor: AppColors.pureWhite,
                 elevation: 8,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Icon(Icons.refresh, size: 24),
+                heroTag: 'export_all_fab',
+                child: const Icon(Icons.archive, size: 24),
               ),
             ),
+          // Refresh Button - selalu visible
+          Container(
+            margin: const EdgeInsets.only(bottom: 16, right: 16),
+            child: FloatingActionButton(
+              onPressed: _refreshData,
+              backgroundColor: AppColors.neonGreen,
+              foregroundColor: AppColors.primaryBlack,
+              elevation: 8,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              heroTag: 'refresh_fab',
+              child: const Icon(Icons.refresh, size: 24),
+            ),
+          ),
+        ],
+      ),
     );
   }
   void _deleteSelectedFiles() {
-    if (_selectedFiles.isEmpty) return;
+  if (_selectedFiles.isEmpty) return;
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.darkGrey,
-        title: Text(
-          'Delete Files',
-          style: TextStyle(color: AppColors.pureWhite),
-        ),
-        content: Text(
-          'Are you sure you want to delete ${_selectedFiles.length} file(s)?',
-          style: TextStyle(color: AppColors.pureWhite),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: TextStyle(color: AppColors.neonGreen)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              // Hapus file dari user selections (hanya non-default)
-              final filesToRemove = _selectedFiles
-                  .map(
-                    (index) => _userSelectedFiles[index - _defaultFiles.length],
-                  )
-                  .toList();
-
-              for (final file in filesToRemove) {
-                await _firebaseService.removeUserSelectedAnimation(file.name);
-              }
-
-              setState(() {
-                // Update local list
-                _userSelectedFiles.removeWhere(
-                  (file) => filesToRemove.any(
-                    (removedFile) => removedFile.name == file.name,
-                  ),
-                );
-                _selectedFiles.clear();
-              });
-
-              Navigator.pop(context);
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  backgroundColor: AppColors.neonGreen,
-                  content: Text(
-                    '${filesToRemove.length} file(s) deleted successfully!',
-                    style: TextStyle(
-                      color: AppColors.primaryBlack,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('DELETE'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Ganti method _saveToCloud yang existing dengan ini:
-  void _saveToCloud() async {
-    final selectedFiles = _selectedFiles
-        .map((index) => _userSelectedFiles[index - _defaultFiles.length])
-        .toList();
-    final selectedDefaultFiles = _selectedDefaultFiles
-        .map((index) => _defaultFiles[index])
-        .toList();
-    final allSelectedFiles = [...selectedFiles, ...selectedDefaultFiles];
-
-    if (allSelectedFiles.isEmpty) return;
-
-    // Ambil email yang akan digunakan (otomatis "CC" jika kosong)
-    final cloudEmail = await _firebaseService.getCloudEmail();
-    _showCloudSaveConfirmation(allSelectedFiles, cloudEmail);
-  }
-
-  void _showCloudSaveConfirmation(
-    List<AnimationModel> files,
-    String cloudEmail,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.darkGrey,
-        title: Row(
-          children: [
-            Icon(Icons.cloud_upload, color: AppColors.neonGreen),
-            SizedBox(width: 8),
-            Text(
-              'Save to Cloud',
-              style: TextStyle(
-                color: AppColors.neonGreen,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Save ${files.length} file(s) to cloud storage?',
-              style: TextStyle(color: AppColors.pureWhite),
-            ),
-            SizedBox(height: 12),
-            Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.primaryBlack,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Storage Format:',
-                    style: TextStyle(
-                      color: AppColors.neonGreen,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    '[Channel] [Animation Name] [Email]',
-                    style: TextStyle(
-                      color: AppColors.pureWhite.withOpacity(0.8),
-                      fontSize: 11,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Example: "004 MyAnimation $cloudEmail"',
-                    style: TextStyle(
-                      color: AppColors.pureWhite.withOpacity(0.7),
-                      fontSize: 10,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.email, color: AppColors.neonGreen, size: 16),
-                SizedBox(width: 4),
-                Text(
-                  'Using identifier: $cloudEmail',
-                  style: TextStyle(
-                    color: AppColors.pureWhite.withOpacity(0.8),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-            if (cloudEmail == 'CC') ...[
-              SizedBox(height: 8),
-              Container(
-                padding: EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info, color: Colors.blue, size: 14),
-                    SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        'Using "CC" as identifier. Configure device to use your email.',
-                        style: TextStyle(color: Colors.blue, fontSize: 10),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('CANCEL', style: TextStyle(color: AppColors.neonGreen)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _performCloudSave(files);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.neonGreen,
-              foregroundColor: AppColors.primaryBlack,
-            ),
-            child: Text('SAVE TO CLOUD'),
-          ),
-        ],
-      ),
-    );
-  }
-Future<void> _performCloudSave(List<AnimationModel> files) async {
-  try {
-    setState(() {
-      _isLoading = true;
-    });
-
-    // Show progress dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.darkGrey,
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(color: AppColors.neonGreen),
-            SizedBox(height: 16),
-            Text(
-              'Saving ${files.length} file(s) to cloud...',
-              style: TextStyle(color: AppColors.pureWhite),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 8),
-            FutureBuilder(
-              future: _firebaseService.getCloudEmail(),
-              builder: (context, snapshot) {
-                final email = snapshot.data ?? 'CC';
-                return Text(
-                  'Using identifier: $email',
-                  style: TextStyle(
-                    color: AppColors.pureWhite.withOpacity(0.7),
-                    fontSize: 12,
-                  ),
-                  textAlign: TextAlign.center,
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-
-    // Save files to cloud
-    final results = await _firebaseService.saveMultipleAnimationsToCloud(files);
-
-    // Close progress dialog
-    if (Navigator.canPop(context)) {
-      Navigator.pop(context);
-    }
-
-    // Analyze results dengan detail
-    final successfulSaves = results.values.where((status) => status == 'success').length;
-    final duplicates = results.values.where((status) => status == 'duplicate').length;
-    final failures = results.values.where((status) => status == 'failed' || status == 'error').length;
-
-    // Show detailed results
-    _showCloudSaveResults(files, results, successfulSaves, duplicates, failures);
-
-  } catch (e) {
-    // Close progress dialog if open
-    if (Navigator.canPop(context)) {
-      Navigator.pop(context);
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: Colors.red,
-        content: Text(
-          'Error saving to cloud: $e',
-          style: TextStyle(
-            color: AppColors.pureWhite,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-
-    setState(() {
-      _isLoading = false;
-    });
-  }
-}
-void _showCloudSaveResults(
-  List<AnimationModel> files,
-  Map<String, String> results,
-  int successfulSaves,
-  int duplicates,
-  int failures,
-) {
   showDialog(
     context: context,
     builder: (context) => AlertDialog(
       backgroundColor: AppColors.darkGrey,
-      title: Row(
-        children: [
-          Icon(
-            successfulSaves > 0 ? Icons.check_circle : Icons.warning,
-            color: successfulSaves > 0 ? AppColors.neonGreen : Colors.orange,
-          ),
-          SizedBox(width: 8),
-          Text(
-            'Cloud Save Complete',
-            style: TextStyle(
-              color: AppColors.pureWhite,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
+      title: Text(
+        'Delete Files',
+        style: TextStyle(color: AppColors.pureWhite),
       ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Summary
-            Text(
-              'Summary:',
-              style: TextStyle(
-                color: AppColors.neonGreen,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 8),
-            _buildResultItem('✅ Successfully saved:', successfulSaves, Colors.green),
-            _buildResultItem('⚠️ Already in cloud:', duplicates, Colors.orange),
-            _buildResultItem('❌ Failed to save:', failures, Colors.red),
-            
-            SizedBox(height: 16),
-            
-            // Detailed list
-            if (duplicates > 0 || failures > 0) ...[
-              Text(
-                'Details:',
-                style: TextStyle(
-                  color: AppColors.neonGreen,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 8),
-              
-              // Duplicates
-              ...results.entries.where((entry) => entry.value == 'duplicate').map(
-                (entry) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2.0),
-                  child: Row(
-                    children: [
-                      Icon(Icons.warning, color: Colors.orange, size: 16),
-                      SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          '${entry.key} (already exists)',
-                          style: TextStyle(color: Colors.orange, fontSize: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              
-              // Failures
-              ...results.entries.where((entry) => entry.value == 'failed' || entry.value == 'error').map(
-                (entry) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2.0),
-                  child: Row(
-                    children: [
-                      Icon(Icons.error, color: Colors.red, size: 16),
-                      SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          '${entry.key} (failed)',
-                          style: TextStyle(color: Colors.red, fontSize: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-            
-            SizedBox(height: 12),
-            FutureBuilder(
-              future: _firebaseService.getCloudEmail(),
-              builder: (context, snapshot) {
-                final email = snapshot.data ?? 'CC';
-                return Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryBlack,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Files stored with format:',
-                        style: TextStyle(
-                          color: AppColors.pureWhite.withOpacity(0.8),
-                          fontSize: 12,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        '[Channel] [Name] [$email]',
-                        style: TextStyle(
-                          color: AppColors.neonGreen,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
+      content: Text(
+        'Are you sure you want to delete ${_selectedFiles.length} file(s)?',
+        style: TextStyle(color: AppColors.pureWhite),
       ),
       actions: [
         TextButton(
-          onPressed: () {
-            Navigator.pop(context);
-            setState(() {
-              _selectedFiles.clear();
-              _selectedDefaultFiles.clear();
-              _isLoading = false;
-            });
-            _refreshData();
-          },
-          child: Text('OK', style: TextStyle(color: AppColors.neonGreen)),
+          onPressed: () => Navigator.pop(context),
+          child: Text('Cancel', style: TextStyle(color: AppColors.neonGreen)),
         ),
-      ],
-    ),
-  );
-}
+        ElevatedButton(
+          onPressed: () async {
+            // Hapus file dari user selections (hanya non-default)
+            final filesToRemove = _selectedFiles
+                .map(
+                  (index) => _userSelectedFiles[index - _defaultFiles.length],
+                )
+                .toList();
 
-Widget _buildResultItem(String label, int count, Color color) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 2.0),
-    child: Row(
-      children: [
-        Expanded(child: Text(label, style: TextStyle(color: color, fontSize: 12))),
-        Text('$count', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
+            for (final file in filesToRemove) {
+              await _firebaseService.removeUserSelectedAnimation(file.name);
+            }
+
+            setState(() {
+              // Update local list
+              _userSelectedFiles.removeWhere(
+                (file) => filesToRemove.any(
+                  (removedFile) => removedFile.name == file.name,
+                ),
+              );
+              _selectedFiles.clear(); // Clear selection setelah delete
+            });
+
+            Navigator.pop(context);
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                backgroundColor: AppColors.neonGreen,
+                content: Text(
+                  '${filesToRemove.length} file(s) deleted successfully!',
+                  style: TextStyle(
+                    color: AppColors.primaryBlack,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            );
+          },
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          child: const Text('DELETE'),
+        ),
       ],
     ),
   );
 }
-  void _showConfigurationError() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.darkGrey,
-        title: Row(
-          children: [
-            Icon(Icons.error, color: Colors.orange),
-            SizedBox(width: 8),
-            Text(
-              'Device Not Configured',
-              style: TextStyle(
-                color: AppColors.pureWhite,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Your device needs to be configured before saving to cloud.',
-              style: TextStyle(color: AppColors.pureWhite),
-            ),
-            SizedBox(height: 12),
-            Text(
-              'Please set up your device configuration with a valid email address.',
-              style: TextStyle(
-                color: AppColors.pureWhite.withOpacity(0.8),
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('LATER', style: TextStyle(color: AppColors.neonGreen)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // Navigate to configuration page
-              // Navigator.push(context, MaterialPageRoute(builder: (context) => ConfigurationPage()));
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.neonGreen,
-              foregroundColor: AppColors.primaryBlack,
-            ),
-            child: Text('SETUP NOW'),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _previewFile(AnimationModel file, bool isDefault) {
     showDialog(
