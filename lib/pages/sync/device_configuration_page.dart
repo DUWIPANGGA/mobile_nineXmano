@@ -302,7 +302,7 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
         final email = parts[1].trim();
         final id = parts[0].trim();
         final channel = int.tryParse(parts[2].trim()) ?? 0;
-print("email is == $email");
+print("owner is == $email");
 print("id is == $id");
 print("channel is == $channel");
         setState(() {
@@ -328,7 +328,7 @@ print("channel is == $channel");
         // Otomatis kirim data ke socket setelah scan
         _sendDeviceDataToSocket(sectionIndex);
       } else {
-        _showSnackbar('Format QR Code tidak valid. Harus: email,id,channel');
+        _showSnackbar('Format QR Code tidak valid. Harus: nama,id,channel');
       }
     } catch (e) {
       _showSnackbar('Error processing QR code: $e');
@@ -718,7 +718,7 @@ print("channel is == $channel");
 
               // Input fields read-only
               _buildReadOnlyTextField(label: 'ID Device', value: id),
-              _buildReadOnlyTextField(label: 'Email', value: email),
+              _buildReadOnlyTextField(label: 'Owner', value: email),
               _buildReadOnlyTextField(label: 'Jumlah Channel', value: channel),
             ],
           );
@@ -781,7 +781,7 @@ print("channel is == $channel");
           TextField(
             controller: _emailControllers[index],
             decoration: const InputDecoration(
-              labelText: 'Email',
+              labelText: 'Owner',
               labelStyle: TextStyle(color: AppColors.pureWhite),
               border: OutlineInputBorder(),
               enabledBorder: OutlineInputBorder(

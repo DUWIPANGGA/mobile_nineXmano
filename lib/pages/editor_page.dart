@@ -616,8 +616,7 @@ class _EditorPageState extends State<EditorPage> {
                       _buildHeader(),
                       const SizedBox(height: 16),
                       _buildAnimationPreview(),
-                      const SizedBox(height: 16),
-                      _buildFrameManagement(),
+
                       const SizedBox(height: 16),
                       _buildMatrixEditor(),
                       const SizedBox(height: 16),
@@ -934,46 +933,91 @@ class _EditorPageState extends State<EditorPage> {
     );
   }
 
-  Widget _buildMatrixEditor() {
-    final gridSize = _patternService.calculateOptimalGridSize(_channelCount);
-    final availableHeight = MediaQuery.of(context).size.height * 0.4;
+Widget _buildMatrixEditor() {
+  final gridSize = _patternService.calculateOptimalGridSize(_channelCount);
+  final availableHeight = MediaQuery.of(context).size.height * 0.4;
 
-    return Card(
-      color: AppColors.darkGrey,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Frame ${_currentFrame + 1} Editor',
-                  style: const TextStyle(
-                    color: AppColors.pureWhite,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                _buildDelayControl(_currentFrame),
-              ],
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: availableHeight,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.vertical,
-                  child: _buildPerfectXGrid(_currentFrame, gridSize),
+  return Card(
+    color: AppColors.darkGrey,
+    child: Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        children: [
+
+          /// HEADER
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Frame ${_currentFrame + 1} Editor',
+                style: const TextStyle(
+                  color: AppColors.pureWhite,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
+              _buildDelayControl(_currentFrame),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          /// FRAME BAR (ADD + SCROLL)
+          Row(
+            children: [
+              /// FRAME SCROLL
+              Expanded(
+                child: SizedBox(
+                  height: 84,
+                  child: ListView.builder(
+                    controller: _frameScrollController,
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _animationLength,
+                    itemBuilder: (context, index) {
+                      return _buildFrameItem(
+                        index,
+                        index == _currentFrame,
+                      );
+                    },
+                  ),
+                ),
+              ),
+                            const SizedBox(width: 12),
+              SizedBox(
+                height: 60,
+                child: ElevatedButton(
+                  onPressed: _addFrame,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.neonGreen,
+                    foregroundColor: AppColors.primaryBlack,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Icon(Icons.add),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          /// MATRIX GRID
+          SizedBox(
+            height: availableHeight,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.vertical,
+                child: _buildPerfectXGrid(_currentFrame, gridSize),
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildPerfectXGrid(int frameIndex, int gridSize) {
     return Container(

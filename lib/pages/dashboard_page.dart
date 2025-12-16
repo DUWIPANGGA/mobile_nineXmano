@@ -32,7 +32,7 @@ class _DashboardPageState extends State<DashboardPage> {
     {'title': 'Trigger', 'icon': Icons.play_arrow, 'color': AppColors.neonGreen},
     {'title': 'My File', 'icon': Icons.folder, 'color': AppColors.neonGreen},
     {'title': 'Setting', 'icon': Icons.settings, 'color': AppColors.neonGreen},
-    {'title': 'Monitor', 'icon': Icons.monitor, 'color': AppColors.neonGreen},
+    // {'title': 'Monitor', 'icon': Icons.monitor, 'color': AppColors.neonGreen},
   ];
 
   @override
@@ -53,7 +53,7 @@ class _DashboardPageState extends State<DashboardPage> {
       TriggerPage(socketService: _socketService),
       MyFilePage(),
       SettingsPage(socketService: _socketService),
-      ConfigMonitorWidget(socketService: _socketService)
+      // ConfigMonitorWidget(socketService: _socketService)
       // Tambahkan page untuk Setting atau gunakan placeholder
       // _buildPlaceholderPage('Settings Page'), // Placeholder untuk Setting
     ];

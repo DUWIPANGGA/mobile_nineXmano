@@ -135,7 +135,7 @@ void _updateTriggerSettingsFromConfig(ConfigModel config) {
       final triggerIndex = _getTriggerIndex(triggerType);
       final safeTriggerIndex = triggerIndex != -1
           ? triggerIndex
-          : 0; // Fallback ke index 1
+          : 1; // Fallback ke index 1
 
       // Validasi setting value
       final validSettings = [
@@ -879,7 +879,6 @@ Future<void> _saveDeviceConfig() async {
                         onChanged: (value) {
                           if (!isConnected) return;
 
-                          // List options untuk QUICK
                           final safeValue = _validateDropdownValue(value, [
                             "MATI",
                             "REMOTE A",
@@ -1265,121 +1264,126 @@ Future<void> _saveDeviceConfig() async {
         return 'SQ'; // Default Map
     }
   }
+Widget _buildQuickItem({
+  required String label,
+  required String? selectedValue,
+  required Function(String?) onChanged,
+}) {
+  final isConnected = widget.socketService.isConnected;
+  
+  // Opsi untuk dropdown CALL
+  final List<String> quickOptions = [
+    "MATI",
+    "REMOTE A",
+    "REMOTE B", 
+    "REMOTE C",
+    "REMOTE D",
+  ];
 
-  // FIXED: Implementasi _buildQuickItem yang benar
-  Widget _buildQuickItem({
-    required String label,
-    required String? selectedValue,
-    required Function(String?) onChanged,
-  }) {
-    final isConnected = widget.socketService.isConnected;
+  // Pastikan selectedValue valid, jika tidak gunakan default
+  final safeSelectedValue = selectedValue ?? 'MATI';
 
-    // Opsi untuk dropdown QUICK
-    final List<String> quickOptions = [
-      "MATI",
-      "REMOTE A",
-      "REMOTE B",
-      "REMOTE C",
-      "REMOTE D",
-    ];
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.primaryBlack,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isConnected
-              ? AppColors.neonGreen.withOpacity(0.5)
-              : AppColors.neonGreen.withOpacity(0.2),
-        ),
+  return Container(
+    margin: const EdgeInsets.only(bottom: 16),
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: AppColors.primaryBlack,
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(
+        color: isConnected
+            ? AppColors.neonGreen.withOpacity(0.5)
+            : AppColors.neonGreen.withOpacity(0.2),
       ),
-      child: Row(
-        children: [
-          // Label trigger
-          Expanded(
-            flex: 2,
-            child: Text(
-              label,
+    ),
+    child: Row(
+      children: [
+        // Label trigger
+        Expanded(
+          flex: 2,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isConnected
+                  ? AppColors.pureWhite
+                  : AppColors.pureWhite.withOpacity(0.5),
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+
+        const SizedBox(width: 10),
+
+        // Dropdown opsi trigger
+        Expanded(
+          flex: 3,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: AppColors.darkGrey,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isConnected
+                    ? AppColors.neonGreen
+                    : AppColors.neonGreen.withOpacity(0.3),
+              ),
+            ),
+            child: DropdownButton<String>(
+              value: safeSelectedValue, // Gunakan safe value
+              isExpanded: true,
+              dropdownColor: AppColors.darkGrey,
               style: TextStyle(
                 color: isConnected
                     ? AppColors.pureWhite
                     : AppColors.pureWhite.withOpacity(0.5),
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+                fontSize: 14,
               ),
-            ),
-          ),
-
-          const SizedBox(width: 10),
-
-          // Dropdown opsi trigger
-          Expanded(
-            flex: 3,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: AppColors.darkGrey,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: isConnected
-                      ? AppColors.neonGreen
-                      : AppColors.neonGreen.withOpacity(0.3),
-                ),
+              underline: const SizedBox(),
+              icon: Icon(
+                Icons.arrow_drop_down,
+                color: isConnected
+                    ? AppColors.neonGreen
+                    : AppColors.neonGreen.withOpacity(0.3),
               ),
-              child: DropdownButton<String>(
-                value: selectedValue,
-                isExpanded: true,
-                dropdownColor: AppColors.darkGrey,
-                style: TextStyle(
-                  color: isConnected
-                      ? AppColors.pureWhite
-                      : AppColors.pureWhite.withOpacity(0.5),
-                  fontSize: 14,
-                ),
-                underline: const SizedBox(),
-                icon: Icon(
-                  Icons.arrow_drop_down,
-                  color: isConnected
-                      ? AppColors.neonGreen
-                      : AppColors.neonGreen.withOpacity(0.3),
-                ),
-                hint: Text(
-                  isConnected ? 'Pilih Mode' : 'DISCONNECTED',
-                  style: TextStyle(
-                    color: isConnected
-                        ? AppColors.pureWhite.withOpacity(0.7)
-                        : AppColors.pureWhite.withOpacity(0.3),
-                    fontSize: 14,
-                  ),
-                ),
-                items: quickOptions.map((String option) {
-                  return DropdownMenuItem<String>(
-                    value: option,
-                    child: Text(
-                      option,
-                      style: TextStyle(
-                        color: isConnected
-                            ? AppColors.pureWhite
-                            : AppColors.pureWhite.withOpacity(0.5),
-                      ),
+              items: quickOptions.map((String option) {
+                return DropdownMenuItem<String>(
+                  value: option,
+                  child: Text(
+                    option,
+                    style: TextStyle(
+                      color: isConnected
+                          ? AppColors.pureWhite
+                          : AppColors.pureWhite.withOpacity(0.5),
                     ),
-                  );
-                }).toList(),
-                onChanged: isConnected
-                    ? (value) {
-                        onChanged(value);
-                        _sendQuickSetting(label, value);
-                      }
-                    : null,
-              ),
+                  ),
+                );
+              }).toList(),
+              onChanged: isConnected
+                  ? (String? newValue) {
+                      print('🎯 CALL dropdown selected: $newValue');
+                      
+                      // Pastikan newValue tidak null
+                      if (newValue == null) return;
+                      
+                      // Update UI
+                      setState(() {
+                        _selectedQuick = newValue;
+                      });
+                      
+                      // Simpan ke preferences
+                      _saveTriggerSettings();
+                      
+                      // Kirim ke device
+                      _sendQuickSetting(label, newValue);
+                    }
+                  : null,
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   // Method untuk mengirim setting QUICK saat onChanged
   void _sendQuickSetting(String triggerLabel, String? value) {

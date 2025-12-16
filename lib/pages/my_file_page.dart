@@ -19,7 +19,6 @@ class _MyFilePageState extends State<MyFilePage> {
       DefaultAnimationsService();
 final ExportImportService _exportImportService = ExportImportService();
 
-  // Data dari user selections dan default animations
   List<AnimationModel> _userSelectedFiles = [];
   List<AnimationModel> _defaultFiles = [];
   final Set<int> _selectedFiles = {};
