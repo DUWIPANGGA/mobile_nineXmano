@@ -682,27 +682,45 @@ Future<void> _saveDeviceConfig() async {
 }
 
   // Method untuk mengirim data MAP ke device
-  void _sendMapDataToDevice(String triggerLabel, List<int> mapData) {
-    if (!widget.socketService.isConnected) {
-      _showSnackbar('Harap connect ke device terlebih dahulu!', isError: true);
-      return;
-    }
-
-    try {
-      // Konversi trigger label ke trigger number
-      final triggerNum = _getTriggerNumber(triggerLabel);
-
-      // Kirim data MAP menggunakan socket service
-      widget.socketService.setTrigger(triggerNum, mapData);
-
-      _showSnackbar('Data MAP untuk $triggerLabel berhasil dikirim ke device!');
-
-      print('📤 Sent MAP data for $triggerLabel: $mapData');
-    } catch (e) {
-      _showSnackbar('Error mengirim data MAP: $e', isError: true);
-      print('❌ Error sending MAP data: $e');
-    }
+ void _sendMapDataToDevice(String triggerLabel, List<int> mapData) {
+  if (!widget.socketService.isConnected) return;
+  
+  try {
+    final triggerNum = _getTriggerNumber(triggerLabel);
+    
+    // FIX: Reverse bit order jika diperlukan
+    final fixedMapData = _fixBitOrder(mapData);
+    
+    widget.socketService.setTrigger(triggerNum, fixedMapData);
+    
+    print('📤 Sent MAP data for $triggerLabel: ${_bytesToBinary(mapData)}');
+    print('🔄 Fixed bit order: ${_bytesToBinary(fixedMapData)}');
+    
+    _showSnackbar('Data MAP untuk $triggerLabel berhasil dikirim!');
+  } catch (e) {
+    print('❌ Error sending MAP data: $e');
   }
+}
+
+// Helper: Reverse bits dalam satu byte
+int _reverseBits(int byte) {
+  int result = 0;
+  for (int i = 0; i < 8; i++) {
+    result = (result << 1) | (byte & 1);
+    byte >>= 1;
+  }
+  return result;
+}
+
+// Helper: Fix bit order untuk seluruh list
+List<int> _fixBitOrder(List<int> data) {
+  return data.map((byte) => _reverseBits(byte)).toList();
+}
+
+// Helper: Debug - konversi bytes ke binary string
+String _bytesToBinary(List<int> bytes) {
+  return bytes.map((b) => b.toRadixString(2).padLeft(8, '0')).join(' ');
+}
 
   // Helper method untuk konversi trigger label ke number
   int _getTriggerNumber(String triggerLabel) {
@@ -1241,7 +1259,7 @@ Future<void> _saveDeviceConfig() async {
 
     try {
       final triggerCode = _getMapToggleCode(triggerLabel);
-      final value = isStatic ? 0 : 1; // Convert boolean ke 1/0
+      final value = isStatic ? 0 : 1;
 
       widget.socketService.sendTriggerToggle(triggerCode, value);
 

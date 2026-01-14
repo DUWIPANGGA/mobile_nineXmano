@@ -6,7 +6,6 @@ import 'package:iTen/constants/app_colors.dart';
 import 'package:iTen/models/config_model.dart';
 import 'package:iTen/services/preferences_service.dart';
 import 'package:iTen/services/socket_service.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
 class SettingsPage extends StatefulWidget {
   final SocketService socketService;
@@ -441,8 +440,8 @@ static final List<Map<String, dynamic>> _defaultAnimationsData = [
 
   void _initializeData() {
     _emailController.text = config?.email ?? 'nama';
-    _ssidController.text = config?.ssid ?? 'MaNo';
-    _passwordController.text = config?.password ?? '11223344';
+    _ssidController.text = config?.ssid ?? 'iTen';
+    _passwordController.text = config?.password ?? '88888888';
     _serialController.text = config?.devID ?? "Serial Number Kamu";
     _activationController.text = '';
     _mitraIdController.text = config?.mitraID ?? '';
