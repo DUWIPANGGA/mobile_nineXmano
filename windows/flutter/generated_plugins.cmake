@@ -3,9 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  cloud_firestore
   connectivity_plus
-  firebase_core
   permission_handler_windows
   share_plus
   speech_to_text_windows
