@@ -440,7 +440,7 @@ static final List<Map<String, dynamic>> _defaultAnimationsData = [
 
   void _initializeData() {
     _emailController.text = config?.email ?? 'nama';
-    _ssidController.text = config?.ssid ?? 'DB AUTO LIGHT';
+    _ssidController.text = config?.ssid ?? 'SINAR REJEKI';
     _passwordController.text = config?.password ?? '88888888';
     _serialController.text = config?.devID ?? "Serial Number Kamu";
     _activationController.text = '';
