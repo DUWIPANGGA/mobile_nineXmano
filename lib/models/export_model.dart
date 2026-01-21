@@ -1,6 +1,7 @@
 // models/export_model.dart
 import 'dart:convert';
 
+import 'package:iTen/constants/app_config.dart';
 import 'package:iTen/models/animation_model.dart';
 
 class ExportPackage {
@@ -14,7 +15,7 @@ class ExportPackage {
     required this.animations,
     this.version = '1.0.0',
     DateTime? exportDate,
-    this.deviceName = 'iTen Device',
+    this.deviceName = '${AppConfig.appName} Device',
     this.metadata = const {},
   }) : exportDate = exportDate ?? DateTime.now();
 

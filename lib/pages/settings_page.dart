@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:iTen/constants/app_colors.dart';
+import 'package:iTen/constants/app_config.dart';
 import 'package:iTen/models/config_model.dart';
 import 'package:iTen/services/preferences_service.dart';
 import 'package:iTen/services/socket_service.dart';
@@ -440,7 +441,7 @@ static final List<Map<String, dynamic>> _defaultAnimationsData = [
 
   void _initializeData() {
     _emailController.text = config?.email ?? 'nama';
-    _ssidController.text = config?.ssid ?? 'iTen';
+    _ssidController.text = config?.ssid ?? AppConfig.appName;
     _passwordController.text = config?.password ?? '88888888';
     _serialController.text = config?.devID ?? "Serial Number Kamu";
     _activationController.text = '';
