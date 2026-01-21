@@ -49,28 +49,45 @@ class _DeviceConfigurationPageState extends State<DeviceConfigurationPage> {
   static const String _deviceSectionsKey = 'device_sections';
 
   @override
-  void initState() {
-    super.initState();
-    _initializeDeviceSections();
-    _setupSocketListeners();
-    _loadSavedDeviceSections();
-    _loadConfigShowData(); // TAMBAHKAN: Load config show data
-    
-    if (widget.socketService.isConnected) {
-      debugPrint("✅ Connected, sending XM10");
-      widget.socketService.send("XM10");
-    } 
-    
-    widget.socketService.onConnectionChanged = (isConnected) {
-      if (isConnected) {
-        debugPrint("✅ Connected, sending XM10");
-        widget.socketService.send("XM10");
-        _loadConfigShowData(); // Reload data ketika terkoneksi
-      } else {
-        debugPrint("❌ Disconnected");
-      }
-    };
+void initState() {
+  super.initState();
+
+  _setupSocketListeners();
+  _restoreState();
+
+  if (widget.socketService.isConnected) {
+    debugPrint("✅ Connected, sending XM10");
+    widget.socketService.send("XM11");
   }
+
+  widget.socketService.onConnectionChanged = (isConnected) {
+    if (isConnected) {
+      debugPrint("✅ Connected, sending XM10");
+      widget.socketService.send("XM11");
+      _loadConfigShowData();
+    } else {
+      debugPrint("❌ Disconnected");
+    }
+  };
+}
+Future<void> _restoreState() async {
+  await _preferencesService.initialize();
+
+  final savedDeviceCount =
+      await _preferencesService.getUserSetting('selected_device_count');
+
+  if (savedDeviceCount != null && mounted) {
+    setState(() {
+      _selectedDeviceCount = savedDeviceCount;
+    });
+  }
+
+  _updateDeviceSections();
+
+  await _loadSavedDeviceSections();
+
+  await _loadConfigShowData();
+}
 
   // TAMBAHKAN: Load config show data
   Future<void> _loadConfigShowData() async {
@@ -402,7 +419,7 @@ print("channel is == $channel");
     // Kirim command XD untuk setup device sendiri
     // Format: XD[jumlah device],[device count],[email],[mac],[channel]
     final command =
-        'XD1,${config.email},${config.mac},${config.jumlahChannel}';
+        'XD$_selectedDeviceCount,1,${config.email},${config.mac},${config.jumlahChannel}';
     widget.socketService.send(command);
 
     _addLogMessage(

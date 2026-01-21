@@ -17,7 +17,7 @@ class SyncPage extends StatefulWidget {
 class _SyncDashboardPageState extends State<SyncPage> {
   int _currentIndex = 0;
   late SocketService _socketService;
-    late ConfigShowService _configShowService; // TAMBAHKAN
+  late ConfigShowService _configShowService; // TAMBAHKAN
   ConfigShowModel? _currentConfigShow; // TAMBAHKAN
 
   bool _isConnecting = false;
@@ -28,27 +28,22 @@ class _SyncDashboardPageState extends State<SyncPage> {
 
   final List<Map<String, dynamic>> _menuItems = [
     {
-      'title': 'Device', 
-      'icon': Icons.phone_android, 
+      'title': 'Device',
+      'icon': Icons.phone_android,
       'color': AppColors.neonGreen,
     },
     {
-      'title': 'Config', 
-      'icon': Icons.settings_input_component, 
+      'title': 'Config',
+      'icon': Icons.settings_input_component,
       'color': AppColors.neonGreen,
     },
-    {
-      'title': 'Control', 
-      'icon': Icons.gamepad, 
-      'color': AppColors.neonGreen,
-    },
+    {'title': 'Control', 'icon': Icons.gamepad, 'color': AppColors.neonGreen},
   ];
 
   @override
   void initState() {
-    
     super.initState();
-      _socketService = SocketService();
+    _socketService = SocketService();
     _socketService.addConsumer();
     _configShowService = ConfigShowService(); // INIT
     _initializeServices(); // TAMBAHKAN
@@ -64,9 +59,10 @@ class _SyncDashboardPageState extends State<SyncPage> {
       ControlPage(socketService: _socketService),
     ];
   }
-Future<void> _initializeServices() async {
+
+  Future<void> _initializeServices() async {
     await _configShowService.initialize();
-    
+
     // Listen to config show changes
     _configShowService.configShowStream.listen((configShow) {
       if (mounted) {
@@ -101,7 +97,7 @@ Future<void> _initializeServices() async {
 
     try {
       await _socketService.connect();
-      
+
       if (_socketService.isConnected) {
         _socketService.requestConfigShow(); // MENGIRIM XC
       }
@@ -187,11 +183,7 @@ Future<void> _initializeServices() async {
                 ),
               ),
               const SizedBox(width: 4),
-              Icon(
-                Icons.expand_more,
-                size: 12,
-                color: AppColors.successGreen,
-              ),
+              Icon(Icons.expand_more, size: 12, color: AppColors.successGreen),
             ],
           ),
         ),
@@ -248,7 +240,7 @@ Future<void> _initializeServices() async {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               // Connection Status
               Container(
                 padding: const EdgeInsets.all(16),
@@ -256,7 +248,9 @@ Future<void> _initializeServices() async {
                   color: AppColors.primaryBlack,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: _isConnected ? AppColors.successGreen : AppColors.errorRed,
+                    color: _isConnected
+                        ? AppColors.successGreen
+                        : AppColors.errorRed,
                   ),
                 ),
                 child: Row(
@@ -265,18 +259,20 @@ Future<void> _initializeServices() async {
                       width: 12,
                       height: 12,
                       decoration: BoxDecoration(
-                        color: _isConnected ? AppColors.successGreen : AppColors.errorRed,
+                        color: _isConnected
+                            ? AppColors.successGreen
+                            : AppColors.errorRed,
                         shape: BoxShape.circle,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        _isConnected 
-                            ? 'Connected to Device' 
-                            : 'Disconnected',
+                        _isConnected ? 'Connected to Device' : 'Disconnected',
                         style: TextStyle(
-                          color: _isConnected ? AppColors.successGreen : AppColors.errorRed,
+                          color: _isConnected
+                              ? AppColors.successGreen
+                              : AppColors.errorRed,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -284,9 +280,9 @@ Future<void> _initializeServices() async {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // Connection Actions
               if (_isConnected) ...[
                 _buildConnectionAction(
@@ -376,7 +372,12 @@ Future<void> _initializeServices() async {
           // Header dengan logo dan connection button
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.only(top: 40, bottom: 20, right: 20, left: 20),
+            padding: const EdgeInsets.only(
+              top: 40,
+              bottom: 20,
+              right: 20,
+              left: 20,
+            ),
             decoration: BoxDecoration(
               color: AppColors.darkGrey,
               border: Border(
@@ -403,7 +404,6 @@ Future<void> _initializeServices() async {
                         letterSpacing: 1,
                       ),
                     ),
-                   
                   ],
                 ),
 
@@ -466,7 +466,7 @@ Future<void> _initializeServices() async {
                   ],
                 ),
               ),
-              child: _getCurrentPage(),
+              child: IndexedStack(index: _currentIndex, children: _pages),
             ),
           ),
         ],
@@ -494,71 +494,75 @@ Future<void> _initializeServices() async {
   }
 
   Widget _buildSyncShortcut(String title, IconData icon, int index) {
-  final isActive = _currentIndex == index;
+    final isActive = _currentIndex == index;
 
-  return GestureDetector(
-    onTap: () {
-      setState(() {
-        _currentIndex = index;
-      });
-    },
-    child: AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      margin: const EdgeInsets.symmetric(horizontal: 6), // Reduced margin
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), // Reduced padding
-      constraints: const BoxConstraints(
-        minWidth: 80, // Minimum width
-        maxWidth: 100, // Maximum width
-      ),
-      decoration: BoxDecoration(
-        color: isActive ? AppColors.neonGreen : AppColors.primaryBlack,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.neonGreen,
-          width: isActive ? 0 : 1.0, // Reduced border width
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _currentIndex = index;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        margin: const EdgeInsets.symmetric(horizontal: 6), // Reduced margin
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 10,
+        ), // Reduced padding
+        constraints: const BoxConstraints(
+          minWidth: 80, // Minimum width
+          maxWidth: 100, // Maximum width
         ),
-        boxShadow: isActive
-            ? [
-                BoxShadow(
-                  color: AppColors.neonGreen.withOpacity(0.4),
-                  blurRadius: 10,
-                  spreadRadius: 2,
-                ),
-              ]
-            : [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            size: 20, // Reduced icon size
-            color: isActive ? AppColors.primaryBlack : AppColors.neonGreen,
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.neonGreen : AppColors.primaryBlack,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppColors.neonGreen,
+            width: isActive ? 0 : 1.0, // Reduced border width
           ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 10, // Reduced font size
-              fontWeight: FontWeight.w600,
-              color: isActive ? AppColors.primaryBlack : AppColors.pureWhite,
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: AppColors.neonGreen.withOpacity(0.4),
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 20, // Reduced icon size
+              color: isActive ? AppColors.primaryBlack : AppColors.neonGreen,
             ),
-            textAlign: TextAlign.center,
-            maxLines: 2, // Allow text to wrap
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+            const SizedBox(height: 4),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 10, // Reduced font size
+                fontWeight: FontWeight.w600,
+                color: isActive ? AppColors.primaryBlack : AppColors.pureWhite,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2, // Allow text to wrap
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
+
   @override
   void dispose() {
     _socketService.removeConsumer();
