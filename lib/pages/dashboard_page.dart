@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:iTen/constants/app_colors.dart';
+import 'package:iTen/constants/app_config.dart';
 import 'package:iTen/pages/config_monitor.dart';
 import 'package:iTen/pages/editor_page.dart';
 import 'package:iTen/pages/mapping_page.dart';
@@ -370,7 +371,7 @@ class _DashboardPageState extends State<DashboardPage> {
       width: 100, // Sesuaikan ukuran sesuai kebutuhan
       height: 40,  // Sesuaikan ukuran sesuai kebutuhan
       child: Image.asset(
-        'assets/image/Logo_transparent.png',
+        AppConfig.logoApp,
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) {
           // Fallback jika gambar tidak ditemukan

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:iTen/constants/app_colors.dart';
+import 'package:iTen/constants/app_config.dart';
 import 'package:iTen/routes/routes.dart';
 import 'package:iTen/services/firebase_data_service.dart';
 
@@ -291,7 +292,7 @@ class _LandingPageState extends State<LandingPage> {
             ],
           ),
           child: Image.asset(
-            'assets/image/Logo_transparent.png',
+            AppConfig.logoApp,
             width: 280, // Sesuaikan ukuran sesuai kebutuhan
             height: 120, // Sesuaikan ukuran sesuai kebutuhan
             fit: BoxFit.contain,
@@ -306,12 +307,17 @@ class _LandingPageState extends State<LandingPage> {
                       fontWeight: FontWeight.w900,
                       color: AppColors.neonGreen,
                       letterSpacing: 3,
-                      shadows: [Shadow(blurRadius: 10, color: AppColors.neonGreen)],
+                      shadows: [
+                        Shadow(blurRadius: 10, color: AppColors.neonGreen),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
@@ -351,7 +357,7 @@ class _LandingPageState extends State<LandingPage> {
             },
           ),
         ),
-
+        Container(width: 200,child: Image.asset("assets/image/client/text.png")),
         const SizedBox(height: 16),
 
         // Subtitle
@@ -400,10 +406,7 @@ class _LandingPageState extends State<LandingPage> {
                   onPressed: _isInitializing
                       ? null
                       : () {
-                          Navigator.pushNamed(
-                            context,
-                            AppRoutes.dashboard,
-                          );
+                          Navigator.pushNamed(context, AppRoutes.dashboard);
                           // print('Tombol Normal ditekan');
                         },
                   style: ElevatedButton.styleFrom(
